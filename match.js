@@ -116,7 +116,7 @@ class MatchScene extends Phaser.Scene {
     HOMES.forEach((hm, i) => {
       const p = { team: t, idx: i, ni: i, name: P.names[i], homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
                   state: 'idle', animT: 0, runT: 0, diveT: 0, downT: 0, diveDir: 0, hitWin: 0, blocked: false, decided: -1, missVer: -1, jumpedVer: -1, decoy: false };
-      p.spr = this.add.sprite(0, 0, `pl_${code}_${i}`, 0).setOrigin(0.5, 1).setFlipX(side === 1);
+      p.spr = this.add.sprite(0, 0, `pl_${code}_${i}`, 0).setOrigin(0.5, 1).setScale(1 / PL_RES).setFlipX(side === 1);
       t.players.push(p);
     });
     return t;

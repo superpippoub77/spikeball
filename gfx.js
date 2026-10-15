@@ -113,6 +113,13 @@ function makePlayerTex(scene, code, i) {
   const key = `pl_${code}_${i}`;
   if (scene.textures.exists(key)) return key;
   const P = TEAMS[code], hair = P.ha[i % P.ha.length];
+  if (PL_RES > 1) {
+    const R = PL_RES, tex = scene.textures.createCanvas(key, FW * R * POSES.length, FH * R), ctx = tex.getContext();
+    POSES.forEach((p, k) => ctx.drawImage(drawPlayerHD(p, P, hair, R), k * FW * R, 0));
+    tex.refresh(); tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    POSES.forEach((p, k) => tex.add(k, 0, k * FW * R, 0, FW * R, FH * R));
+    return key;
+  }
   const tex = scene.textures.createCanvas(key, FW * POSES.length, FH), ctx = tex.getContext();
   POSES.forEach((p, k) => drawPlayer(ctx, k * FW, p, P, hair));
   tex.refresh();

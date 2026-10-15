@@ -4,7 +4,13 @@ Ricostruito scena per scena dal video completo dell'arcade e dal manuale operato
 Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro, bandiere e palazzetto sono pixel art nuova.
 
 ## Avvio
-Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso in `lib/`.
+Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso (`phaser.min.js`).
+
+### Grafica: pixel art o HD
+- **Pixel art** (predefinita): la grafica originale a 320×224.
+- **HD** (prototipo): giocatori vettoriali ad alta risoluzione con contorni netti e ombreggiatura (`gfx-hd.js`), canvas a 1920 px. Palazzetto, pallone e schermate restano per ora in pixel art.
+
+Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=hd` / `index.html?gfx=pixel`. La scelta viene ricordata.
 
 ## Tasti
 | | Giocatore 1 | Giocatore 2 |
@@ -14,6 +20,7 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 | Start | Invio o 1 | 2 |
 | Gettone | 5 o C | |
 | Pausa / muto | P / M | |
+| Grafica pixel / HD | H | |
 
 ## Come si gioca (dal manuale)
 - **Battuta:** il battitore è già fuori dal campo con la palla in mano. Pulsante per lanciare, pulsante per colpire quando la palla diventa rossa ("HIT! PRESS BUTTON!"). Frecce riferite al battitore rivolto verso la rete:
