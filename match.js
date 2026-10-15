@@ -132,7 +132,7 @@ class MatchScene extends Phaser.Scene {
     this.serveFace = this.add.image(52, 74, 'face_ITA_0_neutral').setScrollFactor(0).setDepth(2100).setScale(1.2).setVisible(false);
     this.serveRef = this.add.image(132, 76, 'ref_whistle').setScrollFactor(0).setDepth(2100).setScale(1.5).setVisible(false);
     this.serveNum = this.add.text(98, 48, '5', TXT(16)).setScrollFactor(0).setDepth(2101).setStroke('#000', 3).setVisible(false);
-    this.bigScore = this.add.text(160, 70, '', { fontFamily: FONT, fontSize: '28px', color: '#f0e0ff' }).setOrigin(0.5).setScrollFactor(0).setDepth(2200).setStroke('#6a3a9a', 4).setVisible(false);
+    this.bigScore = this.add.text(160, 70, '', { fontFamily: FONT, fontSize: 28 * FONT_K + 'px', color: '#f0e0ff' }).setOrigin(0.5).setScrollFactor(0).setDepth(2200).setStroke('#6a3a9a', 4).setVisible(false);
     this.bigNames = this.add.text(160, 44, '', TXT(10)).setOrigin(0.5).setScrollFactor(0).setDepth(2200).setVisible(false);
     if (this.mode === 'demo') {
       this.demoText = this.add.text(150, 120, 'GAME OVER\nINSERT COINS!', { ...TXT(8, '#8090ff'), align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(2050).setStroke('#ffffff', 2);
