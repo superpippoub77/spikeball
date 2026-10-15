@@ -109,38 +109,14 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   arm(s.fa, false);
 }
 
-// ---------------- texture a risoluzione GR (HD) ----------------
-// In HD ogni texture è disegnata a GR volte i pixel nativi, poi i suoi frame vengono "ristretti"
-// alla misura nativa: il gioco continua a ragionare in pixel 320x224 senza cambiare nulla.
-function canvasTex(scene, key, w, h) {
-  const t = scene.textures.createCanvas(key, Math.ceil(w * GR), Math.ceil(h * GR)), c = t.getContext();
-  c.setTransform(GR, 0, 0, GR, 0, 0);
-  return { t, c };
-}
-// frames: [nome, x, y, w, h] in pixel nativi
-function texDone(t, frames = []) {
-  t.refresh();
-  for (const [n, x, y, w, h] of frames) t.add(n, 0, x * GR, y * GR, w * GR, h * GR);
-  if (GR === 1) return;
-  t.setFilter(Phaser.Textures.FilterMode.LINEAR);
-  for (const n of t.getFrameNames(true)) {
-    const f = t.get(n), k = 1 / GR;
-    f.cutWidth *= k; f.cutHeight *= k; f.width *= k; f.height *= k; f.x *= k; f.y *= k;
-    f.halfWidth = f.width / 2; f.halfHeight = f.height / 2; f.centerX = Math.floor(f.width / 2); f.centerY = Math.floor(f.height / 2);
-    const d = f.data;
-    d.cut.w *= k; d.cut.h *= k; d.sourceSize.w *= k; d.sourceSize.h *= k;
-    d.spriteSourceSize.w *= k; d.spriteSourceSize.h *= k; d.radius *= k;
-  }
-}
-
 function makePlayerTex(scene, code, i) {
   const key = `pl_${code}_${i}`;
   if (scene.textures.exists(key)) return key;
   const P = TEAMS[code], hair = P.ha[i % P.ha.length];
-  const { t, c } = canvasTex(scene, key, FW * POSES.length, FH);
-  if (GR > 1) { c.setTransform(1, 0, 0, 1, 0, 0); POSES.forEach((p, k) => c.drawImage(drawPlayerHD(p, P, hair, GR), k * FW * GR, 0)); }
-  else POSES.forEach((p, k) => drawPlayer(c, k * FW, p, P, hair));
-  texDone(t, POSES.map((p, k) => [k, k * FW, 0, FW, FH]));
+  const tex = scene.textures.createCanvas(key, FW * POSES.length, FH), ctx = tex.getContext();
+  POSES.forEach((p, k) => drawPlayer(ctx, k * FW, p, P, hair));
+  tex.refresh();
+  POSES.forEach((p, k) => tex.add(k, 0, k * FW, 0, FW, FH));
   return key;
 }
 
@@ -194,8 +170,8 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
 function makeFaceTex(scene, code, idx, expr) {
   const key = `face_${code}_${idx}_${expr}`;
   if (scene.textures.exists(key)) return key;
-  const { t, c } = canvasTex(scene, key, 40, 40);
-  (GR > 1 ? drawFaceHD : drawFace)(c, 0, 0, code, idx, expr); texDone(t);
+  const t = scene.textures.createCanvas(key, 40, 40);
+  drawFace(t.getContext(), 0, 0, code, idx, expr); t.refresh();
   return key;
 }
 
@@ -205,8 +181,7 @@ function makeRefTex(scene, pose) {
   const key = 'ref_' + pose;
   if (scene.textures.exists(key)) return key;
   const W = 56, H = 44;
-  const { t, c } = canvasTex(scene, key, W, H);
-  if (GR > 1) { drawRefHD(c, pose, W, H); texDone(t); return key; }
+  const t = scene.textures.createCanvas(key, W, H), c = t.getContext();
   const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#22407a'); g.addColorStop(1, '#122650');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   const px = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
@@ -230,7 +205,7 @@ function makeRefTex(scene, pose) {
     case 'win': arm([[20, 26], [16, 34], [18, 42]]); arm([[36, 26], [46, 22], [54, 16]]); break;
   }
   c.strokeStyle = '#e0e8ff'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, W - 1, H - 1);
-  texDone(t); return key;
+  t.refresh(); return key;
 }
 
 // ---------------- bandiere ----------------
@@ -274,61 +249,48 @@ function star(c, cx, cy, r) {
 function makeFlagTex(scene, code, w, h) {
   const key = `flag_${code}_${w}x${h}`;
   if (scene.textures.exists(key)) return key;
-  const { t, c } = canvasTex(scene, key, w + 2, h + 2);
+  const t = scene.textures.createCanvas(key, w + 2, h + 2), c = t.getContext();
   c.fillStyle = '#000'; c.fillRect(0, 0, w + 2, h + 2);
-  drawFlag(c, 1, 1, w, h, code);
-  if (GR > 1) {   // in HD: leggera ondulazione di luce sul tessuto
-    const g = c.createLinearGradient(1, 0, w + 1, 0);
-    g.addColorStop(0, 'rgba(255,255,255,0.16)'); g.addColorStop(0.35, 'rgba(0,0,0,0.12)'); g.addColorStop(0.7, 'rgba(255,255,255,0.12)'); g.addColorStop(1, 'rgba(0,0,0,0.14)');
-    c.fillStyle = g; c.fillRect(1, 1, w, h);
-  }
-  texDone(t); return key;
+  drawFlag(c, 1, 1, w, h, code); t.refresh(); return key;
 }
 
 // ---------------- oggetti comuni ----------------
 function makeCommon(scene) {
   if (scene.textures.exists('ball')) return;
-  let { t, c } = canvasTex(scene, 'ball', 8, 8);
-  if (GR > 1) drawBallHD(c, 4, 4, 4);
-  else {
-    c.fillStyle = '#ffffff'; c.fillRect(2, 0, 4, 8); c.fillRect(0, 2, 8, 4); c.fillRect(1, 1, 6, 6);
-    c.fillStyle = '#c8c8d8'; c.fillRect(5, 5, 2, 2); c.fillRect(1, 5, 1, 1); c.fillRect(6, 2, 1, 2);
-    c.fillStyle = '#d8d8e0'; c.fillRect(3, 1, 1, 6); c.fillRect(1, 3, 6, 1);
-  }
-  texDone(t);
+  let t = scene.textures.createCanvas('ball', 8, 8), c = t.getContext();
+  c.fillStyle = '#ffffff'; c.fillRect(2, 0, 4, 8); c.fillRect(0, 2, 8, 4); c.fillRect(1, 1, 6, 6);
+  c.fillStyle = '#c8c8d8'; c.fillRect(5, 5, 2, 2); c.fillRect(1, 5, 1, 1); c.fillRect(6, 2, 1, 2);
+  c.fillStyle = '#d8d8e0'; c.fillRect(3, 1, 1, 6); c.fillRect(1, 3, 6, 1);
+  t.refresh();
   // pallone grande (cursori dei menu)
-  ({ t, c } = canvasTex(scene, 'ballbig', 16, 16));
-  if (GR > 1) drawBallHD(c, 8, 8, 7.6);
-  else {
-    c.fillStyle = '#f4f4f4'; c.beginPath(); c.arc(8, 8, 7.5, 0, 7); c.fill();
-    c.strokeStyle = '#a0a0b0'; c.lineWidth = 1; c.beginPath(); c.arc(8, 8, 7, 0, 7); c.stroke();
-    c.beginPath(); c.arc(2, 6, 8, -0.6, 0.9); c.stroke(); c.beginPath(); c.arc(14, 12, 8, 2.6, 3.9); c.stroke();
-    c.fillStyle = '#c8c8d0'; c.fillRect(9, 10, 4, 3);
-  }
-  texDone(t);
+  t = scene.textures.createCanvas('ballbig', 16, 16); c = t.getContext();
+  c.fillStyle = '#f4f4f4'; c.beginPath(); c.arc(8, 8, 7.5, 0, 7); c.fill();
+  c.strokeStyle = '#a0a0b0'; c.lineWidth = 1; c.beginPath(); c.arc(8, 8, 7, 0, 7); c.stroke();
+  c.beginPath(); c.arc(2, 6, 8, -0.6, 0.9); c.stroke(); c.beginPath(); c.arc(14, 12, 8, 2.6, 3.9); c.stroke();
+  c.fillStyle = '#c8c8d0'; c.fillRect(9, 10, 4, 3);
+  t.refresh();
   // marcatore 1P
-  ({ t, c } = canvasTex(scene, 'mark1p', 14, 10));
-  c.fillStyle = '#e02020'; c.font = 7 * FONT_K + 'px ' + FONT; c.fillText('1P', 0, 7); c.fillStyle = '#ffffff'; c.fillRect(0, 8, 12, 1); c.fillRect(10, 6, 2, 4);
-  texDone(t);
-  ({ t, c } = canvasTex(scene, 'mark2p', 14, 10));
-  c.fillStyle = '#2060ff'; c.font = 7 * FONT_K + 'px ' + FONT; c.fillText('2P', 0, 7); c.fillStyle = '#ffffff'; c.fillRect(0, 8, 12, 1); c.fillRect(10, 6, 2, 4);
-  texDone(t);
+  t = scene.textures.createCanvas('mark1p', 14, 10); c = t.getContext();
+  c.fillStyle = '#e02020'; c.font = '7px ' + FONT; c.fillText('1P', 0, 7); c.fillStyle = '#ffffff'; c.fillRect(0, 8, 12, 1); c.fillRect(10, 6, 2, 4);
+  t.refresh();
+  t = scene.textures.createCanvas('mark2p', 14, 10); c = t.getContext();
+  c.fillStyle = '#2060ff'; c.font = '7px ' + FONT; c.fillText('2P', 0, 7); c.fillStyle = '#ffffff'; c.fillRect(0, 8, 12, 1); c.fillRect(10, 6, 2, 4);
+  t.refresh();
 }
 
 // sfondo blu a motivo diagonale (schermate di menu)
 function makePattern(scene) {
   if (scene.textures.exists('pattern')) return;
-  const { t, c } = canvasTex(scene, 'pattern', 320, 224);
+  const t = scene.textures.createCanvas('pattern', 320, 224), c = t.getContext();
   c.fillStyle = '#1838c0'; c.fillRect(0, 0, 320, 224);
   c.font = 'italic bold 11px Arial, sans-serif'; c.fillStyle = '#2a52e0';
   for (let y = 10, r = 0; y < 240; y += 13, r++)
     for (let x = -((r * 63) % 210); x < 320; x += 210) c.fillText(PATTERN_TEXT, x, y);
-  texDone(t);
+  t.refresh();
 }
 
 // ---------------- palazzetto ----------------
 function crowd(c, x0, y0, w, h, seed, dens = 1) {
-  if (GR > 1) return crowdHD(c, x0, y0, w, h, seed, dens);
   const R = seeded(seed);
   const shirts = ['#c8c8c8', '#e0e0e0', '#a04040', '#4050a0', '#808090', '#c09060', '#606070', '#904070', '#d0d0d0'];
   for (let y = y0; y < y0 + h; y += 6) for (let x = x0 + ((y / 6) % 2) * 2; x < x0 + w; x += 4) {
@@ -344,7 +306,7 @@ const ADS2 = ['SPIKE COLA', 'NETWORX', 'RIVA', 'ZEPHYR', 'KOMA'];
 function makeArena(scene) {
   const W = 560;
   if (scene.textures.exists('bg_far')) return;
-  let { t, c } = canvasTex(scene, 'bg_far', W, 112);
+  let t = scene.textures.createCanvas('bg_far', W, 112), c = t.getContext();
   c.fillStyle = '#1e2420'; c.fillRect(0, 0, W, 112);
   c.fillStyle = '#2c342e';
   for (let x = 0; x < W; x += 34) c.fillRect(x, 0, 2, 54);
@@ -361,20 +323,20 @@ function makeArena(scene) {
   c.fillStyle = '#4a4a46'; c.fillRect(0, 56, W, 56);
   crowd(c, 0, 57, W, 54, 7, 1.05);
   c.fillStyle = 'rgba(40,46,40,0.35)'; c.fillRect(0, 56, W, 56);
-  texDone(t);
-  ({ t, c } = canvasTex(scene, 'bg_ads', W, 22));
+  t.refresh();
+  t = scene.textures.createCanvas('bg_ads', W, 22); c = t.getContext();
   c.fillStyle = '#7a5a40'; c.fillRect(0, 0, W, 22); c.fillStyle = '#9a7a58'; c.fillRect(0, 0, W, 2); c.fillStyle = '#4a3424'; c.fillRect(0, 20, W, 2);
-  c.font = 8 * FONT_K + 'px ' + FONT; c.textBaseline = 'middle';
+  c.font = '8px ' + FONT; c.textBaseline = 'middle';
   for (let i = 0, x = 4; x < W; i++, x += 76) {
     c.fillStyle = '#d4d4dc'; c.fillRect(x, 5, 64, 12); c.fillStyle = '#8890b0'; c.fillRect(x, 15, 64, 2);
     c.fillStyle = i % 2 ? '#2040a0' : '#303030'; const s = ADS1[i % ADS1.length]; c.fillText(s, x + 32 - c.measureText(s).width / 2, 11);
   }
-  texDone(t);
-  ({ t, c } = canvasTex(scene, 'bg_mid', W, 42));
+  t.refresh();
+  t = scene.textures.createCanvas('bg_mid', W, 42); c = t.getContext();
   c.fillStyle = '#505450'; c.fillRect(0, 0, W, 42); crowd(c, 0, 0, W, 42, 99, 1.05);
   c.fillStyle = 'rgba(60,70,60,0.2)'; c.fillRect(0, 0, W, 42);
-  texDone(t);
-  ({ t, c } = canvasTex(scene, 'bg_boards', W, 24));
+  t.refresh();
+  t = scene.textures.createCanvas('bg_boards', W, 24); c = t.getContext();
   c.fillStyle = '#2a7a3c'; c.fillRect(0, 0, W, 24);
   c.font = 'italic bold 11px Arial, sans-serif'; c.textBaseline = 'middle';
   for (let i = 0, x = 0; x < W; i++, x += 92) {
@@ -383,14 +345,14 @@ function makeArena(scene) {
     c.fillStyle = red ? '#c82020' : '#c82020'; const s = ADS2[i % ADS2.length]; c.fillText(s, x + 46 - c.measureText(s).width / 2, 12);
   }
   c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(0, 0, W, 24);
-  texDone(t);
+  t.refresh();
 }
 
 // palazzetto in prospettiva (schermata presentazione incontro)
 function makeHallTex(scene, floorHex) {
   const key = 'hall_' + floorHex;
   if (scene.textures.exists(key)) return key;
-  const { t, c } = canvasTex(scene, key, 320, 224);
+  const t = scene.textures.createCanvas(key, 320, 224), c = t.getContext();
   const g = c.createLinearGradient(0, 0, 0, 224); g.addColorStop(0, '#1a1814'); g.addColorStop(1, '#3a3428');
   c.fillStyle = g; c.fillRect(0, 0, 320, 224);
   for (let r = 0; r < 18; r++) { c.fillStyle = r % 2 ? '#2a261e' : '#322c22'; c.fillRect(0, r * 8, 320, 4); }
@@ -403,9 +365,8 @@ function makeHallTex(scene, floorHex) {
   c.fillStyle = col; c.beginPath(); c.moveTo(118, 144); c.lineTo(202, 144); c.lineTo(238, 196); c.lineTo(82, 196); c.fill();
   c.strokeStyle = '#ffffff'; c.lineWidth = 1;
   c.beginPath(); c.moveTo(118, 144); c.lineTo(202, 144); c.lineTo(238, 196); c.lineTo(82, 196); c.closePath(); c.moveTo(102, 168); c.lineTo(218, 168); c.stroke();
-  if (GR > 1) for (let i = 0; i < 6; i++) hallPlayerHD(c, 131 + i * 13, 178);
-  else for (let i = 0; i < 6; i++) { const x = 128 + i * 13; c.fillStyle = '#d8d0d0'; c.fillRect(x, 160, 6, 12); c.fillStyle = '#d0b090'; c.fillRect(x + 1, 156, 4, 4); c.fillStyle = '#404060'; c.fillRect(x, 172, 2, 6); c.fillRect(x + 4, 172, 2, 6); }
-  texDone(t); return key;
+  for (let i = 0; i < 6; i++) { const x = 128 + i * 13; c.fillStyle = '#d8d0d0'; c.fillRect(x, 160, 6, 12); c.fillStyle = '#d0b090'; c.fillRect(x + 1, 156, 4, 4); c.fillStyle = '#404060'; c.fillRect(x, 172, 2, 6); c.fillRect(x + 4, 172, 2, 6); }
+  t.refresh(); return key;
 }
 
 // campo verde in prospettiva (schermata formazione)
@@ -414,11 +375,11 @@ const LINEUP_COLORS = { ITA: '#18d818', SWE: '#f8c020', FRA: '#2858e0', GER: '#e
 function makeLineupCourt(scene, code) {
   const key = 'lineup_' + code;
   if (scene.textures.exists(key)) return key;
-  const { t, c } = canvasTex(scene, key, 320, 224);
+  const t = scene.textures.createCanvas(key, 320, 224), c = t.getContext();
   c.fillStyle = LINEUP_COLORS[code] || '#18d818'; c.fillRect(0, 0, 320, 224);
   c.strokeStyle = '#ffffff'; c.lineWidth = 3;
   c.beginPath(); c.moveTo(0, 40); c.lineTo(110, 40); c.lineTo(80, 208); c.lineTo(0, 208); c.stroke();
   c.beginPath(); c.moveTo(110, 40); c.lineTo(320, 40); c.moveTo(80, 208); c.lineTo(320, 208); c.stroke();
   c.beginPath(); c.moveTo(170, 40); c.lineTo(190, 208); c.moveTo(250, 40); c.lineTo(290, 208); c.moveTo(310, 40); c.lineTo(320, 70); c.stroke();
-  texDone(t); return key;
+  t.refresh(); return key;
 }

@@ -4,13 +4,7 @@ Ricostruito scena per scena dal video completo dell'arcade e dal manuale operato
 Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro, bandiere e palazzetto sono pixel art nuova.
 
 ## Avvio
-Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso (`phaser.min.js`).
-
-### Grafica: pixel art o HD
-- **Pixel art** (predefinita): la grafica originale a 320×224.
-- **HD**: tutta la grafica a 1920 px, senza pixel art (`gfx-hd.js`): giocatori vettoriali con contorni netti e ombreggiatura, ritratti e arbitro disegnati, pallone, pubblico, bandiere, cartelloni e testi nitidi (carattere Russo One). Ogni texture è disegnata a 6× e mostrata alla misura originale, quindi regole e logica di gioco sono identiche.
-
-Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=hd` / `index.html?gfx=pixel`. La scelta viene ricordata.
+Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso in `lib/`.
 
 ## Tasti
 | | Giocatore 1 | Giocatore 2 |
@@ -20,7 +14,6 @@ Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.
 | Start | Invio o 1 | 2 |
 | Gettone | 5 o C | |
 | Pausa / muto | P / M | |
-| Grafica pixel / HD | H | |
 
 ## Come si gioca (dal manuale)
 - **Battuta:** il battitore è già fuori dal campo con la palla in mano. Pulsante per lanciare, pulsante per colpire quando la palla diventa rossa ("HIT! PRESS BUTTON!"). Frecce riferite al battitore rivolto verso la rete:

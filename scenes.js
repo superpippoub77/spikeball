@@ -574,13 +574,9 @@ class PracticeScene extends Base {
 
 // ---------------- avvio ----------------
 function startGame() {
-  if (GFX === 'hd') {   // testi nitidi alla risoluzione dello schermo
-    const F = Phaser.GameObjects.GameObjectFactory.prototype, text = F.text;
-    F.text = function (x, y, s, style) { return text.call(this, x, y, s, Object.assign({}, style, { resolution: CFG.ZOOM })); };
-  }
   window.__game = new Phaser.Game({
     // rendering a 3x della risoluzione nativa: lo scorrimento è fluido (sub-pixel) e la grafica resta a pixel
-    type: GFX === 'hd' ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
+    type: Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
@@ -590,15 +586,12 @@ function startGame() {
   window.addEventListener('keydown', e => {
     SFX.init();
     if (e.key === '5' || e.key === 'c' || e.key === 'C') { GS.credits = Math.min(9, GS.credits + 1); SFX.coin(); }
-    // H: passa da pixel art ad HD e viceversa (ricarica la pagina)
-    if (e.key === 'h' || e.key === 'H') { const u = new URL(location.href); u.searchParams.set('gfx', GFX === 'hd' ? 'pixel' : 'hd'); location.href = u.href; }
   });
-  if (GFX === 'hd') document.body.classList.add('hd');
 }
 
 (function boot() {
   GS.loadRanking();
   const go = () => startGame();
-  if (document.fonts && document.fonts.load) Promise.race([Promise.all([document.fonts.load('8px "Press Start 2P"'), document.fonts.load('8px "Russo One"')]), new Promise(r => setTimeout(r, 2000))]).then(go, go);
+  if (document.fonts && document.fonts.load) Promise.race([document.fonts.load('8px "Press Start 2P"'), new Promise(r => setTimeout(r, 2000))]).then(go, go);
   else go();
 })();
