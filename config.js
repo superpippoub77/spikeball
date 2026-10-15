@@ -86,7 +86,7 @@ const GFX = (() => {
   return m === 'hd' ? 'hd' : 'pixel';
 })();
 if (GFX === 'hd') CFG.ZOOM = 6;
-const PL_RES = GFX === 'hd' ? CFG.ZOOM : 1;   // risoluzione delle texture dei giocatori rispetto ai pixel nativi
+const GR = GFX === 'hd' ? CFG.ZOOM : 1;   // risoluzione delle texture rispetto ai pixel nativi
 
 const DEFAULT_RANKING = [
   { score: 10000, name: 'ABC', stage: 'URS' }, { score: 3000, name: 'DEF', stage: 'CUB' },
@@ -142,8 +142,10 @@ const PHYS = {
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const SX = x => x + CFG.OX;
-const FONT = '"Press Start 2P", "Courier New", monospace';
-const TXT = (size = 8, color = '#ffffff') => ({ fontFamily: FONT, fontSize: size + 'px', color });
+// in HD un carattere sportivo pulito al posto di quello a pixel
+const FONT = GFX === 'hd' ? '"Russo One", "Arial Black", sans-serif' : '"Press Start 2P", "Courier New", monospace';
+const FONT_K = GFX === 'hd' ? 1.35 : 1;   // Russo One ha lettere più basse: stessa altezza visiva del carattere a pixel
+const TXT = (size = 8, color = '#ffffff') => ({ fontFamily: FONT, fontSize: size * FONT_K + 'px', color });
 
 function camSetup(scene) {
   scene.cameras.main.setOrigin(0, 0).setZoom(CFG.ZOOM);

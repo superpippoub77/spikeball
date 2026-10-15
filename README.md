@@ -8,7 +8,7 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 ### Grafica: pixel art o HD
 - **Pixel art** (predefinita): la grafica originale a 320×224.
-- **HD** (prototipo): giocatori vettoriali ad alta risoluzione con contorni netti e ombreggiatura (`gfx-hd.js`), canvas a 1920 px. Palazzetto, pallone e schermate restano per ora in pixel art.
+- **HD**: tutta la grafica a 1920 px, senza pixel art (`gfx-hd.js`): giocatori vettoriali con contorni netti e ombreggiatura, ritratti e arbitro disegnati, pallone, pubblico, bandiere, cartelloni e testi nitidi (carattere Russo One). Ogni texture è disegnata a 6× e mostrata alla misura originale, quindi regole e logica di gioco sono identiche.
 
 Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=hd` / `index.html?gfx=pixel`. La scelta viene ricordata.
 
