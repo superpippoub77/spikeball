@@ -41,6 +41,9 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `league.js` | **Campionati** da `campionati.json`: squadre generate, classifica FIPAV, simulazione, schermate del campionato |
 | `photo-sprites.js` | Atlante dei giocatori 3D (generato da `tools/photo`, non si modifica a mano) |
 | `photo.js` | Versione **3D**: ricolore per squadra e animazioni dei giocatori fotorealistici |
+| `lineup.js` | **Formazione**: rosa di ogni squadra, titolari automatici, scelta dei giocatori in ogni posto (scena `Formazione`) |
+| `beach.js` | **Beach volley**: squadre da spiaggia, arene sulla sabbia, menu, partita al meglio dei 3 set |
+| `myplayer.js` | **Il mio giocatore**: scheda, inserimento nella squadra, crescita delle statistiche a fine partita |
 
 Dati e risorse:
 
@@ -78,6 +81,13 @@ Alcuni file estendono funzioni definite prima, senza modificarle:
 - `drawFlag` → `modern.js` aggiunge bandiere, `roster.js` aggiunge stemmi e loghi.
 - `startGame` → `roster.js`, `league.js` e `photo.js` caricano i loro dati prima dell'avvio.
 - `MainMenuScene.prototype.create` → `roster.js` e `photo.js` aggiungono scritte al menu.
+- `teamPool` / `lineupOf` (lineup.js) → `myplayer.js` aggiunge il mio giocatore alla rosa e lo mette in campo.
+- `MatchScene.prototype.startEnd` → `myplayer.js` aggiorna le statistiche del mio giocatore.
+
+### Giocatori in campo, ruoli dei posti, look
+- La partita usa `FORMATIONS[n]` (2, 3, 4 o 6 giocatori). Ogni giocatore ha `pos` (mb, set, oh, def, bk, lib, bch): l'IA sceglie chi alza, chi attacca e chi mura dal ruolo del posto, non dall'indice.
+- Batte il posto più lontano dalla rete (`t.srvI`); la rotazione fa scorrere i nomi tra i posti.
+- `setLook(scene, true)` attiva il look da spiaggia: le texture dei giocatori hanno chiavi diverse (`_b` finale), quindi le due versioni convivono.
 
 Se modifichi una di queste funzioni, ricordati che altri file ci si appoggiano.
 
@@ -111,6 +121,10 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Ritoccare una **posa** dei giocatori disegnati | `gfx.js` → `SKEL` (punti di anca, collo, testa, gambe, braccia) |
 | Rifare i **giocatori 3D** da un nuovo foglio sprite | `tools/photo/README.md` |
 | Cambiare le **schede del menu principale** | `modern.js` → `MainMenuScene` (`this.cards`) |
+| Cambiare le **posizioni in campo** o aggiungere un numero di giocatori | `config.js` → `FORMATIONS` (posti: d, dep, pos) e `PLAYER_COUNTS` |
+| Regole del **beach volley** (punti, cambio campo, misure) | `beach.js` → `BEACH_FORMATS`, `startBeachMatch`; `CFG.BEACH_HALF`; in `match.js` cerca `this.beach` |
+| Aggiungere una **spiaggia** o una **coppia beach** | `beach.js` → `BEACH_ARENAS` / `makeBeachArena`, squadre all'inizio del file + `BEACH_TEAMS` |
+| Velocità di crescita del **mio giocatore** | `myplayer.js` → `myPlayerAfterMatch` (funzione `grow`) e `MY_BASE` |
 | Aggiungere una **nuova schermata** | vedi sotto |
 
 ### Aggiungere una schermata
@@ -141,6 +155,8 @@ Il gioco salva alcune cose nel `localStorage` del browser (si cancellano dagli s
 | `sf91_rank` | classifica arcade |
 | `sf91_squadre`, `sf91_campionati` | file trascinati sulla finestra (CANC nel menu principale li toglie) |
 | `sf91_lega_<id>` | progressi di ogni campionato (RICOMINCIA li azzera) |
+| `sf91_formazioni` | formazioni scelte per ogni squadra e numero di giocatori |
+| `sf91_mio_giocatore` | scheda e statistiche del mio giocatore |
 
 ---
 

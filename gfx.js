@@ -73,10 +73,16 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const s = { hip: sc(s0.hip), neck: sc(s0.neck), head: sc(s0.head), bl: s0.bl.map(sc), fl: s0.fl.map(sc), ba: s0.ba.map(sc), fa: s0.fa.map(sc) };
   const skin = P.sk, skinD = shade(P.sk, 0.74), skinB = shade(P.sk, 0.6);
   const shirt = P.sh, shirtD = shade(P.sh, 0.62), shirtL = shade(P.sh, 1.18), shorts = P.so, shortsD = shade(P.so, 0.68);
+  const B = P.beach;   // look da spiaggia: canotta, pantaloncini lunghi, piedi nudi, occhiali da sole
   const leg = (j, back) => {
     const knee = j[0], foot = j[1];
     limb(ctx, ox, s.hip, knee, 6, 5, back ? skinB : skin);                                   // coscia
-    limb(ctx, ox, s.hip, lerpP(s.hip, knee, 0.28), 5.6, 5.2, back ? shortsD : shorts);       // pantaloncino corto
+    limb(ctx, ox, s.hip, lerpP(s.hip, knee, B ? 0.62 : 0.28), 5.6, 5.2, back ? shortsD : shorts);   // pantaloncino (beach: lungo)
+    if (B) {   // gamba e piede nudi
+      limb(ctx, ox, knee, foot, 4, 3, back ? skinB : skinD);
+      ctx.fillStyle = back ? skinB : skin; ctx.fillRect(ox + Math.round(foot[0]) - 1, Math.round(foot[1]) - 1, 5, 2);
+      return;
+    }
     const sock = lerpP(knee, foot, 0.55);
     limb(ctx, ox, knee, sock, 4, 3.4, back ? skinB : skinD);                                 // polpaccio
     limb(ctx, ox, sock, foot, 3.4, 3, back ? '#b4b4bc' : '#f2f2f2');                          // calzettone
@@ -91,7 +97,7 @@ function drawPlayer(ctx, ox, pose, P, hair) {
     const sh = lerpP(s.neck, s.hip, 0.14);
     limb(ctx, ox, sh, j[0], 4, 3.4, back ? skinB : skin);
     limb(ctx, ox, j[0], j[1], 3.4, 2.8, back ? skinB : skin);
-    limb(ctx, ox, sh, lerpP(sh, j[0], 0.42), 4.6, 4, back ? shirtD : shirt);                 // manica corta
+    if (!B) limb(ctx, ox, sh, lerpP(sh, j[0], 0.42), 4.6, 4, back ? shirtD : shirt);         // manica corta (beach: canotta)
     ctx.fillStyle = back ? skinB : skin; ctx.beginPath(); ctx.arc(ox + j[1][0], j[1][1], 1.7, 0, 7); ctx.fill();
   };
   arm(s.ba, true);
@@ -117,7 +123,11 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.fillStyle = shade(hair, 1.55); ctx.fillRect(ox + hx - 2, hy - 5, 4, 1);
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy - 1, 1, 2);                    // orecchio
   ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx + 2, hy - 1, 1, 1);                // occhio
-  ctx.fillStyle = '#ffffff'; const cl = lerpP(s.neck, s.hip, 0.04); ctx.fillRect(ox + Math.round(cl[0]) - 2, Math.round(cl[1]) - 1, 4, 1); // colletto
+  if (B) {
+    ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx + 0.5, hy - 1.5, 4.5, 2);          // occhiali da sole
+    ctx.fillStyle = '#5ac8f0'; ctx.fillRect(ox + hx + 3, hy - 1.5, 1, 1);
+    if (P.cap) { ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 4, hy - 4.5, 8, 2); ctx.fillRect(ox + hx + 3, hy - 3, 4, 1); }   // visiera
+  } else { ctx.fillStyle = '#ffffff'; const cl = lerpP(s.neck, s.hip, 0.04); ctx.fillRect(ox + Math.round(cl[0]) - 2, Math.round(cl[1]) - 1, 4, 1); } // colletto
   arm(s.fa, false);
 }
 
@@ -146,19 +156,31 @@ function texDone(t, frames = [], R = GR) {
 }
 
 // colori della squadra con i dati del giocatore i (pelle e numero di maglia dalle squadre JSON)
+// look dei giocatori: divisa da palestra oppure da spiaggia (beach volley). Le texture hanno chiavi diverse
+// ('_b' finale), così le due versioni convivono; setLook si chiama prima di creare o mostrare i giocatori.
+const LOOK = { beach: false };
+function setLook(scene, beach) { LOOK.beach = !!beach; }
+
 function playerPal(code, i) {
   const P = TEAMS[code];
-  if (!P.sks && !P.nums) return P;
-  return Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
+  const out = Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
     sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
+  if (LOOK.beach) { out.beach = true; out.cap = i % 2 === 1; out.num = P.beachNums ? P.beachNums[i] : (i + 1) + ''; }
+  return out;
 }
 
 // chiave della texture di un giocatore: con i giocatori "foto" una sola texture per squadra
-function plKey(code, i) { return typeof PHOTO !== 'undefined' && PHOTO.on ? 'ph_' + code : `pl_${code}_${i}`; }
+function plKey(code, i) { const b = LOOK.beach ? '_b' : ''; return typeof PHOTO !== 'undefined' && PHOTO.on ? 'ph_' + code + b : `pl_${code}_${i}${b}`; }
+
+// toglie le texture già create di una squadra (giocatori e volti): servono quando cambia la formazione
+function dropTeamTex(scene, code) {
+  const tm = scene.textures;
+  for (const k of tm.getTextureKeys()) if (k.startsWith(`pl_${code}_`) || k.startsWith(`face_${code}_`)) tm.remove(k);
+}
 
 function makePlayerTex(scene, code, i) {
   if (typeof PHOTO !== 'undefined' && PHOTO.on) return makePhotoTex(scene, code);
-  const key = `pl_${code}_${i}`;
+  const key = plKey(code, i);
   if (scene.textures.exists(key)) return key;
   const P = playerPal(code, i), hair = P.ha[i % P.ha.length];
   const { t, c } = canvasTex(scene, key, FW * POSES.length, FH);
@@ -180,7 +202,7 @@ function hashStr(t) {
 
 // ritratto 40x40; expr: 'neutral' | 'cheer'
 function drawFace(ctx, ox, oy, code, idx, expr) {
-  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
+  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + (TEAMS[code].names[idx] || idx))); R(); R();   // volto legato al nome
   const skin = P.sk, dk = shade(skin, 0.72), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
   const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli

@@ -93,6 +93,13 @@ function drawPlayerHD(pose, P, hair, R) {
     const skin = shade(P.sk, dim), shorts = shade(P.so, dim), white = shade(WHITE, back ? 0.78 : 1);
     const ankle = lerpP(knee, foot, 0.62);
     hdCel(g, hdMuscle(knee, ankle, 2.2, 2.7, 2.1, 1.4), skin, 0.9, 0.5);                 // polpaccio
+    if (P.beach) {   // sabbia: caviglia e piede nudi, pantaloncino lungo
+      hdCel(g, hdCapsule(ankle, foot, 1.5, 1.3), skin, 0.6, 0.4);
+      hdCel(g, hdPoly([[foot[0] - 1.8, foot[1] - 1.6], [foot[0] + 1.6, foot[1] - 1.4], [foot[0] + 4, foot[1] - 0.2], [foot[0] + 4, foot[1] + 0.5], [foot[0] - 2, foot[1] + 0.5]]), skin, 0.5, 0.35);
+      hdCel(g, hdMuscle(s.hip, knee, 3.3, 3.2, 3.7, 2.4), skin, 1, 0.6);
+      hdCel(g, hdCapsule(s.hip, lerpP(s.hip, knee, 0.62), 3.8, 3.4), shorts, 1, 0.5, false);
+      return;
+    }
     hdCel(g, hdCapsule(ankle, lerpP(ankle, foot, 0.85), 1.7, 1.6), white, 0.6, 0.4);     // calzettone
     const fx = foot[0], fy = foot[1];                                                     // scarpa
     hdCel(g, hdPoly([[fx - 2.2, fy - 2.6], [fx + 2.2, fy - 2.4], [fx + 4.6, fy - 1], [fx + 4.6, fy + 0.5], [fx - 2.4, fy + 0.5]]), white, 0.6, 0.4);
@@ -108,6 +115,7 @@ function drawPlayerHD(pose, P, hair, R) {
     hdCel(g, hdMuscle(elbow, hand, 1.8, 2.1, 1.9, 1.3), skin, 0.7, 0.45);                // avambraccio
     hdCel(g, hdEllipse(hand, 1.7, 1.5), skin, 0.6, 0.4);                                  // mano
     hdCel(g, hdMuscle(shoulder, elbow, 2.6, 2.9, 2.5, 1.8), skin, 0.8, 0.5);             // bicipite
+    if (P.beach) return;   // canotta: niente maniche
     const hem = lerpP(shoulder, elbow, 0.38);
     hdCel(g, hdCapsule(shoulder, hem, 2.8, 2.3), shirt, 0.9, 0.5);                       // manica
     const a = Math.atan2(elbow[1] - shoulder[1], elbow[0] - shoulder[0]);
@@ -180,6 +188,16 @@ function drawPlayerHD(pose, P, hair, R) {
     g.beginPath(); g.moveTo(hx - 2.8, hy - 3.6); g.quadraticCurveTo(hx - 0.6, hy - 5, hx + 1.6, hy - 4.2); g.stroke();
     g.strokeStyle = shade(hair, 0.55); g.lineWidth = 0.35;                                // sopracciglio
     g.beginPath(); g.moveTo(hx + 1.4, hy - 1.4); g.lineTo(hx + 3, hy - 1.5); g.stroke();
+    if (P.beach) {
+      // occhiali da sole a specchio e, per alcuni, cappellino con visiera
+      g.fillStyle = '#0c0c14'; g.beginPath(); g.ellipse(hx + 2.6, hy - 0.5, 1.5, 0.95, -0.1, 0, 7); g.fill();
+      g.fillRect(hx - 0.6, hy - 1, 2.4, 0.5);
+      g.fillStyle = 'rgba(120,210,255,0.8)'; g.beginPath(); g.ellipse(hx + 3, hy - 0.8, 0.6, 0.35, -0.1, 0, 7); g.fill();
+      if (P.cap) {
+        hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx - 0.3, hy - 2.6, 4.3, 2.9, 0, Math.PI, Math.PI * 2); g2.closePath(); }, P.tr, 0.7, 0.5);
+        hdCel(g, hdPoly([[hx + 2.6, hy - 3], [hx + 7, hy - 2.4], [hx + 6.6, hy - 1.7], [hx + 2.4, hy - 2]]), shade(P.tr, 0.8), 0.5, 0.35);
+      }
+    }
   });
   const front = hdLayer(R, g => arm(g, s.fa, false));
   const c = document.createElement('canvas'); c.width = FW * R; c.height = FH * R;
@@ -244,7 +262,7 @@ function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
 function hdStrokeFill(c, path, fill, ink = HD_INK, lw = 0.7) { path(c); c.fillStyle = fill; c.fill(); c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); }
 // ritratto 40x40 in versione HD (stessi tratti casuali della versione pixel: seme = squadra + giocatore)
 function drawFaceHD(c, ox, oy, code, idx, expr) {
-  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
+  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + (TEAMS[code].names[idx] || idx))); R(); R();
   const skin = P.sk, dk = shade(skin, 0.74), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
   const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
