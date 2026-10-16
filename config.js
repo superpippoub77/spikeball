@@ -2,11 +2,31 @@
 //  SPIKE FEVER '91 — remake fedele alla struttura di POWER SPIKES (Video System 1991)
 //  Unità in pixel nativi, risoluzione 320x224 come la scheda arcade.
 // ============================================================
+// INDICE DEL FILE
+//   1. titolo, autore, versione            5. GS: stato globale della partita arcade (gettoni, classifica)
+//   2. CFG: tutte le costanti di gioco      6. PHYS: fisica balistica della palla
+//   3. STAGES / TEAMS / HOMES                7. funzioni di utilità (rnd, clamp, SX, testi)
+//   4. GFX: versione grafica (ARCADE/HD/3D)  8. camSetup: preparazione comune delle scene
+//
+// SISTEMA DI COORDINATE (vale per tutto il gioco):
+//   x = posizione orizzontale in pixel nativi, 0 = rete; squadra sinistra x < 0 (side = -1), destra x > 0 (side = +1).
+//   h / z = altezza dal pavimento (palla / giocatore), verso l'alto. Sullo schermo: y = CFG.FLOOR_Y - h.
+//   SX(x) converte la x del campo nella x del mondo (il mondo è largo 2*CFG.OX, la telecamera scorre).
+//   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.1.1';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.1.2';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
+// ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
+// W/H: risoluzione nativa (320x224 come la scheda arcade); ZOOM: ingrandimento del canvas (3 = 960 px; in HD/3D diventa 6).
+// RUN: velocità di corsa (px/s); DIVE_V: velocità del tuffo; NET_H: altezza della rete (52 px = 2,6 m).
+// HALF: metà campo (180 px = 9 m); WORLD_HALF: metà mondo (fuori campo compreso); FLOOR_Y: y del pavimento sullo schermo.
+// REACH / DIVE_REACH: distanza (px) entro cui un giocatore tocca la palla in piedi / in tuffo.
+// PASS_LO/HI, SET_LO/HI: fasce di altezza della palla per bagher e alzata.
+// SETTER_D: dove l'alzatore aspetta la palla (distanza dalla rete); SPIKE_SPEED: velocità base della schiacciata.
+// STEP: passo della simulazione (1/120 s): la fisica avanza sempre a passi uguali, indipendenti dal frame rate.
+// OX: spostamento orizzontale del campo nel mondo (vedi SX).
 const CFG = {
   W: 320, H: 224, ZOOM: 3,
   PPM: 20,               // 1 m = 20 px
@@ -47,6 +67,7 @@ const CFG = {
 };
 
 // Avversari della modalità 1 giocatore e punteggio di partenza (giocatore - CPU), come nel video
+// skill = bravura della CPU (0-1): incide su ricezione, tempi del muro, errori in attacco.
 const STAGES = [
   { team: 'CHN', start: [12, 12], label: '1ST MATCH', skill: 0.55 },
   { team: 'JPN', start: [11, 12], label: '2ND MATCH', skill: 0.63 },
@@ -57,6 +78,9 @@ const STAGES = [
 const SELECTABLE = ['ITA', 'FRA', 'GER', 'GBR', 'ESP', 'SWE', 'NOR', 'DEN', 'BRA'];
 
 // sh = maglia, tr = bordo, so = pantaloncini, ha = capelli, sk = pelle, fl = pavimento
+// Nazionali. Per ogni squadra: name, colori (sh/tr/so), capelli dei 3 tipi di giocatore (ha), pelle (sk),
+// nomi dei giocatori (names: i primi 4 sono quelli in campo), colore del pavimento nell'arena arcade (fl).
+// Altre nazionali sono aggiunte in modern.js; i club e le squadre personalizzate in roster.js / league.js.
 const TEAMS = {
   ITA: { name: 'ITALY',   sh: '#2a48d8', tr: '#ffffff', so: '#f4f4f4', ha: ['#5a2a10', '#2a1408', '#8a4a18'], sk: '#eeb088', names: ['MARCO', 'TEO', 'MARIO', 'JULIO', 'PAOLO', 'LUCA'], fl: 0x24a83a },
   FRA: { name: 'FRANCE',  sh: '#2a48d8', tr: '#e02828', so: '#f4f4f4', ha: ['#3a2010', '#c08a40', '#5a3010'], sk: '#f0b890', names: ['PAUL', 'ALAIN', 'LUC', 'HENRI', 'JEAN', 'MARC'], fl: 0x24a83a },
@@ -76,6 +100,7 @@ const TEAMS = {
 
 // Formazione a 4 (3 a rete + 1 in fondo)
 // 0 = centrale (primo tempo, muro), 1 = alzatore, 2 = schiacciatore "asso", 3 = difensore/battitore
+// d = distanza dalla rete della posizione di partenza, dep = piccolo spostamento verticale (profondità) dello sprite.
 const HOMES = [{ d: 18, dep: 3 }, { d: 31, dep: -2 }, { d: 44, dep: 4 }, { d: 140, dep: 0 }];
 
 CFG.TPEAK = CFG.JUMP_V / CFG.PG;
@@ -115,6 +140,11 @@ const GS = {
 };
 
 // ---------------- fisica balistica ----------------
+// arcTo: velocità per andare da (x0,h0) a (x1,h1) passando per l'altezza massima apex (traiettorie alte: bagher, alzate).
+// shotTo: velocità per arrivare in (x1,h1) a una certa velocità orizzontale (traiettorie tese: schiacciate, battute in salto).
+// heightAtX: altezza della palla quando passa per la x indicata (Infinity se non ci arriva).
+// timeToH: tra quanto tempo la palla, scendendo, sarà all'altezza H (null se non ci arriva).
+// apexOf: altezza massima della traiettoria; clears: la palla passa sopra la rete con un margine?
 const PHYS = {
   arcTo(x0, h0, x1, h1, apex) {
     const g = CFG.G;
@@ -154,6 +184,9 @@ const FONT = HIRES ? '"Russo One", "Arial Black", sans-serif' : '"Press Start 2P
 const FONT_K = HIRES ? 1.35 : 1;   // Russo One ha lettere più basse: stessa altezza visiva del carattere a pixel
 const TXT = (size = 8, color = '#ffffff') => ({ fontFamily: FONT, fontSize: size * FONT_K + 'px', color });
 
+// Da chiamare all'inizio di create() di ogni scena. ATTENZIONE: Phaser riusa gli oggetti scena,
+// quindi qui si azzerano le proprietà gone/done/leaving/_born/counting: non usare questi nomi per altri scopi
+// (es. league.js usa 'finished' e non 'done').
 function camSetup(scene) {
   scene.cameras.main.setOrigin(0, 0).setZoom(CFG.ZOOM);
   // le scene di Phaser vengono riusate: azzera gli stati della visita precedente

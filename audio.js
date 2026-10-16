@@ -1,6 +1,10 @@
 // ============================================================
 //  Effetti sonori sintetizzati (WebAudio) — nessun file audio
 // ============================================================
+// SUONI: tutti sintetizzati con la Web Audio API, nessun file audio.
+// tone = nota (frequenza, durata, forma d'onda); noise = rumore filtrato (colpi, pubblico).
+// Per cambiare un suono si modificano i numeri della funzione corrispondente (bump, set, spike, whistle...).
+// SFX.muted (tasto M in partita) li spegne tutti.
 const SFX = {
   ctx: null, master: null, muted: false,
   init() {

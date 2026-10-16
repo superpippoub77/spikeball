@@ -6,6 +6,11 @@
 //  un file .json sulla finestra del gioco (resta salvato nel browser).
 //  Formato: vedi squadre.esempio.json e il README.
 // ============================================================
+// INDICE DEL FILE
+//   1. ruoli (ROLE_WORDS, SLOT_ROLES) e scelta dei 4 titolari (pickStarters)
+//   2. rosterTeam: da una squadra del JSON a una voce di TEAMS (+ TEAM_STATS)
+//   3. caricamento (squadre.json, esempio, file trascinato) e loghi (preloadLogos, LOGO_CACHE)
+//   4. stemmi/loghi nelle bandiere, trascinamento dei file, avviso nel menu principale
 const ROSTER = { source: null, teams: [], errors: [] };
 
 // sigle di ruolo: P alzatore, C centrale, O opposto, S schiacciatore/banda, L libero
@@ -27,6 +32,7 @@ function roleCodes(pl) {
 // livello libero (es. 1-10) → valore 0-100 come le statistiche delle nazionali
 const lvToStat = lv => clamp(Math.round(40 + (Number(lv) || 5) * 7), 30, 99);
 
+// sceglie i 4 in campo per ruolo principale (prima sigla) e livello; 'wanted' = numeri di maglia indicati come titolari
 function pickStarters(players, wanted) {
   let pool = players;
   if (Array.isArray(wanted) && wanted.length) {
@@ -47,6 +53,7 @@ function pickStarters(players, wanted) {
   return slots;
 }
 
+// costruisce la squadra: colori, nomi (cognomi), numeri, ruoli, età, livelli dei 4 titolari e statistiche; restituisce il codice
 function rosterTeam(sq, i) {
   const err = m => ROSTER.errors.push(`${sq.nome || 'squadra ' + (i + 1)}: ${m}`);
   const tipo = asciiUp(sq.tipo) === 'NAZIONALE' ? 'nazionale' : 'club';
@@ -120,6 +127,7 @@ async function loadRosters() {
 }
 
 // ---------------- loghi ----------------
+// immagini dei loghi già caricate (indirizzo -> Image); drawFlag le usa al posto dello stemma
 const LOGO_CACHE = {};
 function preloadLogos(urls) {
   const web = /^https?:$/.test(location.protocol);
