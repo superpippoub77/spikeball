@@ -9,16 +9,19 @@
      "nome": "ALTIORA"
     },
     {
-     "nome": "A.S.D. VOLLEY BELLINZAGO"
+     "nome": "A.S.D. VOLLEY BELLINZAGO",
+     "logo": "loghi/bellinzago.png"
     },
     {
      "nome": "VALSESIA TEAM VOLLEY"
     },
     {
-     "nome": "VOLLEY NOVARA 1 DIV"
+     "nome": "VOLLEY NOVARA 1 DIV",
+     "logo": "loghi/volley-novara.png"
     },
     {
-     "nome": "S.A.KOALA PALLAVOLO"
+     "nome": "S.A.KOALA PALLAVOLO",
+     "logo": "loghi/koala-fontaneto.png"
     },
     {
      "nome": "2MILA8VOLLEY DOMODOSSOLA"
@@ -27,7 +30,8 @@
      "nome": "AIAZZONE IMPRESA COSTRUZIONE SPB"
     },
     {
-     "nome": "ERREESSE PAVIC"
+     "nome": "ERREESSE PAVIC",
+     "logo": "loghi/pavic.png"
     },
     {
      "nome": "GAGLIANICO VOLLEY"
