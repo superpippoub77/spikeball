@@ -23,7 +23,7 @@ const hexRGB = h => { const n = parseInt(String(h).replace('#', ''), 16); return
 
 // atlante ricolorato per una squadra (a risoluzione piena del foglio)
 // ricolora l'atlante: maglia (zona 80) e pantaloncini (160) con i colori della squadra mantenendo le pieghe, pelle (240) per tono
-function photoRecolor(P) {
+function photoRecolor(P, beach) {
   const S = PHOTO_SPRITES, W = PHOTO.atlas.width, H = PHOTO.atlas.height;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'); g.drawImage(PHOTO.atlas, 0, 0);
@@ -51,8 +51,30 @@ function photoRecolor(P) {
       d[i] = clamp(d[i] * sk[0] / ref[0], 0, 255); d[i + 1] = clamp(d[i + 1] * sk[1] / ref[1], 0, 255); d[i + 2] = clamp(d[i + 2] * sk[2] / ref[2], 0, 255);
     }
   }
+  if (beach) photoBeach(d, R, W, H, sk, ref);
   g.putImageData(img, 0, 0);
   return c;
+}
+
+// beach volley: niente scarpe, calzettoni e ginocchiere. In ogni cella, i pixel non ricolorati (bianchi/grigi)
+// della parte bassa della figura diventano pelle: piedi nudi e gambe scoperte.
+function photoBeach(d, R, W, H, sk, ref) {
+  const S = PHOTO_SPRITES, cw = S.cw, ch = S.ch;
+  for (let cy = 0; cy + ch <= H + 1; cy += ch) for (let cx = 0; cx + cw <= W + 1; cx += cw) {
+    let top = -1, bot = -1;
+    for (let y = cy; y < Math.min(H, cy + ch) && top < 0; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { top = y; break; }
+    for (let y = Math.min(H, cy + ch) - 1; y >= cy && bot < 0; y--) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { bot = y; break; }
+    if (top < 0 || bot - top < 20) continue;
+    const y0 = Math.round(top + (bot - top) * 0.58);
+    for (let y = y0; y <= bot; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) {
+      const i = (y * W + x) * 4;
+      if (d[i + 3] < 30 || R[i]) continue;
+      const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), lum = r * 0.299 + g * 0.587 + b * 0.114;
+      if (mx - mn > 60) continue;                        // le zone colorate restano
+      const f = clamp(0.6 + lum / 420, 0.6, 1.12);        // ginocchiere nere, calzettoni e scarpe diventano pelle
+      d[i] = clamp(sk[0] * f, 0, 255); d[i + 1] = clamp(sk[1] * f, 0, 255); d[i + 2] = clamp(sk[2] * f, 0, 255);
+    }
+  }
 }
 
 // pose statiche (menu, schermate) prese dalle animazioni
@@ -61,9 +83,9 @@ const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 4], pa
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {
-  const key = 'ph_' + code;
+  const key = plKey(code, 0);   // 'ph_' + codice (+ '_b' con il look da spiaggia)
   if (scene.textures.exists(key)) return key;
-  const S = PHOTO_SPRITES, src = photoRecolor(TEAMS[code]);
+  const S = PHOTO_SPRITES, src = photoRecolor(TEAMS[code], LOOK.beach);
   const k = 43 / S.stand;   // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m)
   const R = GR > 1 ? 1 / k : 1;                             // HD: risoluzione piena del foglio
   const sc = k * R, cw = S.cw * k, ch = S.ch * k;

@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.1.2';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.2.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -62,6 +62,7 @@ const CFG = {
   HARD: false,           // DIP difficoltà
   FREE_PLAY: false,      // true = niente gettoni
   TEST_MODE: false,      // true = sovraimpressione comandi sempre attiva (in partita si attiva/disattiva col tasto T)
+  BEACH_HALF: 160,       // beach volley: campo di 8 x 8 m
   POINT_SCORE: 400,      // punti per ogni punto conquistato
   BONUS_PER_SEC: 100, BONUS_BASE: 2500
 };
@@ -102,6 +103,20 @@ const TEAMS = {
 // 0 = centrale (primo tempo, muro), 1 = alzatore, 2 = schiacciatore "asso", 3 = difensore/battitore
 // d = distanza dalla rete della posizione di partenza, dep = piccolo spostamento verticale (profondità) dello sprite.
 const HOMES = [{ d: 18, dep: 3 }, { d: 31, dep: -2 }, { d: 44, dep: 4 }, { d: 140, dep: 0 }];
+
+// Formazioni per numero di giocatori in campo (scelta nelle impostazioni partita; il beach volley usa sempre 2).
+// Per ogni posto: d = distanza dalla rete, dep = profondità dello sprite, pos = ruolo del posto:
+//   mb centrale (primo tempo, muro), set alzatore, oh attaccante di palla alta (muro), def difensore/battitore (seconda linea),
+//   bk secondo difensore (seconda linea), lib difensore puro, bch beach (fa tutto: riceve, alza, attacca, mura).
+// Batte il giocatore del posto più lontano dalla rete; ruotando, i nomi passano da un posto all'altro.
+const FORMATIONS = {
+  2: [{ d: 46, dep: 3, pos: 'bch' }, { d: 112, dep: -3, pos: 'bch' }],
+  3: [{ d: 31, dep: -2, pos: 'set' }, { d: 46, dep: 4, pos: 'oh' }, { d: 128, dep: 0, pos: 'def' }],
+  4: HOMES.map((h, i) => ({ ...h, pos: ['mb', 'set', 'oh', 'def'][i] })),
+  6: [{ d: 16, dep: 4, pos: 'mb' }, { d: 30, dep: -3, pos: 'set' }, { d: 45, dep: 6, pos: 'oh' },
+      { d: 92, dep: -5, pos: 'lib' }, { d: 116, dep: 5, pos: 'bk' }, { d: 142, dep: -1, pos: 'def' }]
+};
+const PLAYER_COUNTS = [4, 6, 3, 2];
 
 CFG.TPEAK = CFG.JUMP_V / CFG.PG;
 

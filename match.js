@@ -47,17 +47,24 @@ class MatchScene extends Phaser.Scene {
     this.camT = undefined; this.camV = 0;
     this.simT = 0; this.serveMsg = null; this.phantom = null; this.thunder = null; this.aimD = 6;
     // la scena viene riusata: niente oggetti della partita precedente (modalità moderna)
-    this.mSb = null; this.mSbT = null; this.hudCam = null; this.ballRef = null; this.zoom = 0; this.camCx = undefined; this.camBot = undefined;
+    this.mSb = null; this.mSbT = null; this.mSetT = null; this.hudCam = null; this.ballRef = null; this.zoom = 0; this.camCx = undefined; this.camBot = undefined;
     const d = this.cfg;
     makeCommon(this); makeArena(this); makeBalls(this);
     // regole: arcade 1991 / rally point moderno (impostazioni di Thunder Spikes)
     this.modern = d.modern || null;
     const md = this.modern;
+    this.beach = !!d.beach;            // beach volley: 2 contro 2 sulla sabbia (vedi beach.js)
+    this.nPl = this.beach ? 2 : (FORMATIONS[d.players] ? d.players : 4);   // giocatori in campo per squadra
     this.rules = {
       target: md ? md.targetPts : CFG.TARGET, winBy: CFG.WIN_BY, cap: md ? 999 : CFG.CAP,
-      sideOut: md ? md.sideOut : CFG.SIDE_OUT, fx: md ? md.fx : true
+      sideOut: md ? md.sideOut : CFG.SIDE_OUT, fx: md ? md.fx : true,
+      beach: this.beach, switchEvery: d.switchEvery || 0   // beach: cambio campo ogni 7 punti (5 nel terzo set)
     };
-    for (const code of [d.left, d.right]) for (let i = 0; i < 4; i++) { makePlayerTex(this, code, i); makeFaceTex(this, code, i, 'neutral'); makeFaceTex(this, code, i, 'cheer'); }
+    // misure del campo: 9 m per metà campo, 8 m sulla sabbia (battuta e stacco della battuta in salto si spostano di conseguenza)
+    CFG.HALF = this.beach ? CFG.BEACH_HALF : 180; CFG.SERVE_X = CFG.HALF + 75; CFG.JS_TAKEOFF = CFG.HALF + 16;
+    setLook(this, this.beach);
+    for (const code of [d.left, d.right]) applyLineup(this, code, this.nPl);   // formazione scelta (lineup.js)
+    for (const code of [d.left, d.right]) for (let i = 0; i < this.nPl; i++) { makePlayerTex(this, code, i); makeFaceTex(this, code, i, 'neutral'); makeFaceTex(this, code, i, 'cheer'); }
     ['whistle', 'pointL', 'pointR', 'out', 'touch', 'net', 'win'].forEach(p => makeRefTex(this, p));
     if (md && md.arena !== 'classic') this.buildModernArena(md);
     else this.buildArena(TEAMS[d.floor || d.right].fl);
@@ -77,7 +84,7 @@ class MatchScene extends Phaser.Scene {
     this.shadowG = this.add.graphics().setDepth(5);
     this.fx = this.add.graphics().setDepth(990);
     this.ballSpr = this.add.image(0, 0, md ? md.ball : 'ball').setDepth(1000);
-    if (md && md.arena !== 'classic') {
+    if (md && md.arena !== 'classic' && !md.sand) {
       // riflessi sul pavimento lucido
       this.ballRef = this.add.image(0, 0, md.ball).setDepth(-15).setAlpha(0.3).setFlipY(true);
       for (const t of this.teams) for (const p of t.players) p.ref = this.add.sprite(0, 0, p.spr.texture.key, 0).setOrigin(0.5, 0).setFlipX(p.spr.flipX).setFlipY(true).setAlpha(0.28).setDepth(-15);
@@ -147,6 +154,7 @@ class MatchScene extends Phaser.Scene {
 
   // arena della modalità moderna (Thunder Spikes): sfondo scelto, pavimento lucido, palo blu
   buildModernArena(md) {
+    if (md.sand) return this.buildBeachArena(md);   // spiaggia: beach.js
     const W = CFG.OX * 2, FY = CFG.FLOOR_Y;
     this.add.image(0, ATOP, makeModernArena(this, md.arena)).setOrigin(0).setScrollFactor(0.82, 1).setDepth(-50);
     // pavimento lucido con gradiente e linee del campo
@@ -174,7 +182,7 @@ class MatchScene extends Phaser.Scene {
     // seconda telecamera per l'interfaccia: la telecamera di gioco può zoomare senza deformare l'HUD
     this.hudCam = this.cameras.add(0, 0, CFG.W * CFG.ZOOM, CFG.H * CFG.ZOOM).setOrigin(0, 0).setZoom(CFG.ZOOM);
     this.timeLbl.setVisible(false); this.timeText.setVisible(false);
-    this.annText.setPosition(160, 34).setOrigin(0.5, 0);   // telecronaca sotto il tabellone LED, non dietro
+    this.annText.setPosition(160, this.cfg.setsWon ? 42 : 34).setOrigin(0.5, 0);   // telecronaca sotto il tabellone LED, non dietro
     if (!this.rules.fx) this.annText.setVisible(false);
     // tabellone LED appeso (Thunder Spikes)
     this.mSb = this.add.graphics().setScrollFactor(0).setDepth(2000);
@@ -196,7 +204,7 @@ class MatchScene extends Phaser.Scene {
   // statistiche per giocatore (punti, schiacciate, pallonetti, muri, ace) per la schermata MATCH STATS
   stat(p, k) {
     const s = p.team.pstats[p.ni] || (p.team.pstats[p.ni] = { pts: 0, spike: 0, lob: 0, block: 0, ace: 0 });
-    s[k]++;
+    s[k] = (s[k] || 0) + 1;
   }
 
   // cifra a 7 segmenti (LED rosso con alone)
@@ -207,13 +215,16 @@ class MatchScene extends Phaser.Scene {
     for (const k of 'abcdefg') { const r = segs[k]; g.fillStyle(S.includes(k) ? col : 0x221010, 1).fillRect(r[0], r[1], r[2], r[3]); }
   }
 
-  // crea la squadra e i 4 giocatori in campo (sprite compreso: plKey sceglie la texture giusta per la versione grafica)
+  // crea la squadra e i giocatori in campo secondo la formazione (FORMATIONS in config.js);
+  // lo sprite usa plKey, che sceglie la texture giusta per la versione grafica
   makeTeam(id, code, side) {
-    const P = TEAMS[code];
+    const P = TEAMS[code], F = FORMATIONS[this.nPl];
     const t = { id, code, side, pal: P, human: 0, skill: 0.8, touches: 0, score: 0, plan: null, planCache: null, attacker: null, attackType: null,
                 rot: 0, streak: 0, blockers: [], blockedVer: -1, combo: false, players: [], mishit: false, open: false, quickReq: false, surprise: false };
-    HOMES.forEach((hm, i) => {
-      const p = { team: t, idx: i, ni: i, name: P.names[i], homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
+    // batte il posto più lontano dalla rete
+    t.srvI = F.reduce((best, h, i) => h.d > F[best].d ? i : best, 0);
+    F.forEach((hm, i) => {
+      const p = { team: t, idx: i, ni: i, pos: hm.pos, name: P.names[i], homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
                   state: 'idle', animT: 0, runT: 0, diveT: 0, downT: 0, diveDir: 0, hitWin: 0, blocked: false, decided: -1, missVer: -1, jumpedVer: -1, decoy: false };
       p.spr = this.add.sprite(0, 0, plKey(code, i), 0).setOrigin(0.5, 1).setFlipX(side === 1);
       t.players.push(p);
@@ -287,6 +298,10 @@ class MatchScene extends Phaser.Scene {
   pressed(t) { const s = this.inp[t.human]; return !!(s && s.a); }
 
   other(t) { return t === this.teams[0] ? this.teams[1] : this.teams[0]; }
+  // squadra che sta dalla parte della x indicata (nel beach le squadre cambiano campo)
+  teamAt(x) { return this.teams.find(t => (x < 0) === (t.side < 0)); }
+  // rapporto tra il campo attuale e quello indoor da 9 m (beach: 8/9): le distanze in metri dell'IA si adattano
+  courtK() { return CFG.HALF / 180; }
   announce(m) { this.annText.setText(m); }
 
   // ------------------------------------------------ ciclo principale
@@ -317,7 +332,7 @@ class MatchScene extends Phaser.Scene {
     }
     if (this.state === 'serve') this.updateServe(dt);
     // mira della schiacciata (freccia blu nel campo avversario, mossa con sinistra/destra)
-    for (const t of this.teams) if (t.human && this.attacking(t)) t.aimD = clamp((t.aimD || 6) + this.dirX(t) * 4 * dt, 2.5, 8.6);
+    for (const t of this.teams) if (t.human && this.attacking(t)) t.aimD = clamp((t.aimD || 6) + this.dirX(t) * 4 * dt, 2.5, CFG.HALF / CFG.PPM - 0.4);
     for (const t of this.teams) this.think(t);
     for (const t of this.teams) for (const p of t.players) this.movePlayer(p, dt);
     this.updateBall(dt);
@@ -337,12 +352,12 @@ class MatchScene extends Phaser.Scene {
   //   ↑ + A, ↑ + A            = TOWERING SERVE (altissima, ~5 s in aria)
   //   ↗ + A, ↘ + A            = PHANTOM SERVE (la palla si sdoppia in 3 scendendo)
   //   ↖ + A, ↙ + A            = THUNDER SERVE (lampo bianco e palla che piomba giù)
-  // rimette tutti in posizione e dà la palla al battitore (giocatore idx 3 della squadra al servizio)
+  // rimette tutti in posizione e dà la palla al battitore (posto t.srvI, il più lontano dalla rete)
   prepareServe() {
     const t = this.serving, b = this.ball;
     for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; }
     for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
-    const s = t.players[3];
+    const s = t.players[t.srvI];
     this.server = s;
     b.held = s; b.live = false; b.bouncing = false; b.lastTeam = t; b.lastPlayer = null; b.lastKind = null; b.ver++; b.trail = [];
     this.servePhase = 'walk'; this.serveZone = false; this.serveKind = null; this.serveWhiff = false; this.count = CFG.SERVE_COUNT; this.countT = 0;
@@ -476,14 +491,15 @@ class MatchScene extends Phaser.Scene {
     const t = s.team, b = this.ball, side = t.side, k = this.serveKind;
     s.served = true;
     const aim = t.human ? this.dirX(t) : 0;
-    let d = aim > 0 ? rnd(7.6, 8.5) : aim < 0 ? rnd(3.2, 4.2) : rnd(3.5, 8.5);
+    const K = this.courtK();
+    let d = (aim > 0 ? rnd(7.6, 8.5) : aim < 0 ? rnd(3.2, 4.2) : rnd(3.5, 8.5)) * K;
     let v;
     const err = q < 0.2 && Math.random() < 0.7;
     const special = this.serveSpecial && this.rules.fx;
     if (k === 'tower') {
       this.snap(s, 7, 16);
       const apex = special ? rnd(560, 640) : rnd(115, 135);   // towering: ~5 s in aria come nel video
-      v = err ? PHYS.arcTo(b.x, b.h, -side * (Math.random() < 0.5 ? 40 : 200), 0, apex) : PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex);
+      v = err ? PHYS.arcTo(b.x, b.h, -side * (Math.random() < 0.5 ? 40 : CFG.HALF + 20), 0, apex) : PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex);
       for (let i = 0; i < 20 && !err && !PHYS.clears(b.x, b.h, v, 6); i++) v = PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex + i * 8);
       if (special) this.announce('WOW! A TOWERING SERVE.');
       s.state = 'pass'; s.animT = 0.35; SFX.bump();
@@ -492,7 +508,7 @@ class MatchScene extends Phaser.Scene {
       let apex = k === 'float' || !special ? rnd(80, 98) : k === 'phantom' ? rnd(110, 125) : rnd(125, 140);
       if (special && k === 'phantom') { this.phantom = { on: true }; this.announce('PHANTOM SERVE!'); }
       if (special && k === 'thunder') { this.thunder = { armed: true }; this.announce('THUNDER SERVE!'); }
-      if (err) v = Math.random() < 0.5 ? PHYS.arcTo(b.x, b.h, -side * 60, 0, b.h + 4) : PHYS.arcTo(b.x, b.h, -side * 215, 0, apex);
+      if (err) v = Math.random() < 0.5 ? PHYS.arcTo(b.x, b.h, -side * 60, 0, b.h + 4) : PHYS.arcTo(b.x, b.h, -side * (CFG.HALF + 35), 0, apex);
       else {
         v = PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex);
         for (let i = 0; i < 20 && !PHYS.clears(b.x, b.h, v, 6); i++) { apex += 5; v = PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex); }
@@ -501,16 +517,17 @@ class MatchScene extends Phaser.Scene {
     } else {
       this.snap(s, 5, CFG.REACH_UP);
       let sp = 320 + 110 * q;
-      if (err) v = Math.random() < 0.5 ? PHYS.shotTo(b.x, b.h, 0, 30, sp) : PHYS.shotTo(b.x, b.h, -side * 222, 0, sp);
+      if (err) v = Math.random() < 0.5 ? PHYS.shotTo(b.x, b.h, 0, 30, sp) : PHYS.shotTo(b.x, b.h, -side * (CFG.HALF + 42), 0, sp);
       else {
         d = Math.max(d, 5);
         v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp);
-        for (let i = 0; i < 25 && !PHYS.clears(b.x, b.h, v, 4); i++) { if (d < 8.6) d += 0.3; else sp *= 0.93; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
+        for (let i = 0; i < 25 && !PHYS.clears(b.x, b.h, v, 4); i++) { if (d < 8.6 * K) d += 0.3; else sp *= 0.93; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
       }
       s.state = 'spike'; s.animT = 0.3; SFX.spike(); this.cameras.main.shake(70, 0.004);
     }
     b.vx = v.vx; b.vy = v.vy; b.ver++;
     b.lastTeam = t; b.lastPlayer = s; b.lastKind = 'serve';
+    if (this.mode !== 'practice') this.stat(s, 't_serve');
     this.state = 'rally'; this.stateT = 0;
   }
 
@@ -557,13 +574,25 @@ class MatchScene extends Phaser.Scene {
         }
       }
     }
-    // muro a due: i due attaccanti di prima linea vanno a rete quando l'avversario costruisce l'attacco
+    // muro: gli attaccanti di prima linea vanno a rete quando l'avversario costruisce l'attacco
+    // (beach: mura uno solo, il più vicino alla rete; l'altro difende)
     const o = this.other(t);
     const oppBuilding = b.lastTeam === o && ((o.touches === 2 && o.attacker) || (b.lastKind === 'spike' && b.x * o.side > -40));
     if (oppBuilding) {
-      if (!t.blockers.length) t.blockers = [t.players[0], t.players[2]].filter(p => p !== (b.lastTeam === t ? b.lastPlayer : null));
+      if (!t.blockers.length) t.blockers = this.blockersOf(t);
     } else if (!(b.lastTeam === o && b.lastKind === 'spike')) t.blockers = [];
   }
+
+  // chi va a muro: centrale e attaccante di palla alta (con 3 giocatori anche l'alzatore); beach: il più vicino alla rete
+  blockersOf(t) {
+    const P = t.players;
+    if (this.nPl <= 2) return [P.slice().sort((a, b) => Math.abs(a.x) - Math.abs(b.x))[0]];
+    const front = P.filter(p => p.pos === 'mb' || p.pos === 'oh');
+    if (front.length < 2) front.push(...P.filter(p => p.pos === 'set'));
+    return front.slice(0, 2);
+  }
+  // giocatore nel posto con quel ruolo (escluso 'not'), o null
+  byPos(t, pos, not) { return t.players.find(q => q.pos === pos && q !== not) || null; }
 
   // il giocatore che arriva prima sul punto di contatto (con piccole preferenze di ruolo)
   choosePlayer(t, kind, xc, tc) {
@@ -572,8 +601,9 @@ class MatchScene extends Phaser.Scene {
     const arrive = p => Math.abs(p.x - (xc + side * 6)) / CFG.RUN;
     let best = null, bt = 1e9;
     const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.z > 2) continue; const v = arrive(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
-    if (kind === 'pass') pick(p => (p.idx === 1 ? 0.6 : 0) + (p.idx === 0 || p.idx === 2 ? 0.1 : 0));
-    else if (kind === 'set') { const st = t.players[1]; if (st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
+    // in ricezione l'alzatore si tiene fuori se può, gli attaccanti di prima linea un po'; il libero si offre per primo
+    if (kind === 'pass') pick(p => (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
+    else if (kind === 'set') { const st = this.byPos(t, 'set'); if (st && st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
     else if (kind === 'spike') return t.attacker !== last ? t.attacker : null;
     else pick();
     return best;
@@ -584,9 +614,6 @@ class MatchScene extends Phaser.Scene {
     if (!t.human || this.state !== 'rally' || !t.plan || t.plan.p !== p) return false;
     return t.plan.kind === 'pass' || (t.plan.kind === 'set' && t.mishit);
   }
-
-  // punti di partenza della rincorsa (distanza dalla rete) e punti di stacco
-  approachStart(p) { return [34, 0, 80, 138][p.idx]; }
 
   // movimento di un giocatore: in aria segue la fisica del salto; a terra va verso il suo obiettivo
   // (posizione, rincorsa d'attacco sincronizzata, muro) oppure segue i tasti se è il ricevitore umano.
@@ -628,8 +655,8 @@ class MatchScene extends Phaser.Scene {
       target = plan.xc + side * (plan.kind === 'set' ? 2 : 6);
       human = this.humanMoves(p);
     } else if (t.blockers.includes(p) && !own) {
-      target = side * (p.idx === 0 ? 8 : 15);
-    } else if (own && t.quickPlan && p.idx === 0 && t.touches === 1 && plan && plan.kind === 'set') {
+      target = side * (8 + t.blockers.indexOf(p) * 7);
+    } else if (own && t.quickPlan && p.pos === 'mb' && t.touches === 1 && plan && plan.kind === 'set') {
       // primo tempo: il centrale rincorre e salta insieme all'alzatore
       const tcSet = plan.tc, takeoff = side * 20;
       const tJump = tcSet - CFG.TPEAK + 0.12;
@@ -707,9 +734,12 @@ class MatchScene extends Phaser.Scene {
 
   fakeAttack(t, p) {
     // l'asso finta lo stacco, il centrale (che rientra dalla finta di primo tempo) colpisce
+    if (this.beach) return;
     this.jump(p, -t.side * 30); p.decoy = true; p.jumpedVer = this.ball.ver;
-    const alt = t.players[0].z > 0 ? t.players[3] : t.players[0];
-    t.attacker = alt; t.attackType = alt === t.players[3] ? 'back' : 'high'; t.planCache = null; alt.jumpedVer = -1;
+    const mb = this.byPos(t, 'mb', p), bk = this.byPos(t, 'def', p) || this.byPos(t, 'bk', p);
+    const alt = mb && mb.z <= 0 ? mb : bk;
+    if (!alt) { p.decoy = false; return; }   // senza un secondo attaccante (beach) niente finta
+    t.attacker = alt; t.attackType = alt === bk ? 'back' : 'high'; t.planCache = null; alt.jumpedVer = -1;
   }
 
   jump(p, vx, k = 1) { p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; }
@@ -751,7 +781,7 @@ class MatchScene extends Phaser.Scene {
         b.x = Math.sign(px) * 4; b.vx = -b.vx * 0.18; b.vy = Math.min(b.vy, 0) * 0.3 - 10; b.ver++;
         this.netTouched = true; SFX.tone(110, 0.15, 'triangle', 0.2, -30);
         this.announce('AW,IT HITS THE NET.');
-      } else this.onCross(b.x < 0 ? this.teams[0] : this.teams[1]);
+      } else this.onCross(this.teamAt(b.x));
     }
     // THUNDER SERVE: lampo bianco e la palla piomba giù nel campo di chi riceve
     if (this.thunder && this.thunder.armed && b.lastKind === 'serve' && b.vy < 0 && b.x * this.other(this.serving).side > 20 && b.h < 115) {
@@ -857,6 +887,7 @@ class MatchScene extends Phaser.Scene {
     const b = this.ball;
     if (b.lastTeam === t) t.touches++; else t.touches = 1;
     b.lastTeam = t; b.lastPlayer = p; b.lastKind = kind; b.ver++;
+    if (p && this.mode !== 'practice') this.stat(p, 't_' + kind);   // tocchi per giocatore (crescita del "mio giocatore")
   }
 
   // bagher/difesa: q = qualità. q < 0,22 palla rimandata di là a stento, q < 0,45 ricezione sbagliata, altrimenti palla all'alzatore
@@ -880,9 +911,9 @@ class MatchScene extends Phaser.Scene {
     } else {
       let tx = side * CFG.SETTER_D + side * (1 - q) * rnd(-12, 34);
       tx = side < 0 ? Math.min(tx, -14) : Math.max(tx, 14);
-      t.jumpSet = q > 0.55 && (t.human ? true : Math.random() < 0.75);
+      t.jumpSet = !this.beach && q > 0.55 && (t.human ? true : Math.random() < 0.75);
       v = PHYS.arcTo(b.x, b.h, tx, t.jumpSet ? CFG.SET_JUMP_H : 40, rnd(108, 128));
-      t.quickPlan = !t.human && Math.random() < 0.06 + t.skill * 0.06;
+      t.quickPlan = !t.human && !!this.byPos(t, 'mb') && Math.random() < 0.06 + t.skill * 0.06;
       if (dive) this.announce(`A FINE DIVING PLAY BY ${p.name}!`);
     }
     b.vx = v.vx; b.vy = v.vy;
@@ -891,7 +922,8 @@ class MatchScene extends Phaser.Scene {
   // alzata: sceglie l'attaccante e il tipo di attacco (high, quick = primo tempo, back = seconda linea)
   doSet(t, p, q) {
     const b = this.ball, side = t.side;
-    if (p.z > 2 && (t.human ? t.surprise : (Math.random() < 0.05 + t.skill * 0.05))) {
+    // palleggio di seconda (vietato nel beach: il palleggio deve andare dritto, niente "dump")
+    if (p.z > 2 && !this.beach && (t.human ? t.surprise : (Math.random() < 0.05 + t.skill * 0.05))) {
       this.touch(t, p, 'spike');
       p.state = 'spike'; p.animT = 0.25;
       let v = PHYS.arcTo(b.x, b.h, -side * rnd(25, 55), 0, b.h + 8);
@@ -902,21 +934,20 @@ class MatchScene extends Phaser.Scene {
     this.touch(t, p, 'set');
     p.state = 'set'; p.animT = 0.3; SFX.set();
     if (t.mishit) this.announce(`NOW ${p.name} SETS UP THE BALL.`);
-    const P = t.players;
-    const quickReady = P[0] !== p && P[0].z > 2 && P[0].role === 'quick';
+    // attaccanti disponibili secondo la formazione: centrale (primo tempo), palla alta, seconda linea
+    const mb = this.byPos(t, 'mb', p), back = this.byPos(t, 'def', p) || this.byPos(t, 'bk', p);
+    const high = this.byPos(t, 'oh', p) || mb || t.players.find(q => q !== p && q.pos !== 'lib') || back;
+    const quickReady = mb && mb.z > 2 && mb.role === 'quick';
     let type;
     if (t.human) {
-      if (quickReady || (this.down(t) && P[0] !== p && P[0].z <= 0)) type = 'quick';
-      else if (this.dirX(t) < 0) type = 'back';
+      if (quickReady || (this.down(t) && mb && mb.z <= 0)) type = 'quick';
+      else if (this.dirX(t) < 0 && back) type = 'back';
       else type = 'high';
     } else {
       const r = Math.random();
-      type = quickReady ? 'quick' : r < 0.05 ? 'quick' : r < 0.8 ? 'high' : 'back';
+      type = quickReady ? 'quick' : r < 0.05 && mb ? 'quick' : r < 0.8 || !back ? 'high' : 'back';
     }
-    let att;
-    if (type === 'quick') att = P[0];
-    else if (type === 'high') att = P[2] !== p ? P[2] : P[0];
-    else att = P[3] !== p ? P[3] : P[2];
+    const att = type === 'quick' ? mb : type === 'back' ? back : high;
     let v;
     if (type === 'quick' && att.z > 2) {
       // centrale già in aria accanto all'alzatore: palla corta direttamente alla mano
@@ -928,7 +959,7 @@ class MatchScene extends Phaser.Scene {
       // primo tempo "da fermo" (come la CPU nel video): alzata bassa, il centrale rincorre e stacca
       v = PHYS.arcTo(b.x, b.h, side * 14, CFG.HIT_H, CFG.HIT_H + 14);
     } else {
-      const xa = side * (type === 'high' ? 24 : 66) + side * (1 - q) * rnd(-10, 14);
+      const xa = side * (type === 'high' ? (this.beach ? 28 : 24) : 66) + side * (1 - q) * rnd(-10, 14);
       const apex = (type === 'high' ? (t.open ? 140 : 130) : 124) + (1 - q) * rnd(-12, 12);
       v = PHYS.arcTo(b.x, b.h, xa, CFG.HIT_H, apex);
       if (type === 'high' && Math.random() < 0.5) this.announce(`${att.name} GOES FOR THE KILL.`);
@@ -948,7 +979,15 @@ class MatchScene extends Phaser.Scene {
     const blockUp = o.blockers.some(q2 => q2.z > 8);
     let style;
     if (t.human) style = this.up(t) ? 'dink' : this.down(t) ? 'power' : 'normal';
-    else { const r = Math.random(); style = r < (blockUp ? 0.1 : 0.03) ? 'dink' : r < 0.35 ? 'power' : 'normal'; }
+    else { const r = Math.random(), sh = this.beach ? (blockUp ? 0.3 : 0.12) : (blockUp ? 0.1 : 0.03); style = r < sh ? 'dink' : r < 0.35 ? 'power' : 'normal'; }
+    if (style === 'dink' && this.beach) {
+      // beach: il pallonetto a mano aperta è fallo; si gioca il "shot" (palla piazzata a nocche o a mano chiusa, dietro il muro)
+      const far = Math.random() < 0.5;
+      let v = PHYS.arcTo(b.x, b.h, -side * (far ? rnd(90, CFG.HALF - 12) : rnd(35, 70)), 0, b.h + (far ? 22 : 12));
+      for (let i = 0; i < 10 && !PHYS.clears(b.x, b.h, v, 12); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(40, 110), 0, b.h + 18 + i * 5);
+      b.vx = v.vx; b.vy = v.vy; b.lastKind = 'dink';
+      this.announce(far ? `A SKY-HIGH SHOT BY ${p.name}!` : `A POKIE BY ${p.name}!`); SFX.set(); return;
+    }
     if (style === 'dink') {
       // pallonetto: palla morbida appena oltre il muro
       let v = PHYS.arcTo(b.x, b.h, -side * rnd(30, 60), 0, b.h + 10);
@@ -960,7 +999,8 @@ class MatchScene extends Phaser.Scene {
     else if (type === 'back') this.announce(`A BACK ATTACK BY ${p.name}!`);
     else if (style === 'power') this.announce(`POWER SPIKE! ${p.name}!`);
     else this.announce(`SPIKE BY ${p.name}!`);
-    let d = t.human ? (t.aimD || 6) : this.modern ? this.aiSpikeTarget(t) : rnd(3, 8.4);
+    const K = this.courtK();
+    let d = t.human ? (t.aimD || 6) : this.modern ? this.aiSpikeTarget(t) : rnd(3, 8.4) * K;
     if (type === 'back') d = Math.max(d, 5);
     let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p)) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
     let v;
@@ -970,7 +1010,7 @@ class MatchScene extends Phaser.Scene {
       v = Math.random() < 0.25 ? PHYS.shotTo(b.x, b.h, 0, CFG.NET_H - 12, sp) : PHYS.shotTo(b.x, b.h, -side * rnd(9.6, 10.8) * CFG.PPM, 0, sp);
     } else {
       v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp);
-      for (let i = 0; i < 30 && !PHYS.clears(b.x, b.h, v, 2); i++) { if (d < 8.7) d += 0.3; else sp *= 0.92; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
+      for (let i = 0; i < 30 && !PHYS.clears(b.x, b.h, v, 2); i++) { if (d < 8.7 * K) d += 0.3; else sp *= 0.92; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
     }
     b.vx = v.vx; b.vy = v.vy;
     SFX.spike(); this.cameras.main.shake(90, style === 'power' ? 0.009 : 0.006);
@@ -979,15 +1019,17 @@ class MatchScene extends Phaser.Scene {
   // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
   plK(p) {
     const lv = p.team.pal.lv; if (!lv) return 0;
-    return ((lv[p.ni] || 0) - lv.reduce((a, v) => a + v, 0) / lv.length) * 0.03;
+    const n = p.team.players.length, on = lv.slice(0, n);   // media dei giocatori in campo
+    return ((lv[p.ni] || 0) - on.reduce((a, v) => a + v, 0) / n) * 0.03;
   }
 
   // modalità moderna: l'IA cerca il buco nella difesa; più la squadra è forte, più alternative valuta
   aiSpikeTarget(t) {
     const o = this.other(t), n = 1 + Math.round(t.skill * 4);
-    let best = rnd(3, 8.4), bestGap = -1;
+    const K = this.courtK();
+    let best = rnd(3, 8.4) * K, bestGap = -1;
     for (let i = 0; i < n; i++) {
-      const d = rnd(3, 8.4), x = -t.side * d * CFG.PPM;
+      const d = rnd(3, 8.4) * K, x = -t.side * d * CFG.PPM;
       const gap = Math.min(...o.players.map(q => Math.abs(q.x - x)));
       if (gap > bestGap) { bestGap = gap; best = d; }
     }
@@ -999,8 +1041,9 @@ class MatchScene extends Phaser.Scene {
     const b = this.ball, side = t.side;
     this.touch(t, p, 'over');
     p.state = 'pass'; p.animT = 0.3; SFX.bump(); t.combo = false;
-    let v = PHYS.arcTo(b.x, b.h, -side * rnd(60, 140), 0, 92);
-    for (let i = 0; i < 12 && !PHYS.clears(b.x, b.h, v, 6); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(60, 140), 0, 100 + i * 6);
+    const K = this.courtK();
+    let v = PHYS.arcTo(b.x, b.h, -side * rnd(60, 140) * K, 0, 92);
+    for (let i = 0; i < 12 && !PHYS.clears(b.x, b.h, v, 6); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(60, 140) * K, 0, 100 + i * 6);
     b.vx = v.vx; b.vy = v.vy;
   }
 
@@ -1015,6 +1058,7 @@ class MatchScene extends Phaser.Scene {
     const r = Math.random();
     p.state = 'block'; p.animT = 0.25;
     this.snap(p, 3, 50);
+    if (r < chance + 0.15 && this.mode !== 'practice') this.stat(p, 't_block');
     if (r < chance) {
       b.vx = -b.vx * rnd(0.25, 0.45); b.vy = -rnd(40, 90); b.x = -t.side * 3;
       b.lastTeam = t; b.lastPlayer = p; b.lastKind = 'block'; b.ver++; t.touches = 0;
@@ -1023,7 +1067,8 @@ class MatchScene extends Phaser.Scene {
     } else if (r < chance + 0.15) {
       // tocco a muro: la palla schizza via, difficile da recuperare (non una palla regalata)
       b.vx = b.vx * rnd(0.3, 0.6); b.vy = rnd(70, 140);
-      b.lastTeam = t; b.lastPlayer = null; b.lastKind = 'blocktouch'; b.ver++; t.touches = 0;
+      b.lastTeam = t; b.lastPlayer = null; b.lastKind = 'blocktouch'; b.ver++;
+      t.touches = this.beach ? 1 : 0;   // beach: il tocco a muro conta come primo tocco (restano 2 tocchi)
       SFX.set();
     } else { b.x = this.handX(p, 6); b.ver++; t.blockedVer = b.ver; }   // passata: niente altri tentativi di muro sullo stesso colpo
   }
@@ -1033,7 +1078,7 @@ class MatchScene extends Phaser.Scene {
     const b = this.ball;
     b.live = false; b.h = 0; b.bouncing = true; b.vy = Math.abs(b.vy) * 0.4; b.vx *= 0.6;
     SFX.floor();
-    const land = b.x < 0 ? this.teams[0] : this.teams[1];
+    const land = this.teamAt(b.x);
     const inside = Math.abs(b.x) <= CFG.HALF;
     let winner, ref, face = null, faceMsg = null;
     if (inside) {
@@ -1079,7 +1124,7 @@ class MatchScene extends Phaser.Scene {
     if (!this.rules.fx) {
       if (P.stage === 0 && t > 1.3) {
         P.stage = 3; this.applyScore(this.winner);
-        if (this.matchOver()) this.startEnd(); else { this.prepareServe(); this.state = 'serve'; this.stateT = 0; }
+        if (this.matchOver()) this.startEnd(); else { this.checkSwitch(); this.prepareServe(); this.state = 'serve'; this.stateT = 0; }
       }
       return;
     }
@@ -1094,7 +1139,7 @@ class MatchScene extends Phaser.Scene {
       P.stage = 3; this.facePanel.setVisible(false);
       this.applyScore(this.winner);
       if (this.matchOver()) this.startEnd();
-      else { this.prepareServe(); this.state = 'serve'; this.stateT = 0; if (this.mode === 'practice') this.practiceRestart(); else this.startServeAnnounce(); }
+      else { this.checkSwitch(); this.prepareServe(); this.state = 'serve'; this.stateT = 0; if (this.mode === 'practice') this.practiceRestart(); else this.startServeAnnounce(); }
     }
   }
 
@@ -1108,15 +1153,30 @@ class MatchScene extends Phaser.Scene {
     }
     if (wasServing) {
       w.streak++;
-      const s = w.players[3];
+      const s = w.players[w.srvI];
       this.serveMsg = w.streak >= 2 ? `${w.code} IS ON A ROLL.  ${s.name} SERVES AGAIN.` : `${s.name} IS SERVING AGAIN.`;
     } else {
       this.serving.streak = 0;
       this.serving = w; w.streak = 0;
-      w.rot = (w.rot + 1) % 4;
-      w.players.forEach((p, i) => { p.ni = (i + w.rot) % 4; p.name = w.pal.names[p.ni]; p.spr.setTexture(plKey(w.code, p.ni)); });
-      this.serveMsg = `${w.players[3].name} IS NOW SERVING.`;
+      // rotazione: i nomi scorrono di un posto (beach: i due giocatori si alternano al servizio)
+      const n = w.players.length;
+      w.rot = (w.rot + 1) % n;
+      w.players.forEach((p, i) => { p.ni = (i + w.rot) % n; p.name = w.pal.names[p.ni]; p.spr.setTexture(plKey(w.code, p.ni)); if (p.ref) p.ref.setTexture(p.spr.texture.key); });
+      this.serveMsg = `${w.players[w.srvI].name} IS NOW SERVING.`;
     }
+    this.updateScoreboard();
+  }
+
+  // beach: cambio campo ogni 7 punti giocati (5 nel terzo set). Le squadre si scambiano il lato.
+  checkSwitch() {
+    const n = this.rules.switchEvery, tot = this.teams[0].score + this.teams[1].score;
+    if (!n || !tot || tot % n) return;
+    for (const t of this.teams) {
+      t.side = -t.side;
+      for (const p of t.players) { p.spr.setFlipX(t.side === 1); if (p.ref) p.ref.setFlipX(t.side === 1); }
+    }
+    this.serveMsg = `CHANGE OF SIDES!  ${this.serving.players[this.serving.srvI].name} SERVES.`;
+    this.cameras.main.flash(250, 255, 240, 200);
     this.updateScoreboard();
   }
 
@@ -1245,7 +1305,7 @@ class MatchScene extends Phaser.Scene {
     this.prepareServe();
     if (d === 'serve' || d === 'receive') { this.state = 'serve'; this.stateT = 0; this.announce(d === 'serve' ? 'PRACTICE: SERVE' : 'PRACTICE: RECEIVE'); return; }
     // ATTACCO / MURO: l'allenatore simula una buona ricezione e la palla va all'alzatore
-    const t = d === 'block' ? C : H, side = t.side, b = this.ball, rec = t.players[3];
+    const t = d === 'block' ? C : H, side = t.side, b = this.ball, rec = t.players[t.srvI];
     b.held = null; b.live = true; b.bouncing = false;
     b.x = side * 110; b.h = 16;
     const v = PHYS.arcTo(b.x, b.h, side * CFG.SETTER_D, CFG.SET_JUMP_H, 116);
@@ -1259,7 +1319,7 @@ class MatchScene extends Phaser.Scene {
 
   updateScoreboard() {
     if (this.mSb) {
-      const [a, b] = this.teams, g = this.mSb, red = 0xff2a1a;
+      const [a, b] = this.teams.slice().sort((x, y) => x.side - y.side), g = this.mSb, red = 0xff2a1a;
       g.clear().fillStyle(0x050505, 0.85).fillRect(124, 0, 72, 30);
       this.mSbT[0].setText(a.code); this.mSbT[1].setText(b.code);
       const dg = (n, x0) => { const s = String(n).padStart(2, ' '); this.led(g, x0, 11, s[0], 8, 13, red); this.led(g, x0 + 10, 11, s[1], 8, 13, red); };
@@ -1267,9 +1327,17 @@ class MatchScene extends Phaser.Scene {
       g.fillStyle(red, 1).fillRect(157, 17, 6, 2);
       g.fillStyle(this.serving === a ? red : 0x3a1010, 1).fillRect(128, 26, 18, 2);
       g.fillStyle(this.serving === b ? red : 0x3a1010, 1).fillRect(172, 26, 18, 2);
+      // set vinti (partite su più set, es. beach al meglio dei 3)
+      const sw = this.cfg.setsWon;
+      if (sw) {
+        const [wa, wb] = a === this.teams[0] ? sw : [sw[1], sw[0]];
+        if (!this.mSetT) this.mSetT = this.add.text(160, 31, '', UI.f(4.5, '#ffd23a', true)).setOrigin(0.5, 0).setScrollFactor(0).setDepth(2001);
+        g.fillStyle(0x050505, 0.85).fillRect(136, 30, 48, 8);
+        this.mSetT.setText(`SET ${wa + wb + 1}   ${wa}-${wb}`);
+      }
     }
     if (!this.sbNames || this.sbX < -100) return;
-    const [a, b] = this.teams, g = this.sbG, x = this.sbX, y = this.sbY;
+    const [a, b] = this.teams.slice().sort((x, y) => x.side - y.side), g = this.sbG, x = this.sbX, y = this.sbY;
     this.sbNames[0].setText(a.code); this.sbNames[1].setText(b.code);
     g.clear();
     const red = 0xff3a1a, digits = (n, x0) => { const s = String(n).padStart(2, ' '); this.led(g, x0, y + 15, s[0], 9, 14, red); this.led(g, x0 + 11, y + 15, s[1], 9, 14, red); };

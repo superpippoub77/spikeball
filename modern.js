@@ -166,13 +166,14 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0 };
+const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0 };
 const OPT = {
   start: [0, 5, 10, 15],
   rebound: ['EASY', 'HARD', 'OFF'],
   target: ['ON', 'OFF'],
   rules: ['RALLY 25', 'RALLY 15', 'SIDE-OUT 15 (1991)'],
-  fx: ['ON', 'OFF']
+  fx: ['ON', 'OFF'],
+  players: PLAYER_COUNTS.map(n => n + ' CONTRO ' + n)   // giocatori in campo (FORMATIONS in config.js)
 };
 
 // ---------------- UI helpers ----------------
@@ -214,11 +215,11 @@ const UI = {
 };
 
 // ---------------- MENU PRINCIPALE ----------------
-// menu principale a schede: ARCADE, SINGLE MATCH, TUTORIAL, CAREER (campionati, vedi league.js)
+// menu principale a schede: ARCADE, SINGLE MATCH, TUTORIAL, CAREER (campionati, vedi league.js), BEACH (beach.js)
 class MainMenuScene extends Base {
   constructor() { super('MainMenu'); }
   create() {
-    camSetup(this); makeCommon(this); this.keysInit();
+    camSetup(this); makeCommon(this); this.keysInit(); setLook(this, false);
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0e14, 0x0a0e14, 0x1a2420, 0x1a2420, 1).fillRect(0, 0, 320, 224);
     g.fillStyle(0xfff8d0, 0.08).fillTriangle(250, 0, 200, 224, 320, 224);
@@ -233,21 +234,34 @@ class MainMenuScene extends Base {
       { label: 'ARCADE', sub: 'POWER SPIKES 1991', hint: 'Il gioco arcade originale: gettoni, 5 avversari, Technic', icon: 'stick' },
       { label: 'SINGLE MATCH', sub: 'VS', hint: 'Partita singola: squadre, campo, pallone e regole a scelta', icon: 'vs' },
       { label: 'TUTORIAL', sub: 'PRATICA', hint: 'Allenati su ogni fondamentale con i comandi in sovraimpressione', icon: 'tut' },
-      { label: 'CAREER', sub: 'CAMPIONATI', hint: 'Campionati (campionati.json) o torneo contro le nazionali', icon: 'cup' }
+      { label: 'CAREER', sub: 'CAMPIONATI', hint: 'Campionati (campionati.json) o torneo contro le nazionali', icon: 'cup' },
+      { label: 'BEACH', sub: 'SABBIA', hint: 'Beach volley 2 contro 2: sole, sabbia, set a 21 e regole da spiaggia', icon: 'sun' },
+      { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea il tuo giocatore: gioca nella sua squadra e migliora partita dopo partita', icon: 'me' }
     ];
     this.cardObjs = this.cards.map((cd, i) => {
-      const x = 52 + i * 72, y = 112;
+      const x = 32 + i * 51, y = 112;
       const cont = this.add.container(x, y);
       const bg = this.add.graphics();
       cont.add(bg);
-      cont.add(this.add.text(0, -34, cd.label, UI.f(6, '#ffffff', true)).setOrigin(0.5));
+      cont.add(this.add.text(0, -34, cd.label, UI.f(cd.label.length > 8 ? 4.6 : 6, '#ffffff', true)).setOrigin(0.5));
       const ic = this.add.graphics(); cont.add(ic);
       if (cd.icon === 'stick') { ic.fillStyle(0x303030).fillRect(-2, -10, 4, 16); ic.fillStyle(0xe02020).fillCircle(0, -12, 7); ic.fillStyle(0x2a2a2a).fillRect(-12, 6, 24, 6); }
       else if (cd.icon === 'vs') { ic.lineStyle(1, 0xffffff).strokeRect(-14, -16, 28, 14); for (let k = 0; k < 6; k++) ic.lineBetween(-14 + k * 5.6, -16, -14 + k * 5.6, -2); cont.add(this.add.text(0, 8, 'VS', UI.f(12, '#ffd23a', true)).setOrigin(0.5)); }
       else if (cd.icon === 'tut') { ic.fillStyle(0xe8d8b0).fillRect(-10, -18, 20, 26); ic.fillStyle(0x6a6a6a).fillRect(-6, -14, 12, 1).fillRect(-6, -10, 12, 1).fillRect(-6, -6, 8, 1); cont.add(this.add.image(7, 4, 'ballbig').setScale(0.9)); }
+      else if (cd.icon === 'me') {
+        ic.fillStyle(0xe8b088).fillCircle(0, -14, 5); ic.fillStyle(0x3a2010).fillEllipse(0, -18, 10, 4);
+        ic.fillStyle(0xf2c818).fillRect(-8, -8, 16, 14); ic.fillStyle(0x1a1a2a).fillRect(-3, -5, 6, 7);
+        const lv = MYP.data ? MYP.level() : 0;
+        cont.add(this.add.text(0, 12, MYP.data ? 'LV ' + lv.toFixed(1) : 'NUOVO', UI.f(6, '#ffd23a', true)).setOrigin(0.5));
+      }
+      else if (cd.icon === 'sun') {
+        ic.fillStyle(0x3ab0f0).fillRect(-14, -18, 28, 16); ic.fillStyle(0x1a7ad0).fillRect(-14, -2, 28, 4); ic.fillStyle(0xf2d8a0).fillRect(-14, 2, 28, 8);
+        ic.fillStyle(0xffe040).fillCircle(6, -11, 4); ic.fillStyle(0x7a4a1a).fillRect(-9, -12, 2, 14); ic.fillStyle(0x2a9a3a).fillEllipse(-11, -13, 9, 3).fillEllipse(-5, -13, 9, 3);
+        cont.add(this.add.image(2, 6, 'ballbig').setScale(0.7));
+      }
       else { ic.fillStyle(0xf2c818).fillRect(-8, -16, 16, 12).fillRect(-3, -4, 6, 8).fillRect(-8, 4, 16, 3); ic.fillStyle(0xf2c818).fillCircle(-10, -12, 3).fillCircle(10, -12, 3); }
       const pct = i === 0 ? Math.min(100, (GS.bestStage || 0) * 20) : i === 2 ? 34 : i === 3 ? Math.round((GS.careerBest || 0) * 25) : null;
-      if (pct !== null) { const pb = this.add.graphics(); pb.fillStyle(0x0a1a3a).fillRect(-22, 26, 44, 3); pb.fillStyle(0xf2c818).fillRect(-22, 26, 44 * pct / 100, 3); cont.add(pb); cont.add(this.add.text(0, 33, pct + '%', UI.f(7, '#ffffff', true)).setOrigin(0.5)); }
+      if (pct !== null) { const pb = this.add.graphics(); pb.fillStyle(0x0a1a3a).fillRect(-20, 26, 40, 3); pb.fillStyle(0xf2c818).fillRect(-20, 26, 40 * pct / 100, 3); cont.add(pb); cont.add(this.add.text(0, 33, pct + '%', UI.f(7, '#ffffff', true)).setOrigin(0.5)); }
       cont.bg = bg;
       return cont;
     });
@@ -258,22 +272,26 @@ class MainMenuScene extends Base {
   refresh() {
     this.cardObjs.forEach((c, i) => {
       const on = i === this.sel;
-      c.bg.clear().fillStyle(on ? 0x1a5ad8 : 0x0e2a6a, 0.95).fillRoundedRect(-30, -42, 60, 84, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-30, -42, 60, 84, 4);
+      const beach = i === 4;
+      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-24, -42, 48, 84, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-24, -42, 48, 84, 4);
       c.setScale(on ? 1.06 : 1);
     });
     this.hint.setText(this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
-    if (this.jd('left')) { this.sel = (this.sel + 3) % 4; this.refresh(); SFX.blip(); }
-    if (this.jd('right')) { this.sel = (this.sel + 1) % 4; this.refresh(); SFX.blip(); }
+    const n = this.cards.length;
+    if (this.jd('left')) { this.sel = (this.sel + n - 1) % n; this.refresh(); SFX.blip(); }
+    if (this.jd('right')) { this.sel = (this.sel + 1) % n; this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
       if (this.sel === 0) { GS.attract = -1; nextAttract(this); }
       else if (this.sel === 1) { GS.career = null; this.scene.start('TeamSelect'); }
       else if (this.sel === 2) this.scene.start('Practice');
-      else this.scene.start('Leagues');
+      else if (this.sel === 3) this.scene.start('Leagues');
+      else if (this.sel === 4) this.scene.start('BeachSelect');
+      else this.scene.start('MyPlayer');
     }
   }
 }
@@ -384,14 +402,16 @@ class MatchSettingsScene extends Base {
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [
       ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
-      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'], ['play', 'PLAY']
+      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'],
+      ['players', 'GIOCATORI IN CAMPO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
     ];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 15, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 15, '', UI.f(7, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(305, 73, 'ball').setScale(1.4);
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 13, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 13, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
+    this.ballImg = this.add.image(305, 71, 'ball').setScale(1.3);
     this.add.text(160, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(5, '#9ab8f0')).setOrigin(0.5);
-    this.sel = 7; this.refresh();
+    this.sel = this.rows.length - 1; this.refresh();
   }
   val(k) {
+    if (k === 'lineL' || k === 'lineR') return 'SCEGLI ►';
     if (k === 'field') return ARENAS[MSET.arena].name;
     if (k === 'ball') return '';
     if (k === 'start') return String(OPT.start[MSET.start]);
@@ -413,7 +433,8 @@ class MatchSettingsScene extends Base {
     if (k === 'field') cyc('arena', ARENAS.length);
     else if (k === 'ball') cyc('ball', BALLS.length);
     else if (k === 'start') cyc('start', OPT.start.length);
-    else if (k !== 'play') cyc(k, OPT[k].length);
+    else if (OPT[k]) cyc(k, OPT[k].length);
+    else return;
     SFX.blip(); this.refresh();
   }
   update() {
@@ -423,7 +444,13 @@ class MatchSettingsScene extends Base {
     if (this.jd('left')) this.change(-1);
     if (this.jd('right')) this.change(1);
     if (this.jd('esc')) { this.gone = true; this.scene.start(GS.career && GS.career.round > 0 ? 'MainMenu' : 'TeamSelect'); return; }
-    if (this.btn() || this.startPressed()) { this.gone = true; SFX.select(); startModernMatch(this); }
+    if (this.btn() || this.startPressed()) {
+      const k = this.rows[this.sel][0];
+      this.gone = true; SFX.select();
+      // formazione: scelta dei giocatori in campo per il numero di giocatori impostato
+      if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? MSET.left : MSET.right, n: PLAYER_COUNTS[MSET.players], back: 'MatchSettings' });
+      else startModernMatch(this);
+    }
   }
 }
 
@@ -435,12 +462,12 @@ function startModernMatch(scene) {
   const sk = s => clamp(0.35 + (s[0] + s[1] + s[2] - 210) / 90 * 0.55, 0.4, 0.92);
   const humans = [MSET.leftAI ? 0 : 1, MSET.rightAI ? 0 : (MSET.leftAI ? 1 : 2)];
   scene.scene.start('Match', {
-    mode: 'modern', left: MSET.left, right: MSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]),
+    mode: 'modern', left: MSET.left, right: MSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]), players: PLAYER_COUNTS[MSET.players],
     stats: st, start: [sp, sp], time: null, setLabel: MSET.left + ' vs ' + MSET.right,
     firstServe: 0,
     modern: { arena: a.id, floor: a.floor, ball: BALLS[MSET.ball].key, rebound: OPT.rebound[MSET.rebound], target: MSET.target === 0,
               targetPts: rules.target, sideOut: rules.sideOut, fx: MSET.fx === 0 },
-    onDone: m => m.scene.start('MatchStats', { teams: m.teams.map(t => ({ code: t.code, score: t.score, players: t.players.map(p => ({ name: p.name, ni: p.ni, idx: p.idx })), stats: t.pstats })), winner: m.winner.id })
+    onDone: m => m.scene.start('MatchStats', { teams: m.teams.map(t => ({ code: t.code, score: t.score, players: t.players.map(p => ({ name: p.name, ni: p.ni, idx: p.idx, pos: p.pos })), stats: t.pstats })), winner: m.winner.id })
   });
 }
 
@@ -455,16 +482,19 @@ class MatchStatsScene extends Base {
     this.add.image(60, 18, makeFlagTex(this, T[0].code, 36, 24)); this.add.image(260, 18, makeFlagTex(this, T[1].code, 36, 24));
     this.add.text(60, 33, TEAMS[T[0].code].name, UI.f(6, '#ffffff', true)).setOrigin(0.5, 0); this.add.text(260, 33, TEAMS[T[1].code].name, UI.f(6, '#ffffff', true)).setOrigin(0.5, 0);
     this.add.text(160, 18, `${T[0].score}  |  ${T[1].score}`, UI.f(14, '#ffffff', true)).setOrigin(0.5);
+    if (d.sets) this.add.text(160, 33, d.sets.map(s => s.join('-')).join('   '), UI.f(5.5, '#7ad0ff', true)).setOrigin(0.5, 0);   // parziali dei set
     this.add.text(d.winner ? 300 : 20, 18, 'WIN', UI.f(10, '#ffd23a', true)).setOrigin(d.winner ? 1 : 0, 0.5);
     const rows = ['Points', 'Spike Points', 'Lob Points', 'Block Points', 'Aces'], keys = ['pts', 'spike', 'lob', 'block', 'ace'];
     [0, 1].forEach(s => {
       const ox = s ? 164 : 4;
       UI.panel(this, ox, 48, 152, 110, 'MATCH STATS');
-      const roles = ['REC', 'SPK', 'SPK', 'SET'];
+      // colonne: un giocatore per posto (con 4 in campo l'ordine classico REC, SPK, SPK, SET)
+      const PL = T[s].players, short = { mb: 'SPK', set: 'SET', oh: 'SPK', def: 'REC', bk: 'DEF', lib: 'LIB', bch: 'BCH' };
+      const order = PL.length === 4 ? [3, 0, 2, 1] : PL.map((_, i) => i), step = Math.min(22, 84 / Math.max(1, order.length - 1));
       rows.forEach((r, i) => this.add.text(ox + 4, 96 + i * 12, r, UI.f(5, '#ff8ab8')));
-      [3, 0, 2, 1].forEach((pi, c) => {
-        const cx = ox + 58 + c * 22;
-        this.add.text(cx, 60, roles[c], UI.f(5, '#9ab8f0', true)).setOrigin(0.5, 0);
+      order.forEach((pi, c) => {
+        const cx = ox + 54 + c * step;
+        this.add.text(cx, 60, short[PL[pi] && PL[pi].pos] || ['REC', 'SPK', 'SPK', 'SET'][c] || '', UI.f(5, '#9ab8f0', true)).setOrigin(0.5, 0);
         const ni = T[s].players[pi] ? T[s].players[pi].ni : pi;
         this.add.image(cx, 76, makeFaceTex(this, T[s].code, ni, 'neutral')).setScale(0.38);
         const st = (T[s].stats || {})[ni] || {};
@@ -474,9 +504,9 @@ class MatchStatsScene extends Base {
       keys.forEach((k, i) => this.add.text(ox + 146, 96 + i * 12, String(k === 'pts' ? T[s].score : tot(k)), UI.f(6, '#ffd23a', true)).setOrigin(1, 0));
     });
     const car = GS.career;
-    this.opts = car ? (d.winner === 0 && car.round < 3 ? ['QUIT', 'NEXT MATCH'] : ['QUIT', 'RESTART']) : ['QUIT', 'MATCH SETTINGS', 'RESTART'];
+    this.opts = car && !d.beach ? (d.winner === 0 && car.round < 3 ? ['QUIT', 'NEXT MATCH'] : ['QUIT', 'RESTART']) : ['QUIT', 'MATCH SETTINGS', 'RESTART'];
     this.optT = this.opts.map((o, i) => this.add.text(60 + i * (200 / Math.max(1, this.opts.length - 1)), 180, o, UI.f(7, '#ffffff', true)).setOrigin(0.5));
-    if (car) {
+    if (car && !d.beach) {
       let msg;
       if (d.winner === 0 && car.round >= 3) { msg = 'CAMPIONE DEL TORNEO!'; GS.careerBest = 4; }
       else if (d.winner === 0) { msg = `TURNO ${car.round + 1} SUPERATO`; GS.careerBest = Math.max(GS.careerBest || 0, car.round + 1); }
@@ -494,8 +524,9 @@ class MatchStatsScene extends Base {
       this.gone = true; SFX.select();
       const o = this.opts[this.sel];
       if (o === 'QUIT') { GS.career = null; this.scene.start('MainMenu'); }
-      else if (o === 'MATCH SETTINGS') this.scene.start('MatchSettings');
+      else if (o === 'MATCH SETTINGS') this.scene.start(this.d.beach ? 'BeachSettings' : 'MatchSettings');
       else if (o === 'NEXT MATCH') { GS.career.round++; MSET.right = GS.career.opps[GS.career.round]; startModernMatch(this); }
+      else if (this.d.beach) startBeachMatch(this, true);
       else startModernMatch(this);
     }
   }

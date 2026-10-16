@@ -86,6 +86,7 @@ function rosterTeam(sq, i) {
     ages: st.map(p => Number(p.eta) || null),
     lv: st.map(p => Number(p.livello) || 5),
     roster: players.map(p => ({ nome: asciiUp(p.nome), cognome: surname(p), numero: p.numero, ruolo: asciiUp(p.ruolo), sigla: asciiUp(p.sigla), eta: Number(p.eta) || null, livello: Number(p.livello) || null })),
+    _players: players,   // rosa completa: serve alla scelta della formazione (lineup.js)
     club: tipo === 'club', badge: asciiUp(sq.sigla_stemma || '').slice(0, 3) || code, logo: sq.logo || base.logo || null
   });
   if (!sq.colori && tipo === 'club') err('nessun colore indicato: uso maglia blu');
