@@ -242,6 +242,13 @@ class MatchScene extends Phaser.Scene {
     if (J(this.kp.t)) { this.testOn = !this.testOn; this.testBox.setVisible(this.testOn); this.testTxt.setVisible(this.testOn); }
     if (this.mode === 'practice' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('Practice'); }
     if (this.mode === 'modern' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('MainMenu'); }
+    // partita dimostrativa dell'attract: START o pulsante con credito -> scelta del gioco, ESC -> menu principale
+    // (prima la demo ignorava lo START e il gioco sembrava bloccato fino alla fine della demo)
+    if (this.mode === 'demo' && !this.leaving && this.time.now - this._born > 400) {
+      const start = J(this.kp.en) || J(this.kp.one) || this.inp[1].a;
+      if (start && (GS.credits > 0 || CFG.FREE_PLAY)) { this.leaving = true; SFX.select(); this.scene.start('SelectGame'); }
+      else if (J(this.kesc)) { this.leaving = true; this.scene.start('MainMenu'); }
+    }
   }
   // +1 = verso la rete/avversario
   dirX(t) { const s = this.inp[t.human]; if (!s) return 0; return ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * -t.side; }
