@@ -10,8 +10,10 @@
 ;    - ALZATA: GIÙ = primo tempo del centrale, VERSO IL FONDO = seconda linea del difensore, niente = palla alta;
 ;    - ATTACCO: premi quando la palla è ROSSA (verso la rete = corta, verso il fondo = lunga, su = pallonetto);
 ;    - MURO A TRE: quando attaccano gli avversari premi il pulsante.
-;  GAME SELECT: 1 o 2 giocatori, palazzetto (set a 15) o spiaggia (set a 21). GAME RESET: nuova partita.
-;  Difficoltà destra A = computer più forte.
+;  GAME SELECT: 1 o 2 persone (cifra a sinistra), 4 o 2 giocatori per squadra (cifra a destra),
+;               palazzetto (set a 15) o spiaggia (set a 21). GAME RESET: nuova partita.
+;  2 contro 2: in prima linea solo l'alzatore; il difensore riceve e attacca a rete.
+;  Levette di difficoltà: 4 livelli del computer (B B = 1, sinistra A = 2, destra A = 3, A A = 4).
 ;
 ;  KERNEL (area di gioco a 2 righe, 168 righe):
 ;    riga A: colore di fondo, PF0, PF1, giocatore sinistro (grafica e colore riga per riga), palla
@@ -56,7 +58,7 @@ NX_NONE = 3             ;                 nessuno (la palla cade)
         ORG $80
 frame   ds 1
 rand    ds 1
-mode    ds 1            ; bit0 = spiaggia, bit1 = due giocatori
+mode    ds 1            ; bit0 = spiaggia, bit1 = due persone, bit2 = due contro due
 demo    ds 1            ; 1 = dimostrazione (computer contro computer, titolo in alto)
 state   ds 1
 stateT  ds 1
@@ -119,6 +121,8 @@ temp    ds 1
 temp2   ds 1
 temp3   ds 1
 temp4   ds 1
+par     ds 1            ; parità del fotogramma (frame & 1)
+m4      ds 1            ; mode & 4: 4 = due contro due
 RAMEND
 
 ; ---------------------------------------------------------------- ROM
@@ -224,8 +228,7 @@ MainLoop:
         sta PF2
         lda #$31                ; playfield riflesso, oggetto "ball" largo 8 (segno di caduta)
         sta CTRLPF
-        lda frame               ; la palla è il missile dello sprite che in questo fotogramma disegna un giocatore solo
-        and #1
+        lda par                 ; la palla è il missile dello sprite che in questo fotogramma disegna un giocatore solo
         eor #1
         tax                     ; X = 1 (missile 1) nei fotogrammi pari, 0 (missile 0) nei dispari
         sta WSYNC               ; riga 24
@@ -326,19 +329,17 @@ Setup  SUBROUTINE
         ; 4 giocatori per squadra: la prima linea (centrale, alzatore, schiacciatore) è uno sprite ripetuto 3 volte
         ; dall'hardware (copie a 16 pixel), il difensore è disegnato da solo. Si alternano a ogni fotogramma:
         ; pari: P0 = prima linea sinistra, P1 = difensore destro; dispari: P0 = difensore sinistro, P1 = prima linea destra.
-        lda frame
-        and #1
-        tax
+        ldx par
         ldy #0
         jsr SetupPlayer
-        lda frame
-        and #1
+        lda par
         eor #3
         tax
         ldy #1
         jsr SetupPlayer
-        lda frame
-        and #1
+        lda m4                  ; 2 contro 2: la prima linea è un giocatore solo (tabelle +2)
+        lsr
+        ora par
         tax
         lda Nusiz0,x
         sta NUSIZ0
@@ -350,9 +351,7 @@ Setup  SUBROUTINE
         sbc byh
         sta BlD
         ; punteggio: una squadra per fotogramma (si aggiorna in 2 fotogrammi, metà del tempo)
-        lda frame
-        and #1
-        tax
+        ldx par
         jsr ScoreDigits
         lda mode
         and #1
@@ -373,14 +372,11 @@ Setup  SUBROUTINE
         sta COLUP0,x
 .noBlink
         ; posizioni orizzontali: P0, P1, segno (M0), palla (M1)
-        lda frame
-        and #1
-        tax
+        ldx par
         lda px,x
         ldx #0
         jsr PosObject
-        lda frame
-        and #1
+        lda par
         eor #1
         tax
         lda px+2,x
@@ -389,8 +385,7 @@ Setup  SUBROUTINE
         lda markX
         ldx #4
         jsr PosObject
-        lda frame
-        and #1
+        lda par
         eor #3                  ; palla: missile 1 nei fotogrammi pari, missile 0 nei dispari
         tax
         lda bxh
@@ -466,18 +461,17 @@ ScoreDigits  SUBROUTINE
         lda score,x
         ldy showT
         beq .val
-        cpx #0                  ; SELECT: a sinistra i giocatori, a destra i punti del set
+        cpx #0                  ; SELECT: a sinistra le persone (1/2), a destra i giocatori per squadra (4/2)
         bne .tgt
         lda mode
+        and #2
         lsr
+        adc #1                  ; (C = 0 dopo lsr di 0 o 2)
+        bne .val
+.tgt    lda m4
+        eor #4
         lsr
-        clc
-        adc #1
-        jmp .val
-.tgt    lda mode
-        and #1
-        tay
-        lda TargetPts,y
+        adc #2
 .val    ldy #0
 .div10  cmp #10
         bcc .gotD
@@ -542,6 +536,9 @@ PosObject  SUBROUTINE
 ; ================================================================ logica (overscan)
 Logic  SUBROUTINE
         inc frame
+        lda frame
+        and #1
+        sta par
         lda rand
         lsr
         bcc .noEor
@@ -667,8 +664,10 @@ Console  SUBROUTINE
         bne .cdone
         inc mode
         lda mode
-        and #3
+        and #7
         sta mode
+        and #4
+        sta m4
         lda #150
         sta showT
         lda #1
@@ -690,19 +689,23 @@ NewGame  SUBROUTINE
         bpl .pos
 StartServe
         lda #ST_SERVE
-        sta state
+        jsr Halt
+        sta fT
+        lda server
+        sta lastSide
+        rts
+
+; nuovo stato A, palla ferma, nessun tocco atteso (esce con A = 0)
+Halt    sta state
+        lda #NX_NONE
+        sta next
         lda #0
         sta stateT
-        sta fT
         sta blockPend
         sta bvxl
         sta bvxh
         sta bvyl
         sta bvyh
-        lda #NX_NONE
-        sta next
-        lda server
-        sta lastSide
         rts
 
 ; dopo la pausa del punto: fine set o nuova battuta
@@ -724,10 +727,7 @@ AfterPoint  SUBROUTINE
         bcc .goOn
         stx winner
         lda #ST_OVER
-        sta state
-        lda #0
-        sta stateT
-        rts
+        jmp Halt
 .goOn   jmp StartServe
 
 ; punto alla squadra A (rally point: batte chi fa il punto)
@@ -736,16 +736,7 @@ Point  SUBROUTINE
         inc score,x
         stx server
         lda #ST_POINT
-        sta state
-        lda #0
-        sta stateT
-        sta blockPend
-        sta bvxl
-        sta bvxh
-        sta bvyl
-        sta bvyh
-        lda #NX_NONE
-        sta next
+        jsr Halt
         lda demo
         bne .quiet
         lda #4
@@ -1038,16 +1029,27 @@ Serve   sta temp3
         ldy #3
         jmp Sound
 
-; errore di piazzamento del computer in ricezione (dimezzato con la difficoltà A)
+; livello del computer dalle levette di difficoltà: Y = 0 (B B), 1 (sinistra A), 2 (destra A), 3 (A A)
+Diff    lda SWCHB
+        asl
+        rol
+        rol
+        and #3
+        tay
+        rts
+
+; errore di piazzamento del computer in ricezione: +-16 pixel, dimezzato a ogni livello
 AiError  SUBROUTINE
+        jsr Diff
         lda rand
-        and #15
+        and #31
         sec
-        sbc #8
-        bit SWCHB
-        bpl .keep
+        sbc #16
+.sh     dey
+        bmi .keep
         cmp #$80
         ror
+        jmp .sh
 .keep   sta aiErr
         rts
 
@@ -1165,7 +1167,11 @@ SetBall SUBROUTINE
         tax                     ; la prima linea: l'alzatore palleggia
         lda #3
         jsr SetPose
-        ; tipo di alzata: persona = joystick (giù primo tempo, verso il fondo seconda linea), computer a caso
+        lda m4                  ; 2 contro 2: alza sempre al difensore, che attacca a rete
+        beq .four
+        lda #3
+        bne .typ
+.four   ; tipo di alzata: persona = joystick (giù primo tempo, verso il fondo seconda linea), computer a caso
         lda team
         jsr Human
         beq .ai
@@ -1201,7 +1207,7 @@ SetBall SUBROUTINE
         ldy team
         beq .t0
         clc
-        adc #3
+        adc #4
 .t0     tay
         lda SetTX,y
         sta tx
@@ -1380,12 +1386,10 @@ Attack  SUBROUTINE
         bcs .noBlock
         bcc .yesBlock
 .aiChance
+        jsr Diff                ; muro del computer: più probabile ai livelli alti
         lda rand
-        cmp #70
-        bit SWCHB
-        bpl .ac
-        cmp #100
-.ac     bcs .noBlock
+        cmp BlkCh,y
+        bcs .noBlock
         lda setType             ; il primo tempo si mura una volta su due
         cmp #1
         bne .yesBlock
@@ -1415,7 +1419,7 @@ Attacker
         asl
         ldy setType
         cpy #2
-        bne .a
+        bcc .a
         ora #1
 .a      tax
         rts
@@ -1522,14 +1526,12 @@ Players  SUBROUTINE
 
 ; un passo: 1 o 2 pixel a fotogrammi alterni (1,5 pixel/fotogramma)
 StepRight
-        lda frame
-        and #1
+        lda par
         sec
         adc px,x
         jmp ClampX
 StepLeft
-        lda frame
-        and #1
+        lda par
         eor #$FF
         clc
         adc px,x
@@ -1577,7 +1579,10 @@ Target  SUBROUTINE
         rts
 .stay   lda px,x
         rts
-.home   lda HomeX,x
+.home   txa
+        ora m4
+        tay
+        lda HomeX,y
         rts
 .rally  txa
         and #1
@@ -1602,8 +1607,12 @@ Target  SUBROUTINE
         bne .home
         lda setType
         cmp #2
-        bne .home               ; attacca solo nella seconda linea
-        lda fT
+        bcc .home               ; attacca solo nella seconda linea (2) o, nel 2 contro 2, a rete (3)
+        beq .b2
+        inx
+        inx
+        inx
+.b2     lda fT
         cmp #24
         bcs .run
         lda BackApp-1,x
@@ -1759,14 +1768,15 @@ BallLook  SUBROUTINE
 ; alzatore 100, schiacciatore 116); difensore da solo
 ;              1a linea sx, difensore sx, 1a linea dx, difensore dx
 HomeX      .byte 28,    12,    84,    140
-Nusiz0     .byte $03, $20               ; P0: 3 copie (prima linea) / un giocatore + missile largo 4 (palla)
-Nusiz1     .byte $20, $03
-BackApp    .byte 8, 0, 146              ; seconda linea: rincorsa e stacco del difensore (X-1: 0 sinistra, 2 destra)
-BackTake   .byte 20, 0, 136
-SetTX      .byte 34, 64, 24, 118, 88, 132  ; alzata (sinistra, destra): palla alta, primo tempo, seconda linea
-SetHitT    .byte 64, 16, 64
-SetLT      .byte 0, 2, 0
-SpikeLT    .byte 1, 2, 1
+           .byte 44,    12,    100,   140   ; 2 contro 2: l'alzatore al posto del palleggio
+Nusiz0     .byte $03, $20, $00, $20     ; P0: 3 copie (prima linea) / un giocatore + missile largo 4 (palla); 2c2
+Nusiz1     .byte $20, $03, $20, $00
+BackApp    .byte 8, 0, 146, 30, 0, 122  ; seconda linea: rincorsa e stacco del difensore (X-1: 0 sinistra, 2 destra)
+BackTake   .byte 20, 0, 136, 56, 0, 92  ; (+3: attacco a rete del 2 contro 2)
+SetTX      .byte 34, 64, 24, 60, 118, 88, 132, 96  ; alzata (sx, dx): palla alta, primo tempo, seconda linea, 2c2
+SetHitT    .byte 64, 16, 64, 64
+SetLT      .byte 0, 2, 0, 0
+SpikeLT    .byte 1, 2, 1, 1
 ServeX     .byte 2, 150
 HoldOfs    .byte 6, $FE
 SetBallX   .byte 46, 102                      ; dove arriva il bagher (sopra l'alzatore)
@@ -1779,6 +1789,7 @@ BlockTX    .byte 44, 112                      ; muro: dove ricade la palla (camp
 ServeTX    .byte 100, 120, 144, 0, 56, 36, 12, 0
 NetTX      .byte 70, 86
 TargetPts  .byte 15, 21
+BlkCh      .byte 50, 80, 110, 140
 ArenaPtrs  .byte <BgI, >BgI, <Pf0I, >Pf0I, <Pf1I, >Pf1I, <Pf2I, >Pf2I, <PfcI, >PfcI, <BgB, >BgB, <Pf0B, >Pf0B, <Pf1B, >Pf1B, <Pf2B, >Pf2B, <PfcB, >PfcB
 ShirtCol   .byte $44, $84, $38, $C8
 LShift     .byte 2, 3, 4

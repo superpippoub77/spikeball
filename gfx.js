@@ -12,7 +12,8 @@
 // FW x FH = cella di un fotogramma del giocatore in pixel nativi; POSES = elenco delle pose (PF['spike'] = indice).
 const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (misurati sul video HD)
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
-               'spkload', 'spkfol', 'passload'];   // schiacciata: caricamento e accompagnamento; bagher: piegamento
+               'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
+               'setload', 'dump'];                // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -71,11 +72,23 @@ function limb(ctx, ox, a, b, w0, w1, color) {
   ctx.beginPath(); ctx.arc(ox + b[0], b[1], w1 / 2, 0, 7); ctx.fill();
 }
 // disegno pixel art di un giocatore nella posa indicata (versione ARCADE); P = colori della squadra
-// alzatore in palleggio: come in Power Spikes si gira di fronte, braccia in alto e mani sopra la testa
-const FRONT = { head: [16, 10], hands: [[13, 3], [19, 3]], elbows: [[7, 10], [25, 10]], sh: [[10, 17], [22, 17]],
-  hipL: [13, 32], hipR: [19, 32], kneeL: [12, 39], kneeR: [20, 39], footL: [12, 46], footR: [20, 46] };
-function drawPlayerFront(ctx, ox, P, hair) {
-  const F = FRONT, B = P.beach, skin = P.sk, skinD = shade(P.sk, 0.74), shirt = P.sh, shirtD = shade(P.sh, 0.7);
+// alzatore in palleggio: come in Power Spikes si gira di fronte. Tre pose frontali (il giocatore "guarda" la rete a destra):
+//  - setload: gambe piegate, gomiti larghi e mani a "finestra" sopra la fronte (aspetta la palla);
+//  - set: spinta, braccia e gambe distese verso l'alto;
+//  - dump: pallonetto di seconda, colpo con il braccio più lontano dalla rete (i=0; specchiato per la squadra di destra).
+// dy = abbassamento del busto (testa, spalle, pantaloncini); le coordinate di mani e gomiti sono già finali.
+const FRONTS = {
+  setload: { dy: 4, hands: [[12.5, 8], [19.5, 8]], elbows: [[5.5, 15], [26.5, 15]],
+    hipL: [13, 36], hipR: [19, 36], kneeL: [9.5, 40.5], kneeR: [22.5, 40.5], footL: [11.5, 46], footR: [20.5, 46] },
+  set: { dy: -1, hands: [[13.5, 1], [18.5, 1]], elbows: [[10, 8], [22, 8]],
+    hipL: [13, 31], hipR: [19, 31], kneeL: [12.5, 38.5], kneeR: [19.5, 38.5], footL: [13, 46], footR: [19, 46] },
+  dump: { dy: -1, hands: [[11.5, 0.5], [24, 27]], elbows: [[9.5, 8], [26, 20]],
+    hipL: [13, 31], hipR: [19, 31], kneeL: [11, 37.5], kneeR: [21, 38.5], footL: [12, 44], footR: [21, 45.5] },
+};
+const frontOf = pose => { const f = FRONTS[pose], d = f.dy;
+  return { ...f, head: [16, 10 + d], sh: [[10, 17 + d], [22, 17 + d]] }; };
+function drawPlayerFront(ctx, ox, P, hair, pose) {
+  const F = frontOf(pose), d = F.dy, U = pts => pts.map(p => [p[0], p[1] + d]), B = P.beach, skin = P.sk, skinD = shade(P.sk, 0.74), shirt = P.sh, shirtD = shade(P.sh, 0.7);
   // gambe (ginocchiere, calzettoni e scarpe; in spiaggia piedi nudi)
   for (const [h, k, f] of [[F.hipL, F.kneeL, F.footL], [F.hipR, F.kneeR, F.footR]]) {
     limb(ctx, ox, h, k, 5, 4.2, skin); limb(ctx, ox, k, f, 4, 3, skinD);
@@ -86,11 +99,11 @@ function drawPlayerFront(ctx, ox, P, hair) {
     } else { ctx.fillStyle = skin; ctx.fillRect(ox + f[0] - 2, f[1] - 1, 4, 2); }
   }
   // pantaloncini e busto di fronte
-  poly(ctx, ox, [[10, 27], [22, 27], [22.5, B ? 36 : 33], [17, B ? 36 : 33], [16, 30], [15, B ? 36 : 33], [9.5, B ? 36 : 33]], P.so);
-  poly(ctx, ox, [[9, 16], [23, 16], [22, 28], [10, 28]], shirt);
-  poly(ctx, ox, [[9, 16], [12, 16], [12, 28], [10, 28]], shirtD);
-  if (P.num) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25); ctx.textAlign = 'left'; }
-  // braccia alzate verso il pallone
+  poly(ctx, ox, U([[11, 27], [21, 27], [21.5, B ? 36 : 33], [17, B ? 36 : 33], [16, 30], [15, B ? 36 : 33], [10.5, B ? 36 : 33]]), P.so);
+  poly(ctx, ox, U([[9.5, 16], [22.5, 16], [20.5, 28], [11.5, 28]]), shirt);
+  poly(ctx, ox, U([[9.5, 16], [12, 16], [13, 28], [11.5, 28]]), shirtD);
+  if (P.num) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25 + d); ctx.textAlign = 'left'; }
+  // braccia verso il pallone
   for (let i = 0; i < 2; i++) {
     limb(ctx, ox, F.sh[i], F.elbows[i], 4, 3.4, skin); limb(ctx, ox, F.elbows[i], F.hands[i], 3.4, 2.8, skin);
     if (!B) limb(ctx, ox, F.sh[i], lerpP(F.sh[i], F.elbows[i], 0.4), 4.6, 4, shirt);
@@ -98,7 +111,7 @@ function drawPlayerFront(ctx, ox, P, hair) {
   }
   // testa di fronte: capelli, occhi, bocca
   const [hx, hy] = F.head;
-  limb(ctx, ox, [16, 16], [16, 13], 3.4, 3.4, skinD);
+  limb(ctx, ox, [16, 16 + d], [16, 13 + d], 3.4, 3.4, skinD);
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx, hy - 3, 4.6, 2.6, 0, 0, 7); ctx.fill();
   ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, 4); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, 4);
@@ -109,7 +122,7 @@ function drawPlayerFront(ctx, ox, P, hair) {
 
 function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.imageSmoothingEnabled = false;
-  if (pose === 'set') return drawPlayerFront(ctx, ox, P, hair);
+  if (FRONTS[pose]) return drawPlayerFront(ctx, ox, P, hair, pose);
   const s0 = SKEL[pose];
   // corporatura "arcade": figura di ~30 px, testa grande, busto largo (misure dal video HD)
   const K = 1.17;   // scala del corpo: da ~34 a ~40 px
@@ -146,14 +159,14 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   };
   arm(s.ba, true);
   leg(s.bl, true);
-  // busto largo con ombra sul dorso e luce sul petto
+  // busto da atleta (snello, spalle un po' più larghe della vita) con ombra sul dorso e luce sul petto
   const dir = [s.hip[0] - s.neck[0], s.hip[1] - s.neck[1]], L = Math.hypot(dir[0], dir[1]), nx = -dir[1] / L, ny = dir[0] / L;
   const c1 = lerpP(s.neck, s.hip, 0.02), c2 = lerpP(s.neck, s.hip, 0.92);
   const Q = (p, k) => [p[0] + nx * k, p[1] + ny * k];
-  poly(ctx, ox, [Q(c1, 6.1), Q(c2, 5), Q(c2, -5.2), Q(c1, -5.9)], shirt);
-  poly(ctx, ox, [Q(c1, 6.1), Q(c2, 5), Q(c2, 2.3), Q(c1, 2.5)], shirtD);
-  poly(ctx, ox, [Q(c1, -2.8), Q(c2, -3.4), Q(c2, -5.2), Q(c1, -5.9)], shirtL);
-  limb(ctx, ox, lerpP(s.neck, s.hip, 0.9), s.hip, 6.6, 6, shorts);
+  poly(ctx, ox, [Q(c1, 5), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8)], shirt);
+  poly(ctx, ox, [Q(c1, 5), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], shirtD);
+  poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8)], shirtL);
+  limb(ctx, ox, lerpP(s.neck, s.hip, 0.9), s.hip, 5.6, 5.2, shorts);
   ctx.fillStyle = shortsD; const hp = Q(s.hip, 2.5); ctx.fillRect(ox + Math.round(hp[0]) - 1, Math.round(hp[1]) - 2, 2, 4);
   leg(s.fl, false);
   // testa grande di profilo
