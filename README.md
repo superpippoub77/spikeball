@@ -1,4 +1,40 @@
-# Spike Fever '91 — remake di Power Spikes (Video System, 1991) in Phaser 3
+# Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
+
+## Menu principale
+| Scheda | Cosa fa |
+|---|---|
+| **ARCADE** | Il gioco arcade del 1991 come nel video originale: gettoni, 5 avversari, Technic, classifica |
+| **SINGLE MATCH** | Modalità moderna in stile Thunder Spikes: squadre, campo, pallone e regole a scelta |
+| **TUTORIAL** | Pratica dei fondamentali con i comandi in sovraimpressione |
+| **CAREER** | Torneo a 4 turni contro squadre del Gruppo I (vinci per avanzare) |
+
+### SINGLE MATCH / CAREER (Thunder Spikes)
+- **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
+- **Impostazioni:**
+  - PLAYING FIELD: Volleyball Arena, Pro Sports Hall, Gym Hall, Outdoor School e Classic 1991;
+  - BALL: Classic, Pro, Retro;
+  - STARTING POINTS: 0/5/10/15;
+  - REBOUND INDICATOR: EASY/HARD/OFF;
+  - ATTACK TARGET: ON/OFF;
+  - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
+  - ARCADE FX: telecronaca, arbitro, volti e battute speciali di Power Spikes sì/no.
+- **In partita:**
+  - pavimento lucido con i riflessi;
+  - telecamera che allarga in battuta e stringe durante lo scambio;
+  - tabellone LED in alto;
+  - arco bianco sopra il punto di caduta e triangolo nero sul bersaglio d'attacco;
+  - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
+- **ESC** durante la partita torna al menu.
+
+### Bilanciamento (misurato su centinaia di scambi simulati)
+- Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
+- Muro: un solo tentativo per schiacciata (prima poteva ritentare a ogni fotogramma e toccava quasi tutto); più murate vincenti, tocchi a muro più rari e che schizzano via.
+- Scambi di 6 tocchi in media, nessuno scambio infinito; partite combattute tra squadre vicine.
+- La statistica SPEED della squadra vale anche per il giocatore umano.
+
+---
+
+# Modalità ARCADE — remake di Power Spikes (Video System, 1991)
 
 Ricostruito scena per scena dal video completo dell'arcade e dal manuale operatore.
 Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro, bandiere e palazzetto sono pixel art nuova.
@@ -53,7 +89,7 @@ Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.
 - **Partita:** set a 15 in **rally point** (regola odierna: ogni azione vale un punto), 2 punti di scarto, senza tetto. Con `SIDE_OUT: true` in `config.js` tornano le regole 1991 (cambio palla, tetto a 17), tempo 3:00 a scalare. Il tempo avanzato diventa bonus. Se perdi c'è CONTINUE, alla fine classifica con nome.
 - **2 giocatori:** 1 set o 5 set (vince chi arriva a 3), partenza 9-9, 3 minuti per set.
 
-## Parametri (src/config.js)
+## Parametri (config.js)
 `MATCH_TIME`, `START_2P`, `HARD`, `FREE_PLAY` (come i DIP switch), `G` gravità, `SPIKE_SPEED`, `JUMP_V`, punteggi di partenza e forza CPU in `STAGES`,
 squadre, colori, nomi e pavimenti in `TEAMS`. `GAME_TITLE` per cambiare il titolo.
 
