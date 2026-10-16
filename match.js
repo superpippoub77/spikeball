@@ -26,7 +26,7 @@
 //
 // STATI DELLA PARTITA (this.state): intro -> serve -> rally -> dead -> serve ... -> end
 // GIOCATORE (p): x, z (altezza), vz, state (pose: idle, run, pass, set, jump, spike, block, dive, down...), animT (durata posa),
-//   idx = posto in campo (0 centrale, 1 alzatore, 2 attaccante, 3 difensore/battitore), ni = indice del giocatore (nome/volto) che ruota.
+//   idx = posto in campo, pos = ruolo del posto (FORMATIONS in config.js: mb, set, oh, def, bk, lib, bch), ni = indice del giocatore (nome/volto) che ruota.
 // SQUADRA (t): side (-1 sinistra, +1 destra), human (0 = IA, 1 = P1, 2 = P2), skill, score, touches, plan (piano dell'IA),
 //   attacker / attackType (chi schiaccia e come), blockers (chi salta a muro).
 // PALLA (this.ball): x, h, vx, vy, live (in gioco), held (in mano al battitore), lastTeam / lastPlayer / lastKind (ultimo tocco),

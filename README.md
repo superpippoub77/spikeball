@@ -8,7 +8,43 @@
 | **ARCADE** | Il gioco arcade del 1991 come nel video originale: gettoni, 5 avversari, Technic, classifica |
 | **SINGLE MATCH** | Modalità moderna in stile Thunder Spikes: squadre, campo, pallone e regole a scelta |
 | **TUTORIAL** | Pratica dei fondamentali con i comandi in sovraimpressione |
-| **CAREER** | Torneo a 4 turni contro squadre del Gruppo I (vinci per avanzare) |
+| **CAREER** | Campionati da `campionati.json` o torneo a 4 turni contro le nazionali |
+| **BEACH** | Beach volley 2 contro 2 sulla sabbia, con regole e punteggi da spiaggia |
+| **MY PLAYER** | Il tuo giocatore con la sua scheda, che migliora partita dopo partita |
+
+### Giocatori in campo e formazione
+- **GIOCATORI IN CAMPO** (impostazioni di SINGLE MATCH): 4 contro 4 (classico), 6 contro 6, 3 contro 3 o 2 contro 2. Ogni numero ha la sua formazione (`FORMATIONS` in `config.js`): centrale, alzatore, attaccante, difensori e libero nel 6 contro 6.
+- **FORMAZIONE <squadra>**: scegli chi gioca in ogni posto tra tutta la rosa (i giocatori di `squadre.json`, o i 6 nomi di una nazionale).
+  - Comandi: ↑↓ per il posto, ← → per il giocatore (se è già in campo i due si scambiano), A per la formazione automatica (per ruolo e livello).
+  - La scelta resta salvata nel browser e vale per ogni modalità, campionati compresi.
+
+### BEACH (beach volley)
+- 2 contro 2 su un campo di sabbia da 8 x 8 m, in tre spiagge: **Copacabana**, **Beach Tour Stadium** e **Tropical Sunset**.
+- **Personaggi da spiaggia:** canotta, pantaloncini lunghi, piedi nudi, occhiali da sole e visiera, in tutte e tre le versioni grafiche.
+- **Squadre:** 10 coppie da spiaggia (Sunset Sharks, Coco Locos, Palm Kings, Tiki Bros, Wave Riders, Mango Jam, Italia, Brasil, USA, Norge Beach), più tutte le altre squadre (Q/E). **F** sceglie i due giocatori.
+- **Regole e punteggi:**
+  - partita al meglio dei 3 set: set a 21, il terzo (tie-break) a 15, sempre con 2 punti di scarto. In alternativa si può giocare un set solo a 21 o a 15;
+  - cambio campo ogni 7 punti giocati (ogni 5 nel tie-break);
+  - il tocco a muro conta come primo tocco;
+  - niente pallonetto a mano aperta: si gioca lo *shot* (pokie o palla alta piazzata);
+  - niente palleggio di seconda di là;
+  - nessun ruolo fisso: alza chi non ha ricevuto, attacca l'altro;
+  - la battuta si alterna tra i due giocatori.
+
+### MY PLAYER (il mio giocatore)
+- **Scheda:** nome e cognome (scritti con la tastiera), numero, ruolo, età, pelle, capelli e squadra.
+- **In campo:** il giocatore entra nella rosa della sua squadra e va **sempre in campo**, in ogni modalità: partita singola, beach, campionati e arcade.
+- **Statistiche:** ATTACCO, DIFESA, MURO, BATTUTA e ALZATA. Ognuna cresce con i gesti fatti davvero in partita:
+  - schiacciate → ATTACCO;
+  - ricezioni e difese → DIFESA;
+  - muri → MURO;
+  - battute e ace → BATTUTA;
+  - alzate → ALZATA.
+
+  Una vittoria dà una piccola spinta a tutte le statistiche.
+- **Livello:** va da 1 a 10 ed è la media delle statistiche. Più è alto, più il giocatore schiaccia forte e sbaglia meno.
+- **Fine partita:** viene mostrato `★ NOME +XP  LIVELLO x → y`.
+- **Salvataggio:** tutto resta salvato nel browser (`sf91_mio_giocatore`).
 
 ### SINGLE MATCH / CAREER (Thunder Spikes)
 - **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
