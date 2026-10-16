@@ -131,6 +131,13 @@ function drawPlayerHD(pose, P, hair, R) {
     g.strokeStyle = shade(P.sh, 0.6); g.lineWidth = 0.35;
     const f0 = Q(lerpP(c1, c2, 0.55), -1), f1 = Q(lerpP(c1, c2, 0.9), -3);
     g.beginPath(); g.moveTo(f0[0], f0[1]); g.quadraticCurveTo(f1[0] + 1, f0[1] + 1, f1[0], f1[1]); g.stroke();
+    if (P.num) {   // numero di maglia sulla schiena
+      const nb = Q(lerpP(c1, c2, 0.56), 3.5);
+      g.save(); g.translate(nb[0], nb[1]); g.rotate(Math.atan2(dir[1], dir[0]) - Math.PI / 2);
+      g.font = 'bold 4px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 0, 0); g.fillStyle = P.tr; g.fillText(P.num, 0, 0);
+      g.restore();
+    }
     // collo e testa
     const [hx, hy] = s.head;
     hdCel(g, hdCapsule(s.neck, lerpP(s.neck, s.head, 0.55), 1.9, 1.8), P.sk, 0.6, 0.4);
@@ -174,17 +181,23 @@ function drawPlayerHD(pose, P, hair, R) {
 }
 
 // ---------------- pallone ----------------
-function drawBallHD(c, cx, cy, r) {
+// varianti: classico (spicchi tenui), pro (blu e giallo), retro (cuoio)
+const HD_BALL = {
+  classic: { base: ['#ffffff', '#eef0f6', '#a8aec4'], a: 'rgba(40,90,220,0.55)', b: 'rgba(245,200,30,0.6)', seam: 'rgba(70,80,110,0.55)' },
+  pro: { base: ['#ffffff', '#f2f4f8', '#b0b6c8'], a: 'rgba(24,70,210,0.95)', b: 'rgba(250,205,20,0.95)', seam: 'rgba(30,40,80,0.7)' },
+  retro: { base: ['#f4d8a8', '#d8a050', '#8a5a24'], a: 'rgba(150,90,30,0.55)', b: 'rgba(250,225,170,0.55)', seam: 'rgba(80,45,15,0.8)' }
+};
+function drawBallHD(c, cx, cy, r, pal = HD_BALL.classic) {
   const g = c.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
-  g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, '#eef0f6'); g.addColorStop(1, '#a8aec4');
+  g.addColorStop(0, pal.base[0]); g.addColorStop(0.6, pal.base[1]); g.addColorStop(1, pal.base[2]);
   c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
   // spicchi colorati e cuciture, come un pallone da pallavolo
   c.save(); c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip();
-  c.fillStyle = 'rgba(40,90,220,0.55)';
+  c.fillStyle = pal.a;
   c.beginPath(); c.arc(cx - r * 1.25, cy - r * 0.2, r * 1.05, -0.9, 0.9); c.arc(cx - r * 1.25, cy - r * 0.2, r * 0.72, 0.9, -0.9, true); c.fill();
-  c.fillStyle = 'rgba(245,200,30,0.6)';
+  c.fillStyle = pal.b;
   c.beginPath(); c.arc(cx + r * 0.9, cy + r * 1.3, r * 1.05, 3.4, 4.6); c.arc(cx + r * 0.9, cy + r * 1.3, r * 0.72, 4.6, 3.4, true); c.fill();
-  c.strokeStyle = 'rgba(70,80,110,0.55)'; c.lineWidth = r * 0.09;
+  c.strokeStyle = pal.seam; c.lineWidth = r * 0.09;
   c.beginPath(); c.arc(cx - r * 1.25, cy - r * 0.2, r * 1.05, -0.9, 0.9); c.stroke();
   c.beginPath(); c.arc(cx + r * 0.9, cy + r * 1.3, r * 1.05, 3.4, 4.6); c.stroke();
   c.beginPath(); c.arc(cx + r * 1.3, cy - r * 1.1, r * 1.1, 1.75, 3.1); c.stroke();
@@ -194,6 +207,16 @@ function drawBallHD(c, cx, cy, r) {
 }
 
 // ---------------- pubblico ----------------
+// spettatore singolo (arene moderne): (x, y) = angolo in alto a sinistra di una cella 4x7
+function crowdPersonHD(c, x, y, pal, R) {
+  const sh = pal[Math.floor(R() * pal.length)], sk = R() < 0.7 ? '#e0b090' : '#8a5a3a', hr = R() < 0.6 ? '#2a1a10' : '#6a4a2a';
+  const bx = x + 2, up = R() < 0.07;
+  c.fillStyle = shade(sh, 0.78); c.beginPath(); c.ellipse(bx, y + 7, 2.1, 3.6, 0, Math.PI, 0); c.fill();
+  c.fillStyle = sh; c.beginPath(); c.ellipse(bx - 0.3, y + 7, 1.6, 3.2, 0, Math.PI, 0); c.fill();
+  if (up) { c.strokeStyle = sk; c.lineWidth = 0.6; c.beginPath(); c.moveTo(bx - 1.5, y + 4.4); c.lineTo(bx - 2.2, y + 0.6); c.moveTo(bx + 1.5, y + 4.4); c.lineTo(bx + 2.2, y + 0.6); c.stroke(); }
+  c.fillStyle = sk; c.beginPath(); c.arc(bx, y + 2.2, 1.25, 0, Math.PI * 2); c.fill();
+  c.fillStyle = hr; c.beginPath(); c.arc(bx, y + 1.9, 1.25, Math.PI * 1.05, Math.PI * 1.95); c.fill();
+}
 function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
   const R = seeded(seed);
   const shirts = ['#c8c8c8', '#e0e0e0', '#a04040', '#4050a0', '#808090', '#c09060', '#606070', '#904070', '#d0d0d0', '#2a7a4a', '#d8b030'];
@@ -213,7 +236,7 @@ function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
 // ---------------- ritratti ----------------
 function hdStrokeFill(c, path, fill, ink = HD_INK, lw = 0.7) { path(c); c.fillStyle = fill; c.fill(); c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); }
 function drawFaceHD(c, ox, oy, code, idx, expr) {
-  const P = TEAMS[code], R = seeded(hashStr(code + ':' + idx)); R(); R();
+  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
   const skin = P.sk, dk = shade(skin, 0.74), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
   const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli

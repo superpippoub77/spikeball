@@ -1,4 +1,78 @@
-# Spike Fever '91 — remake di Power Spikes (Video System, 1991) in Phaser 3
+# Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
+
+## Menu principale
+| Scheda | Cosa fa |
+|---|---|
+| **ARCADE** | Il gioco arcade del 1991 come nel video originale: gettoni, 5 avversari, Technic, classifica |
+| **SINGLE MATCH** | Modalità moderna in stile Thunder Spikes: squadre, campo, pallone e regole a scelta |
+| **TUTORIAL** | Pratica dei fondamentali con i comandi in sovraimpressione |
+| **CAREER** | Torneo a 4 turni contro squadre del Gruppo I (vinci per avanzare) |
+
+### SINGLE MATCH / CAREER (Thunder Spikes)
+- **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
+- **Impostazioni:**
+  - PLAYING FIELD: Volleyball Arena, Pro Sports Hall, Gym Hall, Outdoor School e Classic 1991;
+  - BALL: Classic, Pro, Retro;
+  - STARTING POINTS: 0/5/10/15;
+  - REBOUND INDICATOR: EASY/HARD/OFF;
+  - ATTACK TARGET: ON/OFF;
+  - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
+  - ARCADE FX: telecronaca, arbitro, volti e battute speciali di Power Spikes sì/no.
+- **In partita:**
+  - pavimento lucido con i riflessi;
+  - telecamera che allarga in battuta e stringe durante lo scambio;
+  - tabellone LED in alto;
+  - arco bianco sopra il punto di caduta e triangolo nero sul bersaglio d'attacco;
+  - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
+- **ESC** durante la partita torna al menu.
+
+### Squadre personalizzate (squadre.json)
+Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squadre.json` dalla cartella del gioco; se non c'è usa `squadre.esempio.json`.
+- **Con un server locale** (`npx serve`) basta salvare il file accanto a `index.html`.
+- **Aprendo `index.html` direttamente** il browser non lascia leggere i file: **trascina il file .json sulla finestra del gioco**. Resta salvato nel browser; nel menu principale **CANC** lo toglie.
+- `squadre.json` è escluso da git (`.gitignore`): i dati della tua squadra restano sul tuo computer.
+
+```json
+{
+  "squadre": [
+    {
+      "codice": "VTV",
+      "nome": "Valsesia Team Volley",
+      "tipo": "club",
+      "colori": { "maglia": "#c81e2a", "bordo": "#ffffff", "pantaloncini": "#1a1a1a", "pavimento": "#2f6fe0" },
+      "titolari": [2, 5, 4, 6],
+      "statistiche": [85, 80, 82],
+      "giocatori": [
+        { "nome": "Mario", "cognome": "Rossi", "numero": 2, "ruolo": "Alzatore", "sigla": "P", "eta": 24, "livello": 7 }
+      ]
+    }
+  ]
+}
+```
+| Campo | Note |
+|---|---|
+| `codice` | 3 lettere, compare sul tabellone; per una nazionale è il suo codice (`ITA`, `BRA`...) |
+| `tipo` | `club` (nuova squadra, gruppo CLUB nella selezione) o `nazionale` (sostituisce i giocatori di una nazionale esistente) |
+| `colori` | maglia, bordo (numeri e finiture), pantaloncini, pavimento (arena Classic 1991); facoltativi |
+| `giocatori` | almeno 4; `ruolo` Alzatore/Centrale/Opposto/Banda/Libero oppure `sigla` P, C1, O, S1, L1, anche doppia (`O/C2`): conta la prima |
+| `numero` | numero di maglia: sulla schiena in HD e nelle schede |
+| `livello` | 1-10: forza del giocatore (schiacciata, difesa) e statistiche della squadra |
+| `eta` | età: incide un poco sulla SPEED della squadra |
+| `titolari` | facoltativo: numeri di maglia tra cui scegliere i 4 in campo; altrimenti li sceglie il gioco per ruolo e livello |
+| `statistiche` | facoltativo: ATTACK, DEFENSE, SPEED (0-100); altrimenti calcolate dai titolari |
+| `capelli`, `pelle` | facoltativi, colori del singolo giocatore |
+
+In campo si gioca 4 contro 4 come nell'arcade: centrale, alzatore, attaccante e difensore/battitore.
+
+### Bilanciamento (misurato su centinaia di scambi simulati)
+- Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
+- Muro: un solo tentativo per schiacciata (prima poteva ritentare a ogni fotogramma e toccava quasi tutto); più murate vincenti, tocchi a muro più rari e che schizzano via.
+- Scambi di 6 tocchi in media, nessuno scambio infinito; partite combattute tra squadre vicine.
+- La statistica SPEED della squadra vale anche per il giocatore umano.
+
+---
+
+# Modalità ARCADE — remake di Power Spikes (Video System, 1991)
 
 Ricostruito scena per scena dal video completo dell'arcade e dal manuale operatore.
 Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro, bandiere e palazzetto sono pixel art nuova.
@@ -53,7 +127,7 @@ Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.
 - **Partita:** set a 15 in **rally point** (regola odierna: ogni azione vale un punto), 2 punti di scarto, senza tetto. Con `SIDE_OUT: true` in `config.js` tornano le regole 1991 (cambio palla, tetto a 17), tempo 3:00 a scalare. Il tempo avanzato diventa bonus. Se perdi c'è CONTINUE, alla fine classifica con nome.
 - **2 giocatori:** 1 set o 5 set (vince chi arriva a 3), partenza 9-9, 3 minuti per set.
 
-## Parametri (src/config.js)
+## Parametri (config.js)
 `MATCH_TIME`, `START_2P`, `HARD`, `FREE_PLAY` (come i DIP switch), `G` gravità, `SPIKE_SPEED`, `JUMP_V`, punteggi di partenza e forza CPU in `STAGES`,
 squadre, colori, nomi e pavimenti in `TEAMS`. `GAME_TITLE` per cambiare il titolo.
 
