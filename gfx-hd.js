@@ -67,7 +67,51 @@ function hdLayer(R, fn) {
 }
 
 // restituisce un canvas FW*R x FH*R con il giocatore; R = risoluzione (6 in HD)
+// alzatore di fronte in palleggio (stessa figura di drawPlayerFront in gfx.js, in versione vettoriale)
+function drawPlayerFrontHD(P, hair, R) {
+  const F = FRONT, B = P.beach, WHITE = '#f4f4f8';
+  const legs = hdLayer(R, g => {
+    for (const [h, k, f] of [[F.hipL, F.kneeL, F.footL], [F.hipR, F.kneeR, F.footR]]) {
+      hdCel(g, hdMuscle(h, k, 2.6, 2.8, 2.8, 2.1), P.sk, 0.9, 0.5);
+      hdCel(g, hdMuscle(k, f, 2.0, 2.2, 2.2, 1.4), P.sk, 0.8, 0.4);
+      if (!B) {
+        hdCel(g, hdCapsule(lerpP(k, f, 0.6), f, 1.7, 1.6), WHITE, 0.6, 0.4);
+        hdCel(g, hdEllipse([f[0], f[1] + 0.2], 3, 1.3), WHITE, 0.5, 0.3);
+        hdCel(g, hdEllipse(k, 2.6, 2.4), WHITE, 0.6, 0.4);
+      } else hdCel(g, hdEllipse([f[0], f[1] + 0.2], 2.2, 1.1), P.sk, 0.4, 0.3);
+    }
+  });
+  const body = hdLayer(R, g => {
+    hdCel(g, hdPoly([[10, 27], [22, 27], [22.6, B ? 36 : 33], [17, B ? 36 : 33], [16, 30.5], [15, B ? 36 : 33], [9.4, B ? 36 : 33]]), P.so, 1, 0.5);
+    hdCel(g, g2 => { g2.beginPath(); g2.moveTo(9, 16); g2.quadraticCurveTo(16, 14.5, 23, 16); g2.lineTo(21.8, 28.5); g2.quadraticCurveTo(16, 29.5, 10.2, 28.5); g2.closePath(); }, P.sh, 1.4, 0.7);
+    g.strokeStyle = P.tr; g.lineWidth = 0.8; g.beginPath(); g.moveTo(13.5, 16); g.quadraticCurveTo(16, 18.5, 18.5, 16); g.stroke();   // scollo
+    if (P.num) { g.font = 'bold 5px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 16, 22.5); g.fillStyle = P.tr; g.fillText(P.num, 16, 22.5); }
+    const [hx, hy] = F.head;
+    hdCel(g, hdCapsule([16, 16], [16, 13], 1.9, 1.8), P.sk, 0.6, 0.4);
+    hdCel(g, hdEllipse([hx, hy], 3.9, 4.4), P.sk, 0.9, 0.45);
+    hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx, hy - 1.2, 4.3, 3.6, 0, Math.PI * 1.02, Math.PI * 1.98); g2.lineTo(hx + 4.2, hy + 0.5); g2.quadraticCurveTo(hx, hy - 2.6, hx - 4.2, hy + 0.5); g2.closePath(); }, hair, 1, 0.7);
+    if (B) { g.fillStyle = '#0c0c14'; g.beginPath(); g.ellipse(hx - 1.6, hy + 0.2, 1.4, 0.9, 0, 0, 7); g.ellipse(hx + 1.6, hy + 0.2, 1.4, 0.9, 0, 0, 7); g.fill(); g.fillRect(hx - 0.4, hy - 0.1, 0.8, 0.4); }
+    else {
+      g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(hx - 1.5, hy + 0.2, 0.75, 0.55, 0, 0, 7); g.ellipse(hx + 1.5, hy + 0.2, 0.75, 0.55, 0, 0, 7); g.fill();
+      g.fillStyle = '#1c1420'; g.beginPath(); g.ellipse(hx - 1.5, hy + 0.2, 0.4, 0.45, 0, 0, 7); g.ellipse(hx + 1.5, hy + 0.2, 0.4, 0.45, 0, 0, 7); g.fill();
+    }
+    g.strokeStyle = shade(P.sk, 0.5); g.lineWidth = 0.35; g.beginPath(); g.moveTo(hx - 0.9, hy + 2.6); g.quadraticCurveTo(hx, hy + 3.1, hx + 0.9, hy + 2.6); g.stroke();
+  });
+  const arms = hdLayer(R, g => {
+    for (let i = 0; i < 2; i++) {
+      hdCel(g, hdMuscle(F.sh[i], F.elbows[i], 2.6, 2.9, 2.5, 1.8), P.sk, 0.8, 0.5);
+      hdCel(g, hdMuscle(F.elbows[i], F.hands[i], 1.8, 2.1, 1.9, 1.3), P.sk, 0.7, 0.45);
+      hdCel(g, hdEllipse(F.hands[i], 1.8, 1.6), P.sk, 0.6, 0.4);
+      if (!B) hdCel(g, hdCapsule(F.sh[i], lerpP(F.sh[i], F.elbows[i], 0.38), 2.8, 2.3), P.sh, 0.9, 0.5);
+    }
+  });
+  const c = document.createElement('canvas'); c.width = FW * R; c.height = FH * R;
+  const g = c.getContext('2d'); g.drawImage(legs, 0, 0); g.drawImage(body, 0, 0); g.drawImage(arms, 0, 0);
+  return c;
+}
+
 function drawPlayerHD(pose, P, hair, R) {
+  if (pose === 'set') return drawPlayerFrontHD(P, hair, R);
   const s0 = SKEL[pose];
   const K = 1.17;
   const sc = p => [16 + (p[0] - 16) * 1.06, 47 - (39 - p[1]) * K];

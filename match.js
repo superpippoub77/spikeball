@@ -303,6 +303,8 @@ class MatchScene extends Phaser.Scene {
   // rapporto tra il campo attuale e quello indoor da 9 m (beach: 8/9): le distanze in metri dell'IA si adattano
   courtK() { return CFG.HALF / 180; }
   announce(m) { this.annText.setText(m); }
+  // scossa dello schermo su schiacciate, battute in salto e muri: leggera, e solo con ARCADE FX attivo
+  shake(ms, k) { if (this.rules.fx) this.cameras.main.shake(ms, k); }
 
   // ------------------------------------------------ ciclo principale
   update(time, delta) {
@@ -524,7 +526,7 @@ class MatchScene extends Phaser.Scene {
         v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp);
         for (let i = 0; i < 25 && !PHYS.clears(b.x, b.h, v, 4); i++) { if (d < 8.6 * K) d += 0.3; else sp *= 0.93; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
       }
-      s.state = 'spike'; s.animT = 0.3; SFX.spike(); this.cameras.main.shake(70, 0.004);
+      s.state = 'spike'; s.animT = 0.3; SFX.spike(); this.shake(70, 0.002);
     }
     b.vx = v.vx; b.vy = v.vy; b.ver++;
     b.lastTeam = t; b.lastPlayer = s; b.lastKind = 'serve';
@@ -1016,7 +1018,7 @@ class MatchScene extends Phaser.Scene {
       for (let i = 0; i < 30 && !PHYS.clears(b.x, b.h, v, 2); i++) { if (d < 8.7 * K) d += 0.3; else sp *= 0.92; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
     }
     b.vx = v.vx; b.vy = v.vy;
-    SFX.spike(); this.cameras.main.shake(90, style === 'power' ? 0.009 : 0.006);
+    SFX.spike(); this.shake(90, style === 'power' ? 0.004 : 0.0025);
   }
 
   // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
@@ -1066,7 +1068,7 @@ class MatchScene extends Phaser.Scene {
       b.vx = -b.vx * rnd(0.25, 0.45); b.vy = -rnd(40, 90); b.x = -t.side * 3;
       b.lastTeam = t; b.lastPlayer = p; b.lastKind = 'block'; b.ver++; t.touches = 0;
       this.announce('THE SPIKE WAS BLOCKED.');
-      SFX.block(); this.cameras.main.shake(100, 0.007);
+      SFX.block(); this.shake(100, 0.003);
     } else if (r < chance + 0.15) {
       // tocco a muro: la palla schizza via, difficile da recuperare (non una palla regalata)
       b.vx = b.vx * rnd(0.3, 0.6); b.vy = rnd(70, 140);

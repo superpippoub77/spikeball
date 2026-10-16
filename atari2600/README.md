@@ -1,55 +1,78 @@
 # SPIKE FEVER 2600
 
-Versione per **Atari 2600 (VCS)** di Spike Fever, in stile **Power Spikes**: 2 contro 2, cartuccia da **4K**, scritta in assembly 6502.
-Si gioca nel browser con [`index.html`](index.html) (emulatore Javatari.js), oppure si scarica `spikefever2600.bin` per Stella, per un altro emulatore o per un Atari vero con una cartuccia flash.
+Versione per **Atari 2600 (VCS)** di Spike Fever in stile **Power Spikes**: 2 contro 2, **cartuccia da 16K** (bank switching F6), scritta in assembly 6502.
+- **Nel browser**: [`index.html`](index.html), con l'emulatore Javatari.js.
+- **Fuori dal browser**: scarica `spikefever2600.bin` per Stella, un altro emulatore o un Atari vero con una cartuccia flash che supporta F6 (16K).
 
-## Come si gioca
+> **Perché 16K e non 4K?** La prima versione da 4K era già piena (4096 byte su 4096). Livelli, paesaggi, beach volley, tutte le mosse di Power Spikes, la scelta della nazionale e la schermata del titolo occupano circa 11K, quindi serve una cartuccia da 16K. È il formato dei giochi 2600 più ricchi e funziona su emulatori e cartucce flash.
+
+## Modalità
+- **1 PLAYER**: scegli la tua nazionale tra 10 (Italia, Francia, Germania, Spagna, Brasile, USA, Giappone, Cina, Cuba, URSS), poi affronti 6 livelli.
+
+  | Livello | Avversario | Paesaggio |
+  |---|---|---|
+  | 1 | Cina | Palestra di Pechino: parquet, spalliere, finestre, travi |
+  | 2 | Brasile | **Beach volley** a Copacabana: sabbia, mare, Pan di Zucchero, palme, sole |
+  | 3 | USA | LA Arena: campo blu, cartelloni, pubblico, riflettori |
+  | 4 | Cuba | **Beach volley** ai Caraibi al tramonto: sole sull'orizzonte, palme in controluce, gabbiani |
+  | 5 | Giappone | Campo all'aperto sotto il monte Fuji innevato |
+  | 6 | URSS | Finale a Mosca: arena rossa, stendardi, pubblico |
+
+  - Se perdi, compare **GAME OVER / CONTINUE?**: premi il pulsante per rigiocare lo stesso livello.
+  - Se vinci tutto, sei **CHAMPION!**
+  - Il computer migliora a ogni livello.
+- **2 PLAYERS**: ognuno sceglie la nazionale col proprio joystick, poi si sceglie l'arena.
+- **Dimostrazione**: dopo qualche secondo nel titolo parte una partita tra due squadre del computer.
+- **Set**: a 11 punti nelle arene, a 15 sulla sabbia, con 2 punti di scarto.
+
+## Come si gioca (tutte le mosse di Power Spikes)
 Ogni squadra ha un **alzatore** (vicino alla rete) e un **attaccante/ricevitore**.
 
-| Momento | Cosa fare |
+| Momento | Comando |
 |---|---|
-| Battuta | Pulsante = lancio; di nuovo quando la palla diventa **rossa** = colpo. Joystick verso la rete = corta, verso il fondo = lunga |
-| Ricezione | Muovi il ricevitore sul **segno giallo** a terra: il bagher è automatico, più sei preciso più la palla arriva bene all'alzatore |
-| Alzata | Automatica |
-| Schiacciata | Rincorsa e salto automatici: premi quando la palla è **rossa**. Verso la rete = corta, verso il fondo = lunga, su = pallonetto. Fuori tempo = palla lenta; se non premi, la palla passa facile |
-| Muro | Quando attaccano gli avversari, premi il pulsante: salta il tuo alzatore |
+| **Battuta** | Pulsante = lancio. Al lancio: **su** = battuta altissima (*towering*, esce dallo schermo), **verso la rete** = battuta in salto con rincorsa, niente = normale. Premi di nuovo quando la palla è **rossa**; al colpo verso la rete = corta, verso il fondo = lunga |
+| **Ricezione** | Porta il ricevitore sul **segno giallo**. Se la palla è troppo lontana premi il pulsante: **tuffo** |
+| **Alzata** | **giù** = primo tempo (veloce, difficile da murare); **verso il fondo** = attacco di seconda linea; **verso la rete + pulsante** = palleggio di seconda dell'alzatore (attacco a sorpresa); niente = palla alta |
+| **Attacco** | Rincorsa e stacco automatici; premi quando la palla è **rossa**. **su** = pallonetto, **giù** = schiacciata potente (rompe il muro, ma se sbagli il tempo va fuori), verso la rete = corta, verso il fondo = lunga. Fuori tempo = palla lenta; se non premi, palla facile per gli avversari |
+| **Muro** | Quando attaccano gli avversari premi il pulsante: salta il tuo alzatore. Il primo tempo e la seconda linea si murano meno |
 
-- **GAME SELECT**: 1 o 2 giocatori, palazzetto (set a 15) o spiaggia (set a 21). In alto compaiono il numero di giocatori e i punti del set.
-- **GAME RESET**: nuova partita. Senza RESET va la dimostrazione (computer contro computer).
-- **Difficoltà destra A**: il computer sbaglia meno in ricezione e mura di più.
-- **Regole**: rally point, si vince con 2 punti di scarto. Punto quando la palla cade in campo, va fuori o finisce in rete.
+Battute speciali e schiacciate potenti rendono la ricezione più difficile.
 
-Tasti in Javatari: F12 = RESET, F11 = SELECT, F9 = difficoltà destra, frecce + spazio = joystick 1.
+Console: **GAME RESET** = titolo; **GAME SELECT** (nel titolo) = 1 o 2 giocatori; **difficoltà destra A** = il computer sbaglia meno in ricezione.
+Tasti in Javatari: frecce + spazio = joystick 1; F12 = RESET, F11 = SELECT, F9 = difficoltà destra.
 
-## Il kernel
-Il cuore del programma è il **kernel**, il codice che disegna lo schermo riga per riga mentre il pennello elettronico scorre.
+## Come è fatta la cartuccia
+| Banco | Contenuto |
+|---|---|
+| 0 | Ciclo principale, logica della partita e dei menu, intelligenza del computer |
+| 1 | Kernel della partita, sprite, colori di 10 nazionali (scarpe o piedi nudi), 6 arene |
+| 2 | Kernel delle schermate: titolo, scelta, presentazione, game over, campione; scritte e bandiere |
+| 3 | Libero (per altre arene o livelli) |
 
-- **NTSC**: 262 righe per fotogramma (3 VSYNC, 37 VBLANK, 192 visibili, 30 overscan), misurate su 18.000 fotogrammi di gioco.
-- **Parte alta (24 righe)**:
-  - titolo **SPIKEFEVER** in *playfield asimmetrico*: 6 scritture per riga, a tempo con il pennello;
-  - in partita, il punteggio nei colori delle squadre (modo SCORE del TIA).
-- **Area di gioco: 168 righe in kernel a 2 righe (2LK)**:
-  - **riga A**: colore di fondo (sfumature del cielo, mare, sabbia, parquet, tribune), PF0 e PF1 dello scenario, giocatore sinistro, palla;
-  - **riga B**: PF2 (rete con le maglie, sole, nuvole), colore del playfield, segno di caduta (missile 0), giocatore destro.
-- **Giocatori multicolore**: ogni riga dello sprite ha il suo colore (capelli, pelle, maglia, pantaloncini, scarpe o piedi nudi in spiaggia). Le animazioni sono 6: fermo, corsa (2), salto, bagher, schiacciata.
-- **2 contro 2**: il TIA disegna solo 2 giocatori per riga, quindi i due compagni si alternano a ogni fotogramma (30 Hz), come in molti giochi dell'epoca.
-- **La palla è il missile 1**: l'oggetto *ball* del TIA prende il colore del playfield, che cambia a ogni riga. Il missile 1 prende invece il colore del giocatore destro, che fuori dallo sprite vale bianco, oppure **rosso** quando bisogna colpire.
-- **Due arene, in dati generati da `gen_data.py`**:
-  - **palazzetto**: parquet, linea del campo, cartelloni, pubblico colorato, luci;
-  - **spiaggia**: sabbia, nastro blu, mare con riflessi, palme, nuvole, sole, palo imbottito giallo.
-- **Traiettorie a tempo fisso** (16, 32 o 64 fotogrammi): la velocità si calcola con soli spostamenti di bit. Così la palla arriva esattamente sulle mani dell'alzatore o nel punto di schiacciata, nel fotogramma previsto.
+- **Cambio di banco**: piccoli "stub" agli stessi indirizzi in tutti i banchi ($FFC0-$FFE5). Leggere $1FF6/$1FF7/$1FF8 seleziona il banco 0/1/2.
+- **Kernel della partita**: area di gioco a 2 righe. Per ogni coppia di righe:
+  - colore di fondo, PF0, PF1, PF2 e colore del playfield dell'arena;
+  - giocatore sinistro e destro con un colore diverso per ogni riga;
+  - palla (missile 1, rossa quando bisogna colpire) e segno di caduta (missile 0).
+
+  I due compagni di squadra si alternano a ogni fotogramma (30 Hz).
+- **Titolo come Power Spikes**: logo **SPIKE FEVER** grande in playfield asimmetrico, sfumato dal giallo al rosso. Sotto c'è un quadro con la schiacciata contro il muro a sprite doppi, poi il menu.
+- **Scritte**: playfield asimmetrico (10 caratteri 3x5). **Bandiere**: playfield riflesso in modo SCORE, così i tricolori verticali hanno 3 colori per riga.
+- **Tempi controllati** con un emulatore 6502 (`py65` + bank switching), su oltre 45.000 fotogrammi di partita giocata da un "bot" che usa tutte le mosse:
+  - ogni schermata e ogni fotogramma di gioco: 262 righe NTSC esatte;
+  - logica: VBLANK al massimo 2499 cicli su 2880, overscan 1527 su 2240.
 
 ## Compilare
 ```sh
-npm install dasm                    # assemblatore dasm (versione JavaScript)
-python3 gen_data.py > data.inc      # grafica, colori, arene, titolo, cifre
-node build.js                       # -> spikefever2600.bin (4096 byte)
+npm install dasm              # assemblatore dasm (versione JavaScript)
+python3 gen_data.py           # -> bank0.inc, bank1.inc, bank2.inc (grafica, arene, bandiere, scritte)
+node build.js                 # -> spikefever2600.bin (16384 byte)
 ```
 
 | File | Contenuto |
 |---|---|
-| `spikefever2600.asm` | programma completo (kernel, logica, dati), commentato |
-| `gen_data.py` | disegni dei giocatori, colori delle squadre, arene, titolo e cifre: modificali qui |
-| `data.inc` | tabelle generate (non modificare a mano) |
+| `spikefever2600.asm` | programma completo, commentato |
+| `gen_data.py` | giocatori, colori delle nazionali, arene, bandiere, scritte e logo: si modificano qui |
+| `bank*.inc` | tabelle generate (non modificare a mano) |
 | `index.html` | pagina per giocare nel browser |
 | `javatari.js`, `javatari-license.txt` | emulatore [Javatari.js](https://github.com/ppeccin/javatari.js) di Paulo Peccin (licenza AGPL v3), non modificato |
