@@ -79,6 +79,7 @@ function photoBeach(d, R, W, H, sk, ref) {
 
 // pose statiche (menu, schermate) prese dalle animazioni
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 4], pass: ['bagher', 3], set: ['block', 2], jump: ['jump', 5],
+  spkload: ['spike', 3], spkfol: ['spike', 8], passload: ['bagher', 1],
   spike: ['spike', 5], block: ['block', 4], dive: ['dive', 0], down: ['down', 0], cheer: ['block', 5], toss: ['serve', 3], sad: ['idle', 0] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
