@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spike Fever 2600</title>
+<style>
+  body { margin: 0; background: #10131c; color: #e8e8f0; font: 14px/1.5 Arial, sans-serif; text-align: center; }
+  h1 { color: #ffd23a; margin: 18px 0 2px; letter-spacing: 2px; }
+  .by { color: #8aa0c8; margin-bottom: 14px; }
+  #javatari { margin: 0 auto; }
+  .help { max-width: 760px; margin: 16px auto; text-align: left; padding: 0 16px; color: #b8c4dc; }
+  .help b { color: #fff; }
+  a { color: #7ad0ff; }
+</style>
+</head>
+<body>
+<h1>SPIKE FEVER 2600</h1>
+<div class="by">by SpikeCode AI · cartuccia da 4K per Atari 2600 · <a href="spikefever2600.bin" download>scarica la ROM</a> · <a href="../index.html">versione completa</a></div>
+<div id="javatari"><div id="javatari-screen"></div></div>
+<div class="help">
+  <p><b>Comandi:</b> frecce = corri, <b>SPAZIO</b> = salta (in salto vicino alla rete = schiacciata). In battuta SPAZIO batte (con la freccia verso la rete è lunga, verso il fondo corta).
+  Il secondo giocatore usa il secondo joystick (in Javatari: W A S D + .).</p>
+  <p><b>F12</b> = GAME RESET (inizia la partita) · <b>F11</b> = GAME SELECT (1 o 2 giocatori, palazzetto con set a 15 o spiaggia con set a 21: in alto compaiono giocatori e punti del set) · <b>F9</b> = difficoltà destra (A = computer più veloce).</p>
+  <p>Al tocco della palla: fino a 3 tocchi per squadra, punto se la palla cade nel campo avversario o se l'avversario la manda fuori.</p>
+  <p>La ROM funziona anche su un Atari 2600 vero (con una cartuccia flash) e in Stella. Emulatore nel browser: <a href="https://github.com/ppeccin/javatari.js">Javatari.js</a> di Paulo Peccin (licenza AGPL, vedi <a href="javatari-license.txt">javatari-license.txt</a>).</p>
+</div>
+<script src="javatari.js"></script>
+<script>
+  Javatari.CARTRIDGE_URL = "spikefever2600.bin";
+  Javatari.CARTRIDGE_CHANGE_DISABLED = true;
+  Javatari.AUTO_POWER_ON_DELAY = 300;
+</script>
+</body>
+</html>
