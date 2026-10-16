@@ -30,6 +30,7 @@ class Base extends Phaser.Scene {
   // nel ciclo attract: START con credito → menu
   attractInput() {
     if (this.jd('t')) { SFX.select(); this.scene.start('Practice'); return true; }
+    if (this.jd('esc')) { SFX.select(); this.scene.start('MainMenu'); return true; }
     if ((this.startPressed() || this.btn()) && (GS.credits > 0 || CFG.FREE_PLAY)) { SFX.select(); this.scene.start('SelectGame'); return true; }
     return false;
   }
@@ -555,7 +556,7 @@ class PracticeScene extends Base {
     this.sel = 0; this.cur = this.add.image(54, 0, 'ballbig');
     const st = { fontFamily: 'Arial, sans-serif', fontSize: '7px', color: '#c8d0ff', resolution: CFG.ZOOM, align: 'center' };
     this.add.text(160, 160, 'FRECCE = joystick   Z = pulsante\nIn partita: T mostra/nasconde i comandi   ESC = torna qui\nI comandi da eseguire appaiono in basso in ogni momento', st).setOrigin(0.5, 0);
-    this.add.text(160, 206, 'Z = INIZIA     ESC = ESCI', TXT(7)).setOrigin(0.5);
+    this.add.text(160, 206, 'Z = INIZIA     ESC = MENU PRINCIPALE', TXT(7)).setOrigin(0.5);
     this.refresh();
   }
   refresh() { this.opts.forEach((o, i) => o.setColor(i === this.sel ? '#ffffff' : '#9098c8')); this.cur.y = this.opts[this.sel].y + 4; }
@@ -563,7 +564,7 @@ class PracticeScene extends Base {
     if (this.gone) return;
     if (this.jd('up')) { this.sel = (this.sel + DRILLS.length - 1) % DRILLS.length; this.refresh(); SFX.blip(); }
     if (this.jd('down')) { this.sel = (this.sel + 1) % DRILLS.length; this.refresh(); SFX.blip(); }
-    if (this.jd('esc')) { this.gone = true; GS.attract = -1; nextAttract(this); return; }
+    if (this.jd('esc')) { this.gone = true; this.scene.start('MainMenu'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select();
       this.scene.start('Match', { mode: 'practice', drill: DRILLS[this.sel][0], test: true, left: 'ITA', right: 'JPN', humans: [1, 0],
@@ -579,7 +580,7 @@ function startGame() {
     type: Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
+    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
             InfoScene, TechnicScene, PracticeScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
   });
   // gettone: tasto 5 o C (ovunque)
@@ -591,7 +592,8 @@ function startGame() {
 
 (function boot() {
   GS.loadRanking();
-  const go = () => startGame();
+  let started = false;
+  const go = () => { if (started) return; if (document.readyState !== 'complete') { window.addEventListener('load', go, { once: true }); return; } started = true; startGame(); };
   if (document.fonts && document.fonts.load) Promise.race([document.fonts.load('8px "Press Start 2P"'), new Promise(r => setTimeout(r, 2000))]).then(go, go);
   else go();
 })();

@@ -1,4 +1,34 @@
-# Spike Fever '91 — remake di Power Spikes (Video System, 1991) in Phaser 3
+# Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
+
+## Menu principale
+| Scheda | Cosa fa |
+|---|---|
+| **ARCADE** | Il gioco arcade del 1991 come nel video originale: gettoni, 5 avversari, Technic, classifica |
+| **SINGLE MATCH** | Modalità moderna in stile Thunder Spikes: squadre, campo, pallone e regole a scelta |
+| **TUTORIAL** | Pratica dei fondamentali con i comandi in sovraimpressione |
+| **CAREER** | Torneo a 4 turni contro squadre del Gruppo I (vinci per avanzare) |
+
+### SINGLE MATCH / CAREER (Thunder Spikes)
+- **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
+- **Impostazioni:**
+  - PLAYING FIELD: Volleyball Arena, Pro Sports Hall, Gym Hall, Outdoor School e Classic 1991;
+  - BALL: Classic, Pro, Retro;
+  - STARTING POINTS: 0/5/10/15;
+  - REBOUND INDICATOR: EASY/HARD/OFF;
+  - ATTACK TARGET: ON/OFF;
+  - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
+  - ARCADE FX: telecronaca, arbitro, volti e battute speciali di Power Spikes sì/no.
+- **In partita:**
+  - pavimento lucido con i riflessi;
+  - telecamera che allarga in battuta e stringe durante lo scambio;
+  - tabellone LED in alto;
+  - arco bianco sopra il punto di caduta e triangolo nero sul bersaglio d'attacco;
+  - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
+- **ESC** durante la partita torna al menu.
+
+---
+
+# Modalità ARCADE — remake di Power Spikes (Video System, 1991)
 
 Ricostruito scena per scena dal video completo dell'arcade e dal manuale operatore.
 Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro, bandiere e palazzetto sono pixel art nuova.

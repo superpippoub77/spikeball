@@ -26,24 +26,44 @@ class MatchScene extends Phaser.Scene {
     this.camT = undefined; this.camV = 0;
     this.simT = 0; this.serveMsg = null; this.phantom = null; this.thunder = null; this.aimD = 6;
     const d = this.cfg;
-    makeCommon(this); makeArena(this);
+    makeCommon(this); makeArena(this); makeBalls(this);
+    // regole: arcade 1991 / rally point moderno (impostazioni di Thunder Spikes)
+    this.modern = d.modern || null;
+    const md = this.modern;
+    this.rules = {
+      target: md ? md.targetPts : CFG.TARGET, winBy: CFG.WIN_BY, cap: md ? 999 : CFG.CAP,
+      sideOut: md ? md.sideOut : CFG.SIDE_OUT, fx: md ? md.fx : true
+    };
     for (const code of [d.left, d.right]) for (let i = 0; i < 4; i++) { makePlayerTex(this, code, i); makeFaceTex(this, code, i, 'neutral'); makeFaceTex(this, code, i, 'cheer'); }
     ['whistle', 'pointL', 'pointR', 'out', 'touch', 'net', 'win'].forEach(p => makeRefTex(this, p));
-    this.buildArena(TEAMS[d.floor || d.right].fl);
+    if (md && md.arena !== 'classic') this.buildModernArena(md);
+    else this.buildArena(TEAMS[d.floor || d.right].fl);
 
     this.teams = [this.makeTeam(0, d.left, -1), this.makeTeam(1, d.right, 1)];
     this.teams[0].human = d.humans[0]; this.teams[1].human = d.humans[1];
     this.teams[0].skill = d.skillL; this.teams[1].skill = d.skillR;
     this.teams[0].score = d.start[0]; this.teams[1].score = d.start[1];
+    // statistiche squadra (attacco/difesa/velocità) e statistiche per giocatore
+    this.teams.forEach((t, i) => {
+      const s = (d.stats && d.stats[i]) || [80, 80, 80];
+      t.atkK = 0.9 + (s[0] - 70) / 150; t.defK = (s[1] - 75) / 200; t.spdK = 0.88 + (s[2] - 70) / 140;
+      t.pstats = {};
+    });
 
     this.ball = { x: 0, h: 0, vx: 0, vy: 0, held: null, live: false, bouncing: false, ver: 0, lastTeam: null, lastPlayer: null, lastKind: null, spin: 0, trail: [] };
     this.shadowG = this.add.graphics().setDepth(5);
     this.fx = this.add.graphics().setDepth(990);
-    this.ballSpr = this.add.image(0, 0, 'ball').setDepth(1000);
+    this.ballSpr = this.add.image(0, 0, md ? md.ball : 'ball').setDepth(1000);
+    if (md && md.arena !== 'classic') {
+      // riflessi sul pavimento lucido
+      this.ballRef = this.add.image(0, 0, md.ball).setDepth(-15).setAlpha(0.3).setFlipY(true);
+      for (const t of this.teams) for (const p of t.players) p.ref = this.add.sprite(0, 0, p.spr.texture.key, 0).setOrigin(0.5, 0).setFlipX(p.spr.flipX).setFlipY(true).setAlpha(0.28).setDepth(-15);
+    }
     this.popups = [];
 
     this.buildHud();
     this.setupInput();
+    if (md) this.setupModernHud();
 
     this.serving = this.teams[d.firstServe || 0];
     this.timeLeft = d.time;            // null = nessun limite (demo)
@@ -99,6 +119,55 @@ class MatchScene extends Phaser.Scene {
     n.fillStyle(0x9a9aa4, 1).fillRect(cx - 3.5, mid - 2, 7, 2).fillRect(cx - 3.5, mid + 9, 7, 1);
     n.fillStyle(0x1a1a1e, 1).fillRect(cx - 5, FY + 1, 10, 3);
     n.fillStyle(0x6a6a70, 1).fillRect(cx - 5, FY + 1, 10, 1);
+  }
+
+  buildModernArena(md) {
+    const W = CFG.OX * 2, FY = CFG.FLOOR_Y;
+    this.add.image(0, ATOP, makeModernArena(this, md.arena)).setOrigin(0).setScrollFactor(0.82, 1).setDepth(-50);
+    // pavimento lucido con gradiente e linee del campo
+    const g = this.add.graphics().setDepth(-20), fc = Phaser.Display.Color.IntegerToColor(md.floor);
+    g.fillStyle(fc.clone().darken(20).color, 1).fillRect(0, 198, W, 4);
+    g.fillGradientStyle(fc.clone().lighten(6).color, fc.clone().lighten(6).color, fc.clone().darken(18).color, fc.clone().darken(18).color, 1).fillRect(0, 202, W, 60);
+    g.fillStyle(0xffffff, 0.9).fillRect(SX(-CFG.HALF), 205, CFG.HALF * 2, 2);
+    g.fillStyle(0xffffff, 0.12).fillRect(SX(-CFG.HALF), 207, CFG.HALF * 2, 4);
+    for (const x of [-60, 60]) g.fillStyle(0xffffff, 0.9).fillRect(SX(x) - 1, 205, 2, 2);
+    g.fillStyle(0xf2c818, 0.6).fillRect(SX(-CFG.HALF) - 2, 205, 2, 2).fillRect(SX(CFG.HALF), 205, 2, 2);
+    // palo moderno (blu) con antenna bianca/rossa
+    const n = this.add.graphics().setDepth(FY + 2), cx = SX(0), top = FY - CFG.NET_H - 14;
+    n.fillStyle(0x1a3aa8, 1).fillRect(cx - 2, top, 4, FY - top + 2);
+    n.fillStyle(0x5a8af0, 1).fillRect(cx - 1, top, 1, FY - top + 2);
+    n.fillStyle(0xffffff, 1).fillRect(cx - 0.5, top - 16, 1, 16);
+    for (let y = top - 16; y < top; y += 4) n.fillStyle(0xe02020, 1).fillRect(cx - 0.5, y, 1, 2);
+    n.fillStyle(0x0a0a0a, 0.8).fillRect(cx - 1, FY - CFG.NET_H, 2, 22);
+    n.fillStyle(0x202020, 1).fillRect(cx - 5, FY + 1, 10, 2);
+    this.sbX = -999; this.sbY = -999; this.sbNames = [this.add.text(0, 0, ''), this.add.text(0, 0, '')]; this.sbNames.forEach(t => t.setVisible(false));
+    this.sbG = this.add.graphics().setVisible(false);
+  }
+
+  setupModernHud() {
+    // seconda telecamera per l'interfaccia: la telecamera di gioco può zoomare senza deformare l'HUD
+    this.hudCam = this.cameras.add(0, 0, CFG.W * CFG.ZOOM, CFG.H * CFG.ZOOM).setOrigin(0, 0).setZoom(CFG.ZOOM);
+    this.timeLbl.setVisible(false); this.timeText.setVisible(false);
+    if (!this.rules.fx) this.annText.setVisible(false);
+    // tabellone LED appeso (Thunder Spikes)
+    this.mSb = this.add.graphics().setScrollFactor(0).setDepth(2000);
+    this.mSbT = [this.add.text(140, 3, '', UI.f(6, '#d8d8d8', true)).setOrigin(0.5, 0).setScrollFactor(0).setDepth(2001),
+                 this.add.text(180, 3, '', UI.f(6, '#d8d8d8', true)).setOrigin(0.5, 0).setScrollFactor(0).setDepth(2001)];
+    this.updateScoreboard();
+  }
+
+  routeCameras() {
+    if (!this.hudCam) return;
+    for (const o of this.children.list) {
+      if (o._cam) continue;
+      o._cam = true;
+      if (o.scrollFactorX === 0) this.cameras.main.ignore(o); else this.hudCam.ignore(o);
+    }
+  }
+
+  stat(p, k) {
+    const s = p.team.pstats[p.ni] || (p.team.pstats[p.ni] = { pts: 0, spike: 0, lob: 0, block: 0, ace: 0 });
+    s[k]++;
   }
 
   // cifra a 7 segmenti (LED rosso con alone)
@@ -169,6 +238,7 @@ class MatchScene extends Phaser.Scene {
     if (J(this.kp.m)) SFX.muted = !SFX.muted;
     if (J(this.kp.t)) { this.testOn = !this.testOn; this.testBox.setVisible(this.testOn); this.testTxt.setVisible(this.testOn); }
     if (this.mode === 'practice' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('Practice'); }
+    if (this.mode === 'modern' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('MainMenu'); }
   }
   // +1 = verso la rete/avversario
   dirX(t) { const s = this.inp[t.human]; if (!s) return 0; return ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * -t.side; }
@@ -322,6 +392,7 @@ class MatchScene extends Phaser.Scene {
 
   showServePanel(on) {
     const s = this.server;
+    if (!this.rules.fx) on = false;
     this.serveFace.setVisible(on); this.serveRef.setVisible(on); this.serveNum.setVisible(false);
     if (on) {
       this.serveFace.setTexture(`face_${s.team.code}_${s.ni}_neutral`);
@@ -361,7 +432,7 @@ class MatchScene extends Phaser.Scene {
     let d = aim > 0 ? rnd(7.6, 8.5) : aim < 0 ? rnd(3.2, 4.2) : rnd(3.5, 8.5);
     let v;
     const err = q < 0.2 && Math.random() < 0.7;
-    const special = this.serveSpecial;
+    const special = this.serveSpecial && this.rules.fx;
     if (k === 'tower') {
       this.snap(s, 7, 16);
       const apex = special ? rnd(560, 640) : rnd(115, 135);   // towering: ~5 s in aria come nel video
@@ -486,7 +557,7 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && p === this.server && this.servePhase !== 'walk') return;
 
     const plan = t.plan;
-    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3), human = false;
+    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1), human = false;
     const own = this.state === 'rally' && b.lastTeam === t;
     if (this.state === 'serve' && p === this.server) target = side * CFG.SERVE_X;
     else if (this.state === 'dead' || this.state === 'end') target = p.x;
@@ -665,7 +736,7 @@ class MatchScene extends Phaser.Scene {
         if (p.missVer !== b.ver) {
           p.missVer = b.ver;
           const sp = b.lastKind === 'serve' && ((this.phantom && this.phantom.on) || (this.thunder && !this.thunder.armed)) ? 0.35 : 0;
-          p.miss = ai && Math.random() < clamp(0.04 + sp + this.speedPen() * 1.1 - (t.skill - 0.5) * 0.4, 0.02, 0.8);
+          p.miss = ai && Math.random() < clamp(0.04 + sp + this.speedPen() * 1.1 - (t.skill - 0.5) * 0.4 - (t.defK || 0), 0.02, 0.8);
         }
         if (p.diveT > 0 || p.state === 'dive') {
           const cx = p.x + p.diveDir * 9;
@@ -826,7 +897,7 @@ class MatchScene extends Phaser.Scene {
     else this.announce(`SPIKE BY ${p.name}!`);
     let d = t.human ? (t.aimD || 6) : rnd(3, 8.4);
     if (type === 'back') d = Math.max(d, 5);
-    let sp = CFG.SPIKE_SPEED * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
+    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
     let v;
     const aiErr = !t.human && Math.random() < 0.05 + (1 - t.skill) * 0.16;
     const errQ = style === 'power' ? 0.3 : 0.18;
@@ -897,6 +968,14 @@ class MatchScene extends Phaser.Scene {
       ref = 'out';
       if (b.lastKind === 'blocktouch') { ref = 'touch'; this.announce('ONE TOUCH!'); }
     }
+    // statistiche per giocatore (schermata Match Stats)
+    const mk = b.lastTeam === winner ? b.lastPlayer : null;
+    if (mk) {
+      this.stat(mk, 'pts');
+      const k = b.lastKind;
+      if (k === 'spike') this.stat(mk, 'spike'); else if (k === 'dink' || k === 'feint') this.stat(mk, 'lob');
+      else if (k === 'block') this.stat(mk, 'block'); else if (k === 'serve') this.stat(mk, 'ace');
+    }
     this.endRally(winner, ref, face, faceMsg);
   }
 
@@ -909,6 +988,13 @@ class MatchScene extends Phaser.Scene {
   updateDead() {
     const P = this.pend, t = this.stateT;
     if (this.mode === 'practice') { if (t > 1.4) this.practiceRestart(); return; }
+    if (!this.rules.fx) {
+      if (P.stage === 0 && t > 1.3) {
+        P.stage = 3; this.applyScore(this.winner);
+        if (this.matchOver()) this.startEnd(); else { this.prepareServe(); this.state = 'serve'; this.stateT = 0; }
+      }
+      return;
+    }
     if (P.stage === 0 && t > 0.6) {
       P.stage = 1; this.refPanel.setTexture('ref_' + P.ref).setVisible(true);
     }
@@ -927,7 +1013,7 @@ class MatchScene extends Phaser.Scene {
   applyScore(w) {
     if (this.mode === 'practice') return;
     const wasServing = this.serving === w;
-    if (!CFG.SIDE_OUT || wasServing) {
+    if (!this.rules.sideOut || wasServing) {
       w.score++;
       if (w.human === 1 && this.mode === '1p') GS.score += CFG.POINT_SCORE;
     }
@@ -947,8 +1033,8 @@ class MatchScene extends Phaser.Scene {
 
   matchOver() {
     // dal video: 15-14 si continua, 16-14 e 17-15 chiudono, 16-16 → 17-16 chiude (tetto a 17)
-    const [a, b] = this.teams, hi = Math.max(a.score, b.score), lead = Math.abs(a.score - b.score);
-    return (hi >= CFG.TARGET && lead >= CFG.WIN_BY) || hi >= CFG.CAP;
+    const [a, b] = this.teams, hi = Math.max(a.score, b.score), lead = Math.abs(a.score - b.score), R = this.rules;
+    return (hi >= R.target && lead >= R.winBy) || hi >= R.cap;
   }
 
   timeUp() {
@@ -960,6 +1046,20 @@ class MatchScene extends Phaser.Scene {
     const [a, b] = this.teams;
     const w = a.score > b.score ? a : b;
     this.winner = w; this.state = 'end'; this.stateT = 0; this.endStage = 0;
+    if (this.modern) {
+      this.showServePanel(false); this.refPanel.setVisible(false); this.facePanel.setVisible(false);
+      // fascia WIN! come in Thunder Spikes
+      const band = this.add.rectangle(-320, 70, 320, 50, 0x0c3a9a, 0.92).setOrigin(0, 0.5).setScrollFactor(0).setDepth(2300);
+      const fl = this.add.image(-250, 66, makeFlagTex(this, w.code, 42, 28)).setScrollFactor(0).setDepth(2301);
+      const nm = this.add.text(-250, 86, TEAMS[w.code].name, UI.f(6, '#ffffff', true)).setOrigin(0.5).setScrollFactor(0).setDepth(2301);
+      const wt = this.add.text(-130, 70, 'WIN!', UI.f(26, '#ffffff', true)).setOrigin(0.5).setScrollFactor(0).setDepth(2301);
+      this.tweens.add({ targets: band, x: 0, duration: 450, ease: 'Cubic.out' });
+      this.tweens.add({ targets: [fl, nm], x: '+=320', duration: 450, ease: 'Cubic.out' });
+      this.tweens.add({ targets: wt, x: '+=340', duration: 550, delay: 120, ease: 'Back.out' });
+      SFX.jingle(); SFX.cheer(true);
+      this.time.delayedCall(3600, () => { this.cameras.main.fadeOut(400); this.time.delayedCall(420, () => this.cfg.onDone(this)); });
+      this.endStage = 9; return;
+    }
     this.announce(`${w.code} HAS WON THE MATCH.`);
     this.refPanel.setTexture('ref_win').setVisible(true);
     SFX.cheer(true);
@@ -967,6 +1067,7 @@ class MatchScene extends Phaser.Scene {
 
   updateEnd() {
     const t = this.stateT;
+    if (this.endStage === 9) return;
     const lost = this.mode === '1p' && this.winner.human !== 1;
     if (this.endStage === 0 && t > 2.0) {
       this.endStage = 1; this.refPanel.setVisible(false);
@@ -1065,6 +1166,17 @@ class MatchScene extends Phaser.Scene {
   }
 
   updateScoreboard() {
+    if (this.mSb) {
+      const [a, b] = this.teams, g = this.mSb, red = 0xff2a1a;
+      g.clear().fillStyle(0x050505, 0.85).fillRect(124, 0, 72, 30);
+      this.mSbT[0].setText(a.code); this.mSbT[1].setText(b.code);
+      const dg = (n, x0) => { const s = String(n).padStart(2, ' '); this.led(g, x0, 11, s[0], 8, 13, red); this.led(g, x0 + 10, 11, s[1], 8, 13, red); };
+      dg(a.score, 128); dg(b.score, 172);
+      g.fillStyle(red, 1).fillRect(157, 17, 6, 2);
+      g.fillStyle(this.serving === a ? red : 0x3a1010, 1).fillRect(128, 26, 18, 2);
+      g.fillStyle(this.serving === b ? red : 0x3a1010, 1).fillRect(172, 26, 18, 2);
+    }
+    if (!this.sbNames || this.sbX < -100) return;
     const [a, b] = this.teams, g = this.sbG, x = this.sbX, y = this.sbY;
     this.sbNames[0].setText(a.code); this.sbNames[1].setText(b.code);
     g.clear();
@@ -1090,6 +1202,17 @@ class MatchScene extends Phaser.Scene {
     this.camV = (this.camV - om * tmp) * ex; this.camX = this.camT + (ch + tmp) * ex;
     this.camX = clamp(this.camX, 0, CFG.OX * 2 - CFG.W);
     this.cameras.main.scrollX = this.camX;
+    if (this.modern) {
+      // zoom dinamico (Thunder Spikes): largo in battuta e a fine azione, più stretto durante lo scambio
+      const zt = this.state === 'rally' ? 2.75 + clamp(0.25 - b.h / 400, 0, 0.25) : 2.35;
+      this.zoom = this.zoom || 2.35;
+      this.zoom += (zt - this.zoom) * Math.min(1, dt * 1.6);
+      const cam = this.cameras.main, vw = CFG.W * CFG.ZOOM / this.zoom, vh = CFG.H * CFG.ZOOM / this.zoom;
+      cam.setZoom(this.zoom);
+      const cx = this.camX + 160;
+      cam.scrollX = clamp(cx - vw / 2, 0, CFG.OX * 2 - vw);
+      cam.scrollY = 232 - vh;
+    }
 
     for (const t of this.teams) for (const p of t.players) {
       let st = p.state;
@@ -1101,24 +1224,52 @@ class MatchScene extends Phaser.Scene {
       const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit))));
       if (hl) p.spr.setTint(0xffd8e8); else p.spr.clearTint();
     }
+    if (this.ballRef) {
+      for (const t of this.teams) for (const p of t.players) {
+        p.ref.setTexture(p.spr.texture.key, p.spr.frame.name); p.ref.x = p.spr.x; p.ref.y = FY + p.dep + p.z; p.ref.setFlipX(p.spr.flipX);
+      }
+      this.ballRef.x = SX(b.x); this.ballRef.y = FY + 2 + b.h + 4; this.ballRef.setVisible(b.h < 120);
+    }
+    this.routeCameras();
     const g = this.shadowG; g.clear();
     for (const t of this.teams) for (const p of t.players) g.fillStyle(0x000000, 0.3).fillEllipse(SX(p.x), FY + p.dep, clamp(12 - p.z * 0.2, 6, 12), 3);
     if (b.live || b.held || b.bouncing) g.fillStyle(0x000000, 0.45).fillEllipse(SX(b.x), FY + 2, clamp(7 - b.h * 0.05, 3, 7), 2);
     const f = this.fx; f.clear();
-    // marcatore blu del punto di caduta (squadra umana in ricezione)
-    for (const t of this.teams) {
-      if (!t.human || this.state !== 'rally' || !t.plan || t.plan.kind !== 'pass') continue;
-      const ax = Math.round(SX(t.plan.xc)), ay = FY - 40;
-      const col = t.human === 1 ? 0x2050ff : 0xff3030;
-      f.fillStyle(0xffffff, 1).fillRect(ax - 4, ay - 6, 9, 4).fillTriangle(ax - 6, ay - 3, ax + 6, ay - 3, ax, ay + 4);
-      f.fillStyle(col, 1).fillRect(ax - 3, ay - 5, 7, 3).fillTriangle(ax - 4, ay - 2, ax + 4, ay - 2, ax, ay + 2);
+    const md = this.modern;
+    if (md) {
+      // REBOUND INDICATOR (Thunder Spikes): arco bianco sopra il punto di caduta
+      const mode = md.rebound;
+      if (mode !== 'OFF' && this.state === 'rally' && b.live && b.vy < 0) {
+        const tl = PHYS.timeToH(b.h, b.vy, 0);
+        const lx = b.x + b.vx * (tl || 0);
+        const humanSide = this.teams.some(t => t.human && lx * t.side > 0);
+        if (tl !== null && (mode === 'EASY' || (humanSide && tl < 0.7))) {
+          const ax = SX(lx), ay = FY - 40;
+          f.lineStyle(2, 0xffffff, 0.95).beginPath(); f.arc(ax, ay - 6, 7, 0.25 * Math.PI, 0.75 * Math.PI, false); f.strokePath();
+        }
+      }
+    } else {
+      // marcatore blu del punto di caduta (squadra umana in ricezione)
+      for (const t of this.teams) {
+        if (!t.human || this.state !== 'rally' || !t.plan || t.plan.kind !== 'pass') continue;
+        const ax = Math.round(SX(t.plan.xc)), ay = FY - 40;
+        const col = t.human === 1 ? 0x2050ff : 0xff3030;
+        f.fillStyle(0xffffff, 1).fillRect(ax - 4, ay - 6, 9, 4).fillTriangle(ax - 6, ay - 3, ax + 6, ay - 3, ax, ay + 4);
+        f.fillStyle(col, 1).fillRect(ax - 3, ay - 5, 7, 3).fillTriangle(ax - 4, ay - 2, ax + 4, ay - 2, ax, ay + 2);
+      }
     }
     let red = false, showHit = false, showMove = false, hx = 0, hy = 0;
     for (const t of this.teams) {
       if (!t.human || !this.attacking(t)) continue;
-      const ax = Math.round(SX(-t.side * (t.aimD || 6) * CFG.PPM)), ay = FY - 40;
-      f.fillStyle(0xffffff, 1).fillRect(ax - 4, ay - 6, 9, 4).fillTriangle(ax - 6, ay - 3, ax + 6, ay - 3, ax, ay + 4);
-      f.fillStyle(t.human === 1 ? 0x2050ff : 0xff3030, 1).fillRect(ax - 3, ay - 5, 7, 3).fillTriangle(ax - 4, ay - 2, ax + 4, ay - 2, ax, ay + 2);
+      const ax = Math.round(SX(-t.side * (t.aimD || 6) * CFG.PPM));
+      if (md) {
+        // ATTACK TARGET: triangolo nero sul pavimento
+        if (md.target) { f.fillStyle(0x000000, 0.9).fillTriangle(ax - 4, FY + 8, ax + 4, FY + 8, ax, FY + 1); f.lineStyle(1, 0xffffff, 0.7).strokeTriangle(ax - 4, FY + 8, ax + 4, FY + 8, ax, FY + 1); }
+      } else {
+        const ay = FY - 40;
+        f.fillStyle(0xffffff, 1).fillRect(ax - 4, ay - 6, 9, 4).fillTriangle(ax - 6, ay - 3, ax + 6, ay - 3, ax, ay + 4);
+        f.fillStyle(t.human === 1 ? 0x2050ff : 0xff3030, 1).fillRect(ax - 3, ay - 5, 7, 3).fillTriangle(ax - 4, ay - 2, ax + 4, ay - 2, ax, ay + 2);
+      }
       const a = t.attacker; hx = SX(a.x); hy = FY + a.dep - a.z - 52;
       if (this.hitWindow(t)) { red = true; showHit = Math.floor(this.time.now / 120) % 2 === 0; }
       else if (a.z > 0 || (t.plan && t.plan.kind === 'spike' && t.plan.tc < 1.0)) showMove = true;
