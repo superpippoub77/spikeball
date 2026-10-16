@@ -61,6 +61,7 @@ Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squ
 | `titolari` | facoltativo: numeri di maglia tra cui scegliere i 4 in campo; altrimenti li sceglie il gioco per ruolo e livello |
 | `statistiche` | facoltativo: ATTACK, DEFENSE, SPEED (0-100); altrimenti calcolate dai titolari |
 | `capelli`, `pelle` | facoltativi, colori del singolo giocatore |
+| `maglia`, `bordo` | facoltativi, maglia diversa per il singolo giocatore (es. il libero) |
 
 In campo si gioca 4 contro 4 come nell'arcade: centrale, alzatore, attaccante e difensore/battitore.
 

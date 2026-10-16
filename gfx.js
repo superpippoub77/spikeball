@@ -137,7 +137,8 @@ function texDone(t, frames = []) {
 function playerPal(code, i) {
   const P = TEAMS[code];
   if (!P.sks && !P.nums) return P;
-  return Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null });
+  return Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
+    sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
 }
 
 function makePlayerTex(scene, code, i) {
