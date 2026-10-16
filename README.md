@@ -1,5 +1,7 @@
 # Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
 
+> **Vuoi modificare il gioco?** Leggi la [guida allo sviluppo](GUIDA-SVILUPPO.md): mappa dei file, concetti chiave e una tabella "dove si cambia cosa". Ogni file `.js` inizia con l'indice delle sue parti.
+
 ## Menu principale
 | Scheda | Cosa fa |
 |---|---|

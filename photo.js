@@ -22,6 +22,7 @@ startGame = function () { loadPhoto().finally(_startGamePhoto); };
 const hexRGB = h => { const n = parseInt(String(h).replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 
 // atlante ricolorato per una squadra (a risoluzione piena del foglio)
+// ricolora l'atlante: maglia (zona 80) e pantaloncini (160) con i colori della squadra mantenendo le pieghe, pelle (240) per tono
 function photoRecolor(P) {
   const S = PHOTO_SPRITES, W = PHOTO.atlas.width, H = PHOTO.atlas.height;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -78,6 +79,7 @@ function makePhotoTex(scene, code) {
 }
 
 // fotogramma animato secondo lo stato del giocatore
+// sceglie il fotogramma animato (attesa, corsa, bagher, salto, schiacciata, muro, battuta...) dallo stato del giocatore
 function photoFrame(m, p) {
   const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000;
   const pick = (an, i) => 'a' + A[an][clamp(Math.floor(i), 0, A[an].length - 1)];

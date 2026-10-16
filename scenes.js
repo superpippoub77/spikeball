@@ -5,9 +5,19 @@
 //           → formazione → FINAL SET → partita → YOU WON + bonus → TECHNIC n → ...
 //           → CONGRATULATIONS → inserimento nome → GAME OVER
 // ============================================================
+// INDICE DEL FILE: schermate della modalità ARCADE (1991) e avvio del gioco
+//   Base ............ classe comune delle schermate (tasti, crediti, START durante l'attract)
+//   attract ......... Logo -> demo -> Easy -> Challenge -> demo -> Ranking (nextAttract)
+//   menu arcade ..... SelectGame (1/2 giocatori), SelectTeam, SelectSets, HowTo / Technic (istruzioni)
+//   partita 1P ...... MatchIntro, Lineup, startStage/after1P, YouWon, Continue, Congrats, NameEntry, GameOver
+//   2 giocatori ..... start2P/after2P, Winner2P
+//   Practice ........ menu della pratica (tasto T)
+//   startGame/boot .. crea il gioco Phaser (elenco delle scene, risoluzione) dopo il caricamento dei font
+// Le schermate moderne sono in modern.js (menu principale, squadre, impostazioni) e league.js (campionati).
 const KEYS = { start: ['ENTER', 'ONE'], btn: ['Z', 'SPACE'], btn2: ['G'] };
 const ORD = ['1ST', '2ND', '3RD', '4TH', '5TH'];
 
+// jd(k): tasto appena premuto (ignora i tasti tenuti dalla schermata precedente); btn(): Z o Spazio; startPressed(): Invio o 1
 class Base extends Phaser.Scene {
   bg(alpha = 1) { makePattern(this); makeCommon(this); return this.add.image(0, 0, 'pattern').setOrigin(0).setAlpha(alpha); }
   keysInit() {
@@ -377,6 +387,7 @@ class LineupScene extends Base {
 }
 
 // ---------------- flusso 1 giocatore ----------------
+// avvia la partita 1P contro l'avversario di turno (STAGES in config.js)
 function startStage(scene) {
   const st = STAGES[GS.stage];
   scene.scene.start('MatchIntro', { left: GS.p1, right: st.team, label: st.label, scoreLine: true,
@@ -574,6 +585,8 @@ class PracticeScene extends Base {
 }
 
 // ---------------- avvio ----------------
+// Crea il gioco. NUOVA SCENA: aggiungere la sua classe all'elenco 'scene' qui sotto.
+// roster.js, league.js e photo.js 'avvolgono' startGame per caricare squadre, campionati e giocatori foto prima dell'avvio.
 function startGame() {
   if (HIRES) {   // testi nitidi alla risoluzione dello schermo
     const F = Phaser.GameObjects.GameObjectFactory.prototype, text = F.text;

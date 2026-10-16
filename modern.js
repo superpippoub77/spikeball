@@ -8,6 +8,11 @@
 // ============================================================
 
 // ---------------- nazionali in più (Thunder Spikes) + statistiche ----------------
+// INDICE DEL FILE
+//   1. nazionali in più e statistiche (TEAM_STATS: attacco, difesa, velocità 0-100), gruppi della selezione
+//   2. bandiere aggiuntive, palloni (BALLS), arene moderne (ARENAS / makeModernArena)
+//   3. MSET = impostazioni scelte nei menu, OPT = valori possibili; UI = funzioni per pannelli, testi, barre
+//   4. scene: MainMenu, TeamSelect, MatchSettings, MatchStats; startModernMatch avvia la partita
 Object.assign(TEAMS, {
   ARG: { name: 'ARGENTINA', sh: '#9ad0f0', tr: '#ffffff', so: '#1a2a60', ha: ['#2a1408', '#3a2010', '#1a0e06'], sk: '#e8b088', names: ['LUCAS', 'FACU', 'NICO', 'BRUNO', 'EZE', 'SEBA'], fl: 0xd02828 },
   POL: { name: 'POLAND', sh: '#f4f4f4', tr: '#d82030', so: '#d82030', ha: ['#c09050', '#5a3a1a', '#d8b878'], sk: '#f2c8a8', names: ['BARTEK', 'KUBA', 'MICHAL', 'PAWEL', 'OLEK', 'TOMEK'], fl: 0xd06030 },
@@ -171,6 +176,7 @@ const OPT = {
 };
 
 // ---------------- UI helpers ----------------
+// UI.f(dimensione, colore, grassetto): stile di testo dei menu moderni (Arial Black, nitido in ogni versione)
 const UI = {
   bg(scene) {
     const g = scene.add.graphics();
@@ -208,6 +214,7 @@ const UI = {
 };
 
 // ---------------- MENU PRINCIPALE ----------------
+// menu principale a schede: ARCADE, SINGLE MATCH, TUTORIAL, CAREER (campionati, vedi league.js)
 class MainMenuScene extends Base {
   constructor() { super('MainMenu'); }
   create() {
@@ -272,6 +279,7 @@ class MainMenuScene extends Base {
 }
 
 // ---------------- SELEZIONE SQUADRE ----------------
+// selezione squadre a gruppi (Q/E), C = IA/tastiera, schede dei 4 giocatori in campo
 class TeamSelectScene extends Base {
   constructor() { super('TeamSelect'); }
   create() {
@@ -419,6 +427,7 @@ class MatchSettingsScene extends Base {
   }
 }
 
+// traduce MSET (scelte dei menu) nella configurazione della scena Match; skill dell'IA ricavata dalle statistiche
 function startModernMatch(scene) {
   const a = ARENAS[MSET.arena], sp = OPT.start[MSET.start];
   const rules = [{ target: 25, sideOut: false }, { target: 15, sideOut: false }, { target: 15, sideOut: true }][MSET.rules];

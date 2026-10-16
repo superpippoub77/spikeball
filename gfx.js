@@ -2,10 +2,20 @@
 //  Grafica procedurale: nessun asset dell'originale.
 //  Giocatori, volti, arbitro, bandiere, palazzetto, schermate.
 // ============================================================
+// INDICE DEL FILE
+//   1. scheletro delle pose dei giocatori (SKEL) e disegno pixel art (drawPlayer)
+//   2. canvasTex / texDone: texture ad alta risoluzione per HD/3D (leggere prima di creare nuove texture!)
+//   3. texture dei giocatori (makePlayerTex), volti, arbitro, bandiere, pallone, sfondo menu
+//   4. palazzetto arcade (makeArena), presentazione (makeHallTex), formazione (makeLineupCourt)
+//
+// Le versioni HD e 3D sostituiscono alcune funzioni: gfx-hd.js (disegni vettoriali) e photo.js (giocatori foto).
+// FW x FH = cella di un fotogramma del giocatore in pixel nativi; POSES = elenco delle pose (PF['spike'] = indice).
 const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (misurati sul video HD)
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad'];
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
+// Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
+// braccio dietro (ba) e davanti (fa: gomito, mano). Il giocatore guarda a destra. Per cambiare una posa basta spostare i punti.
 const SKEL = {
   idle:  { hip: [14, 25], neck: [17, 14], head: [19, 9], bl: [[17, 31], [13, 38]], fl: [[20, 31], [17, 38]], ba: [[18, 21], [22, 23]], fa: [[19, 21], [23, 22]] },
   run1:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[13, 30], [10, 36]], fl: [[20, 30], [20, 38]], ba: [[15, 19], [13, 22]], fa: [[21, 18], [23, 15]] },
@@ -22,6 +32,7 @@ const SKEL = {
   sad:   { hip: [15, 25], neck: [17, 15], head: [19, 12], bl: [[14, 31], [13, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 20], [15, 25]], fa: [[18, 20], [17, 25]] }
 };
 
+// colore '#rrggbb' schiarito (f > 1) o scurito (f < 1)
 function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16);
   const r = clamp(Math.round(((n >> 16) & 255) * f), 0, 255), g = clamp(Math.round(((n >> 8) & 255) * f), 0, 255), b = clamp(Math.round((n & 255) * f), 0, 255);
@@ -52,6 +63,7 @@ function limb(ctx, ox, a, b, w0, w1, color) {
   ctx.beginPath(); ctx.arc(ox + a[0], a[1], w0 / 2, 0, 7); ctx.fill();
   ctx.beginPath(); ctx.arc(ox + b[0], b[1], w1 / 2, 0, 7); ctx.fill();
 }
+// disegno pixel art di un giocatore nella posa indicata (versione ARCADE); P = colori della squadra
 function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.imageSmoothingEnabled = false;
   const s0 = SKEL[pose];
@@ -157,6 +169,7 @@ function makePlayerTex(scene, code, i) {
 }
 
 // ---------------- volti (ritratti procedurali) ----------------
+// numeri casuali ripetibili: stesso seme = stessa sequenza (volti, pubblico, squadre generate sempre uguali)
 function seeded(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 function hashStr(t) {
   let h = 2166136261;
@@ -203,6 +216,7 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
   px(13, 9, 4, 1, lt);
 }
 
+// texture del volto (40x40) del giocatore idx; expr = 'neutral' o 'cheer'
 function makeFaceTex(scene, code, idx, expr) {
   const key = `face_${code}_${idx}_${expr}`;
   if (scene.textures.exists(key)) return key;
@@ -246,6 +260,7 @@ function makeRefTex(scene, pose) {
 }
 
 // ---------------- bandiere ----------------
+// Bandiere delle nazionali. modern.js e roster.js 'avvolgono' questa funzione per aggiungere altre bandiere, stemmi e loghi.
 function drawFlag(c, x, y, w, h, code) {
   const R = (a, b, cw, ch, col) => { c.fillStyle = col; c.fillRect(x + a, y + b, cw, ch); };
   const v3 = (a, b, d) => { const k = w / 3; R(0, 0, k + 1, h, a); R(k, 0, k + 1, h, b); R(2 * k, 0, w - 2 * k, h, d); };
@@ -283,6 +298,7 @@ function star(c, cx, cy, r) {
   for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
   c.fill();
 }
+// texture della bandiera/stemma/logo di una squadra (memorizzata per codice e misura)
 function makeFlagTex(scene, code, w, h) {
   const key = `flag_${code}_${w}x${h}`;
   if (scene.textures.exists(key)) return key;
@@ -298,6 +314,7 @@ function makeFlagTex(scene, code, w, h) {
 }
 
 // ---------------- oggetti comuni ----------------
+// texture comuni: pallone, pallone grande dei menu, marcatori 1P/2P
 function makeCommon(scene) {
   if (scene.textures.exists('ball')) return;
   let { t, c } = canvasTex(scene, 'ball', 8, 8);
@@ -353,6 +370,7 @@ function crowd(c, x0, y0, w, h, seed, dens = 1) {
 const ADS1 = ['VOLTEX', 'MIRAKO', 'KOBAYA', 'SESIA', 'NORDLUX', 'ALPINA'];
 const ADS2 = ['SPIKE COLA', 'NETWORX', 'RIVA', 'ZEPHYR', 'KOMA'];
 
+// palazzetto della modalità arcade: riflettori e tribune (bg_far), pubblicità (bg_ads), tribuna bassa (bg_mid), cartelloni (bg_boards)
 function makeArena(scene) {
   const W = 560;
   if (scene.textures.exists('bg_far')) return;

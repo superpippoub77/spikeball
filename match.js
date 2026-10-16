@@ -13,6 +13,27 @@
 //      Pulsante prima che l'asso salti = finta (fake attack).
 //  - Muro: pulsante al momento giusto.
 // ============================================================
+// INDICE DELLA SCENA 'Match' (tutte le partite: arcade, demo, pratica, moderna, campionato)
+//   create / buildArena / buildModernArena / makeTeam / buildHud ......... preparazione
+//   setupInput / pollInput ................................................ tastiera (P1 frecce+Z, P2 WASD+G)
+//   update -> step(dt) ................................................... ciclo principale (fisica a passi fissi)
+//   prepareServe / updateServe / toss / hitServe ........................ battuta
+//   think / choosePlayer ................................................... IA: chi va sulla palla e dove
+//   movePlayer / blockerJump / jump / startDive ......................... movimento dei giocatori
+//   updateBall / checkContacts / doPass / doSet / doSpike / doBlock ....... palla e tocchi
+//   ballLanded / endRally / updateDead / applyScore / matchOver ........... punto, punteggio, fine partita
+//   render ................................................................. telecamera, sprite, ombre, indicatori
+//
+// STATI DELLA PARTITA (this.state): intro -> serve -> rally -> dead -> serve ... -> end
+// GIOCATORE (p): x, z (altezza), vz, state (pose: idle, run, pass, set, jump, spike, block, dive, down...), animT (durata posa),
+//   idx = posto in campo (0 centrale, 1 alzatore, 2 attaccante, 3 difensore/battitore), ni = indice del giocatore (nome/volto) che ruota.
+// SQUADRA (t): side (-1 sinistra, +1 destra), human (0 = IA, 1 = P1, 2 = P2), skill, score, touches, plan (piano dell'IA),
+//   attacker / attackType (chi schiaccia e come), blockers (chi salta a muro).
+// PALLA (this.ball): x, h, vx, vy, live (in gioco), held (in mano al battitore), lastTeam / lastPlayer / lastKind (ultimo tocco),
+//   ver = contatore che cambia a ogni tocco (serve per sapere se un evento riguarda ancora lo stesso colpo).
+//
+// Configurazione ricevuta in init(d): mode ('1p','2p','demo','practice','modern'), left/right (codici squadra), humans, skillL/R,
+//   start (punteggio iniziale), time (secondi o null), modern (opzioni della modalità moderna), onDone (cosa fare a fine partita).
 class MatchScene extends Phaser.Scene {
   constructor() { super('Match'); }
 
@@ -81,6 +102,7 @@ class MatchScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------ arena
+  // palazzetto arcade: sfondi a parallasse, tabellone LED, pavimento, linee e rete
   buildArena(floorColor) {
     const W = CFG.OX * 2, FY = CFG.FLOOR_Y;
     this.add.image(0, 0, 'bg_far').setOrigin(0).setScrollFactor(0.5).setDepth(-50);
@@ -123,6 +145,7 @@ class MatchScene extends Phaser.Scene {
     n.fillStyle(0x6a6a70, 1).fillRect(cx - 5, FY + 1, 10, 1);
   }
 
+  // arena della modalità moderna (Thunder Spikes): sfondo scelto, pavimento lucido, palo blu
   buildModernArena(md) {
     const W = CFG.OX * 2, FY = CFG.FLOOR_Y;
     this.add.image(0, ATOP, makeModernArena(this, md.arena)).setOrigin(0).setScrollFactor(0.82, 1).setDepth(-50);
@@ -146,6 +169,7 @@ class MatchScene extends Phaser.Scene {
     this.sbG = this.add.graphics().setVisible(false);
   }
 
+  // modalità moderna: seconda telecamera per l'interfaccia, così quella di gioco può zoomare
   setupModernHud() {
     // seconda telecamera per l'interfaccia: la telecamera di gioco può zoomare senza deformare l'HUD
     this.hudCam = this.cameras.add(0, 0, CFG.W * CFG.ZOOM, CFG.H * CFG.ZOOM).setOrigin(0, 0).setZoom(CFG.ZOOM);
@@ -159,6 +183,7 @@ class MatchScene extends Phaser.Scene {
     this.updateScoreboard();
   }
 
+  // ogni oggetto va su una sola telecamera: quelli fissi (scrollFactor 0) sull'HUD, gli altri sul campo
   routeCameras() {
     if (!this.hudCam) return;
     for (const o of this.children.list) {
@@ -168,6 +193,7 @@ class MatchScene extends Phaser.Scene {
     }
   }
 
+  // statistiche per giocatore (punti, schiacciate, pallonetti, muri, ace) per la schermata MATCH STATS
   stat(p, k) {
     const s = p.team.pstats[p.ni] || (p.team.pstats[p.ni] = { pts: 0, spike: 0, lob: 0, block: 0, ace: 0 });
     s[k]++;
@@ -181,6 +207,7 @@ class MatchScene extends Phaser.Scene {
     for (const k of 'abcdefg') { const r = segs[k]; g.fillStyle(S.includes(k) ? col : 0x221010, 1).fillRect(r[0], r[1], r[2], r[3]); }
   }
 
+  // crea la squadra e i 4 giocatori in campo (sprite compreso: plKey sceglie la texture giusta per la versione grafica)
   makeTeam(id, code, side) {
     const P = TEAMS[code];
     const t = { id, code, side, pal: P, human: 0, skill: 0.8, touches: 0, score: 0, plan: null, planCache: null, attacker: null, attackType: null,
@@ -194,6 +221,7 @@ class MatchScene extends Phaser.Scene {
     return t;
   }
 
+  // testi e pannelli: telecronaca, tempo, arbitro, volti, punteggio grande, aiuti (HIT!/MOVE), sovraimpressione T
   buildHud() {
     this.annText = this.add.text(8, 6, '', TXT(8)).setScrollFactor(0).setDepth(2000).setShadow(1, 1, '#000', 0);
     this.timeLbl = this.add.text(212, 20, 'Time', { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '12px', color: '#ffe820', fontStyle: 'bold' }).setScrollFactor(0).setDepth(2000).setShadow(1, 1, '#000', 0);
@@ -230,6 +258,7 @@ class MatchScene extends Phaser.Scene {
     this.pauseText = this.add.text(160, 100, 'PAUSE', TXT(16, '#ffe030')).setOrigin(0.5).setScrollFactor(0).setDepth(2300).setVisible(false);
   }
 
+  // legge i tasti a ogni frame; inp[1] e inp[2]: l/r/u/d = direzioni tenute, a = pulsante appena premuto
   pollInput() {
     const J = Phaser.Input.Keyboard.JustDown;
     for (const [n, k] of [[1, this.k1], [2, this.k2]]) {
@@ -251,6 +280,7 @@ class MatchScene extends Phaser.Scene {
     }
   }
   // +1 = verso la rete/avversario
+  // direzione orizzontale del giocatore umano: +1 = verso la rete, -1 = verso il fondo (vale per entrambi i lati)
   dirX(t) { const s = this.inp[t.human]; if (!s) return 0; return ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * -t.side; }
   up(t) { const s = this.inp[t.human]; return !!(s && s.u && !s.d); }
   down(t) { const s = this.inp[t.human]; return !!(s && s.d && !s.u); }
@@ -270,6 +300,7 @@ class MatchScene extends Phaser.Scene {
     this.render(delta / 1000);
   }
 
+  // un passo di simulazione (dt <= 1/120 s): tempo, battuta, IA, movimento, palla, punto
   step(dt) {
     const b = this.ball;
     this.simT = (this.simT || 0) + dt * 1000;
@@ -306,6 +337,7 @@ class MatchScene extends Phaser.Scene {
   //   ↑ + A, ↑ + A            = TOWERING SERVE (altissima, ~5 s in aria)
   //   ↗ + A, ↘ + A            = PHANTOM SERVE (la palla si sdoppia in 3 scendendo)
   //   ↖ + A, ↙ + A            = THUNDER SERVE (lampo bianco e palla che piomba giù)
+  // rimette tutti in posizione e dà la palla al battitore (giocatore idx 3 della squadra al servizio)
   prepareServe() {
     const t = this.serving, b = this.ball;
     for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; }
@@ -326,6 +358,8 @@ class MatchScene extends Phaser.Scene {
     this.serveMsg = null;
   }
 
+  // fasi della battuta: walk (va in posizione) -> ready (conto alla rovescia; il pulsante lancia la palla) -> toss (palla in aria,
+  // il pulsante colpisce quando è nella zona giusta). L'IA sceglie il tipo di battuta da sola.
   updateServe(dt) {
     const t = this.serving, s = this.server, b = this.ball, side = t.side;
     const hum = !!t.human;
@@ -400,6 +434,7 @@ class MatchScene extends Phaser.Scene {
     }
   }
 
+  // pannello con volto del battitore, arbitro e conto alla rovescia (solo con ARCADE FX attivo)
   showServePanel(on) {
     const s = this.server;
     if (!this.rules.fx) on = false;
@@ -411,6 +446,7 @@ class MatchScene extends Phaser.Scene {
     }
   }
 
+  // lancio della palla; kind = float, jump, tower, phantom, thunder
   toss(kind) {
     const t = this.serving, s = this.server, b = this.ball, side = t.side;
     this.serveKind = kind; this.servePhase = 'toss'; s.served = false; this.serveZone = false;
@@ -435,6 +471,7 @@ class MatchScene extends Phaser.Scene {
     SFX.blip();
   }
 
+  // colpo di battuta: q = qualità 0-1 (tempismo). q basso = possibile errore (rete o fuori)
   hitServe(s, q) {
     const t = s.team, b = this.ball, side = t.side, k = this.serveKind;
     s.served = true;
@@ -482,6 +519,9 @@ class MatchScene extends Phaser.Scene {
   snap(p, fwd, up) { const b = this.ball; b.x = this.handX(p, fwd); b.h = p.z + up; if (b.x * p.team.side < 1) b.x = p.team.side * 1; }
 
   // ------------------------------------------------ pianificazione
+  // IA della squadra (anche per la squadra umana, per sapere chi deve giocare la palla): in base ai tocchi già fatti
+  // decide il prossimo gesto (pass / set / spike / over), dove (xc) e quando (tc) colpire, e chi (plan.p).
+  // Prepara anche il muro quando l'avversario costruisce l'attacco.
   think(t) {
     const b = this.ball, side = t.side;
     t.plan = null;
@@ -525,6 +565,7 @@ class MatchScene extends Phaser.Scene {
     } else if (!(b.lastTeam === o && b.lastKind === 'spike')) t.blockers = [];
   }
 
+  // il giocatore che arriva prima sul punto di contatto (con piccole preferenze di ruolo)
   choosePlayer(t, kind, xc, tc) {
     const b = this.ball, side = t.side;
     const last = b.lastTeam === t ? b.lastPlayer : null;
@@ -547,6 +588,8 @@ class MatchScene extends Phaser.Scene {
   // punti di partenza della rincorsa (distanza dalla rete) e punti di stacco
   approachStart(p) { return [34, 0, 80, 138][p.idx]; }
 
+  // movimento di un giocatore: in aria segue la fisica del salto; a terra va verso il suo obiettivo
+  // (posizione, rincorsa d'attacco sincronizzata, muro) oppure segue i tasti se è il ricevitore umano.
   movePlayer(p, dt) {
     const t = p.team, side = t.side, b = this.ball;
     if (p.animT > 0) p.animT -= dt;
@@ -633,6 +676,7 @@ class MatchScene extends Phaser.Scene {
     if (t.blockers.includes(p) && !own && this.state === 'rally') this.blockerJump(t, p);
   }
 
+  // la squadra sta attaccando (terzo tocco in arrivo)? hitWindow: la palla è colpibile dallo schiacciatore adesso?
   attacking(t) { const b = this.ball; return this.state === 'rally' && b.live && b.lastTeam === t && t.touches === 2 && b.lastKind === 'set' && t.attacker; }
   hitWindow(t) {
     const b = this.ball, a = t.attacker;
@@ -643,6 +687,7 @@ class MatchScene extends Phaser.Scene {
 
   jumpVX(type) { return type === 'back' ? 70 : type === 'quick' ? 22 : 42; }
 
+  // salto a muro: l'umano col pulsante, l'IA poco dopo lo stacco dello schiacciatore (probabilità legata alla skill)
   blockerJump(t, p) {
     const b = this.ball, o = this.other(t);
     if (p.z > 0 || p.lastBlockJump > this.simT - 700) return;
@@ -685,6 +730,7 @@ class MatchScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------ palla
+  // fisica della palla: gravità, passaggio sopra la rete (o rete toccata), battuta THUNDER, contatti, caduta a terra
   updateBall(dt) {
     const b = this.ball;
     if (b.held) { const p = b.held; b.x = p.x - p.team.side * 5; b.h = p.z + 22; b.vx = b.vy = 0; return; }
@@ -724,8 +770,11 @@ class MatchScene extends Phaser.Scene {
     if (b.lastKind === 'barely') this.announce(`NOW IT IS THE ${t.code}'S BIG CHANCE!`);
   }
 
+  // penalità di ricezione per palle veloci (0 - 0,45)
   speedPen() { const b = this.ball; return clamp((Math.hypot(b.vx, b.vy) - 220) / 500, 0, 0.45); }
 
+  // controlla se un giocatore tocca la palla: muro (un solo tentativo per colpo), bagher/difesa, alzata, schiacciata.
+  // Qui stanno le probabilità di errore dell'IA (p.miss): sono le regolazioni principali del bilanciamento.
   checkContacts() {
     const b = this.ball;
     for (const t of this.teams) {
@@ -803,12 +852,14 @@ class MatchScene extends Phaser.Scene {
     }
   }
 
+  // registra un tocco (conta i tocchi della squadra e aggiorna l'ultimo tocco della palla)
   touch(t, p, kind) {
     const b = this.ball;
     if (b.lastTeam === t) t.touches++; else t.touches = 1;
     b.lastTeam = t; b.lastPlayer = p; b.lastKind = kind; b.ver++;
   }
 
+  // bagher/difesa: q = qualità. q < 0,22 palla rimandata di là a stento, q < 0,45 ricezione sbagliata, altrimenti palla all'alzatore
   doPass(t, p, q, dive) {
     const b = this.ball, side = t.side;
     this.touch(t, p, 'pass');
@@ -837,6 +888,7 @@ class MatchScene extends Phaser.Scene {
     b.vx = v.vx; b.vy = v.vy;
   }
 
+  // alzata: sceglie l'attaccante e il tipo di attacco (high, quick = primo tempo, back = seconda linea)
   doSet(t, p, q) {
     const b = this.ball, side = t.side;
     if (p.z > 2 && (t.human ? t.surprise : (Math.random() < 0.05 + t.skill * 0.05))) {
@@ -887,6 +939,7 @@ class MatchScene extends Phaser.Scene {
     t.quickReq = false; t.quickPlan = false; t.aimD = 6;
   }
 
+  // schiacciata: stile (normale, power, pallonetto), punto d'arrivo, velocità, possibili errori
   doSpike(t, p, q) {
     const b = this.ball, side = t.side, o = this.other(t);
     this.touch(t, p, 'spike');
@@ -941,6 +994,7 @@ class MatchScene extends Phaser.Scene {
     return best;
   }
 
+  // palla rimandata di là senza attacco (free ball)
   doOver(t, p) {
     const b = this.ball, side = t.side;
     this.touch(t, p, 'over');
@@ -950,6 +1004,7 @@ class MatchScene extends Phaser.Scene {
     b.vx = v.vx; b.vy = v.vy;
   }
 
+  // muro: murata vincente (chance), tocco a muro che schizza via (+0,15), oppure la palla passa
   doBlock(t, p) {
     const b = this.ball, o = this.other(t);
     const two = t.blockers.filter(q => q.z > 4 && Math.abs(q.x - p.x) < 14).length >= 2;
@@ -973,6 +1028,7 @@ class MatchScene extends Phaser.Scene {
     } else { b.x = this.handX(p, 6); b.ver++; t.blockedVer = b.ver; }   // passata: niente altri tentativi di muro sullo stesso colpo
   }
   // ------------------------------------------------ fine azione
+  // palla a terra: chi fa il punto (dentro/fuori, ultimo tocco), messaggio della telecronaca, statistiche
   ballLanded() {
     const b = this.ball;
     b.live = false; b.h = 0; b.bouncing = true; b.vy = Math.abs(b.vy) * 0.4; b.vx *= 0.6;
@@ -1016,6 +1072,7 @@ class MatchScene extends Phaser.Scene {
     SFX.whistle(); SFX.cheer(!!face);
   }
 
+  // pausa dopo il punto: gesto dell'arbitro, volto del giocatore, punteggio; poi nuova battuta o fine partita
   updateDead() {
     const P = this.pend, t = this.stateT;
     if (this.mode === 'practice') { if (t > 1.4) this.practiceRestart(); return; }
@@ -1041,6 +1098,7 @@ class MatchScene extends Phaser.Scene {
     }
   }
 
+  // assegna il punto (rally point o cambio palla 1991) e fa ruotare la squadra che conquista la battuta
   applyScore(w) {
     if (this.mode === 'practice') return;
     const wasServing = this.serving === w;
@@ -1062,6 +1120,7 @@ class MatchScene extends Phaser.Scene {
     this.updateScoreboard();
   }
 
+  // fine set: punteggio obiettivo raggiunto con 2 punti di scarto (o tetto)
   matchOver() {
     // dal video: 15-14 si continua, 16-14 e 17-15 chiudono, 16-16 → 17-16 chiude (tetto a 17)
     const [a, b] = this.teams, hi = Math.max(a.score, b.score), lead = Math.abs(a.score - b.score), R = this.rules;
@@ -1073,6 +1132,7 @@ class MatchScene extends Phaser.Scene {
     if (a.score !== b.score && this.state !== 'end') { this.winner = a.score > b.score ? a : b; this.startEnd(); }
   }
 
+  // fine partita: fascia WIN! (moderna) o sequenza arcade
   startEnd() {
     const [a, b] = this.teams;
     const w = a.score > b.score ? a : b;
@@ -1136,6 +1196,7 @@ class MatchScene extends Phaser.Scene {
   }
 
   // ---------------- modalità test: comandi da eseguire in questo momento
+  // testo della sovraimpressione T: cosa premere in questo momento
   testHelp() {
     const t = this.teams.find(x => x.human === 1) || this.teams[0];
     const b = this.ball, o = this.other(t), L = [];
@@ -1221,6 +1282,8 @@ class MatchScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------ rendering
+  // DISEGNO (ogni frame, dopo la simulazione): telecamera (anche zoom e inseguimento nelle versioni moderne/3D),
+  // fotogramma e posizione degli sprite, riflessi, ombre, indicatori (punto di caduta, bersaglio d'attacco), HIT!/MOVE.
   render(dt) {
     const b = this.ball, FY = CFG.FLOOR_Y;
     const fx = b.held ? b.x : b.x + b.vx * 0.12;

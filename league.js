@@ -6,6 +6,12 @@
 //  Giochi le tue gare, le altre della giornata sono simulate; classifica FIPAV.
 //  I progressi restano salvati nel browser.
 // ============================================================
+// INDICE DEL FILE
+//   1. caricamento di campionati.json
+//   2. squadre generate (nomi, numeri, ruoli, colori) per chi non è in squadre.json; leagueTeams collega nome -> codice
+//   3. stato salvato nel browser, risultati (reali o giocati), classifica FIPAV, simulazione delle gare
+//   4. partita della propria squadra giocata a set (startLeagueSet)
+//   5. scene: Leagues (scelta), LeagueTeam, LeagueHub (classifica/risultati/calendario), LeagueSet (tra i set)
 const LEAGUES = { list: [], source: null, errors: [] };
 
 async function loadLeagues() {
@@ -59,6 +65,7 @@ function leagueCode(nome) {
   return 'X' + Math.floor(Math.random() * 99);
 }
 
+// squadra generata: sempre uguale per lo stesso nome (numeri casuali con seme = nome)
 function genTeam(nome) {
   const R = seeded(hashStr('lega:' + asciiUp(nome)));
   const kit = GEN_KITS[Math.floor(R() * GEN_KITS.length)];
@@ -124,6 +131,7 @@ function matchPoints(h, a) {
   return tie ? [1, 2] : [0, 3];
 }
 
+// classifica: punti, vittorie, quoziente set, quoziente punti (ordine FIPAV)
 function standings(lg, st) {
   const T = {};
   for (const s of lg.squadre) T[s.nome] = { nome: s.nome, pt: 0, g: 0, v: 0, p: 0, sv: 0, sp: 0, pf: 0, ps: 0 };
@@ -147,6 +155,7 @@ function simSetScore(win, tb) {
   if (Math.random() < 0.14) { const l = to - 1 + Math.floor(Math.random() * 4); return [l + 2, l]; }   // ai vantaggi
   return [to, to - 2 - Math.floor(Math.random() * (tb ? 8 : 12))];
 }
+// simula una gara: probabilità di vincere il set dalla differenza di forza (+3% in casa)
 function simMatch(hc, ac, sets) {
   const need = Math.ceil(sets / 2), p = clamp(0.5 + (teamPower(hc) - teamPower(ac)) / 40 + 0.03, 0.12, 0.88);
   let h = 0, a = 0; const parz = [];
@@ -158,6 +167,7 @@ function simMatch(hc, ac, sets) {
   return { h, a, parz };
 }
 
+// prima giornata con gare non ancora giocate (-1 = campionato concluso)
 function currentRound(lg, st) {
   const G = allGare(lg);
   for (let gi = 0; gi < lg.giornate.length; gi++) if (G.some(x => x.gi === gi && !garaResult(lg, st, x.g, x.id))) return gi;
@@ -181,6 +191,7 @@ const fmtDate = g => { if (!g.data) return ''; const [y, m, d] = g.data.split('-
 
 // ---------------- partita della propria squadra (a set) ----------------
 const LG = { lg: null, st: null, gara: null, sets: [], gi: 0 };
+// gioca un set della propria gara; a fine set onDone decide se continuare o chiudere la partita
 function startLeagueSet(scene) {
   const { lg, st, gara } = LG, codes = leagueTeams(lg);
   const hc = codes[gara.g.casa].code, ac = codes[gara.g.ospite].code;

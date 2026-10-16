@@ -4,6 +4,12 @@
 //  Stesse pose e stesso scheletro della versione pixel art (gfx.js),
 //  disegnati a GR volte la risoluzione nativa (vedi canvasTex/texDone in gfx.js).
 // ============================================================
+// INDICE DEL FILE
+//   1. forme vettoriali (capsule, muscoli, ellissi) e ombreggiatura a tre toni (hdCel)
+//   2. hdLayer: strato disegnato a parte e contornato di scuro
+//   3. drawPlayerHD: giocatore vettoriale (usa le stesse pose di gfx.js)
+//   4. pallone, pubblico, volti, arbitro e giocatori in miniatura in versione HD
+// Tutte le misure sono in pixel nativi: il canvas è già scalato di GR (vedi canvasTex in gfx.js).
 const HD_LIGHT = (() => { const x = 0.5, y = -0.85, l = Math.hypot(x, y); return [x / l, y / l]; })();   // luce dall'alto, davanti
 const HD_INK = '#17111d';
 
@@ -60,6 +66,7 @@ function hdLayer(R, fn) {
   return out;
 }
 
+// restituisce un canvas FW*R x FH*R con il giocatore; R = risoluzione (6 in HD)
 function drawPlayerHD(pose, P, hair, R) {
   const s0 = SKEL[pose];
   const K = 1.17;
@@ -235,6 +242,7 @@ function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
 
 // ---------------- ritratti ----------------
 function hdStrokeFill(c, path, fill, ink = HD_INK, lw = 0.7) { path(c); c.fillStyle = fill; c.fill(); c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); }
+// ritratto 40x40 in versione HD (stessi tratti casuali della versione pixel: seme = squadra + giocatore)
 function drawFaceHD(c, ox, oy, code, idx, expr) {
   const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
   const skin = P.sk, dk = shade(skin, 0.74), lt = shade(skin, 1.12);
@@ -321,6 +329,7 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
 }
 
 // ---------------- arbitro ----------------
+// arbitro nel riquadro W x H; pose: whistle, pointL, pointR, out, touch, net, win
 function drawRefHD(c, pose, W, H) {
   const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2a4a8a'); bg.addColorStop(1, '#0f2048');
   c.fillStyle = bg; c.fillRect(0, 0, W, H);
