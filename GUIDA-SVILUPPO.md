@@ -55,6 +55,7 @@ Dati e risorse:
 | `loghi/` | Loghi delle squadre |
 | `tools/campionati/` | Convertitore del calendario dal sito della federazione a `campionati.json` |
 | `tools/photo/` | Script che ricavano i fotogrammi 3D dal foglio sprite |
+| `atari2600/` | Versione **Atari 2600** (assembly 6502, cartuccia 4K): vedi `atari2600/README.md` |
 | `.github/workflows/` | Pubblicazione automatica sul sito (FTP Aruba) a ogni modifica di `main` |
 
 ---

@@ -307,51 +307,20 @@ GameLoop:
 
 ; ================================================================ preparazione del fotogramma (VBLANK)
 Setup  SUBROUTINE
+        jsr Players
+        ; scenario: 5 puntatori (fondo, PF0, PF1, PF2, colore PF) del palazzetto o della spiaggia
         lda mode
         and #1
-        beq .indoor
-        lda #<BgB
-        sta BgPtr
-        lda #>BgB
-        sta BgPtr+1
-        lda #<Pf0B
-        sta Pf0Ptr
-        lda #>Pf0B
-        sta Pf0Ptr+1
-        lda #<Pf1B
-        sta Pf1Ptr
-        lda #>Pf1B
-        sta Pf1Ptr+1
-        lda #<Pf2B
-        sta Pf2Ptr
-        lda #>Pf2B
-        sta Pf2Ptr+1
-        lda #<PfcB
-        sta PfcPtr
-        lda #>PfcB
-        sta PfcPtr+1
-        jmp .arenaOk
-.indoor lda #<BgI
-        sta BgPtr
-        lda #>BgI
-        sta BgPtr+1
-        lda #<Pf0I
-        sta Pf0Ptr
-        lda #>Pf0I
-        sta Pf0Ptr+1
-        lda #<Pf1I
-        sta Pf1Ptr
-        lda #>Pf1I
-        sta Pf1Ptr+1
-        lda #<Pf2I
-        sta Pf2Ptr
-        lda #>Pf2I
-        sta Pf2Ptr+1
-        lda #<PfcI
-        sta PfcPtr
-        lda #>PfcI
-        sta PfcPtr+1
-.arenaOk
+        beq .ar
+        lda #10
+.ar     tay
+        ldx #0
+.arena  lda ArenaPtrs,y
+        sta BgPtr,x
+        iny
+        inx
+        cpx #10
+        bne .arena
         ; quale compagno di squadra si disegna in questo fotogramma
         lda frame
         and #1
@@ -369,10 +338,10 @@ Setup  SUBROUTINE
         sec
         sbc byh
         sta BlD
-        ; punteggio
-        ldx #0
-        jsr ScoreDigits
-        ldx #1
+        ; punteggio: una squadra per fotogramma (si aggiorna in 2 fotogrammi, metà del tempo)
+        lda frame
+        and #1
+        tax
         jsr ScoreDigits
         lda mode
         and #1
@@ -431,6 +400,8 @@ SetupPlayer  SUBROUTINE
         sta P0D,y
         lda anim,x
         tax
+        lda ColOfs,x            ; tabella dei colori (pose normali o braccia in alto)
+        pha
         lda FrameOfs,x
         sta temp2
         lda #<Gfx
@@ -448,6 +419,8 @@ SetupPlayer  SUBROUTINE
         pla
         sbc #0
         sta P0Ptr+1,x
+        pla
+        sta temp2
         ; colori: arena*2 + squadra
         lda mode
         and #1
@@ -514,12 +487,18 @@ ScoreDigits  SUBROUTINE
         sta temp2
         lda #5
         sta temp4
-.drow   ldy temp
-        lda FontLo,y
-        ldy temp2
+.drow   ldy temp2
         beq .noT
-        ora FontHi,y
-.noT    ldy temp3
+        lda FontLo,y            ; decina: stessa cifra spostata nel nibble alto
+        asl
+        asl
+        asl
+        asl
+        .byte $2C               ; (salta lda #0)
+.noT    lda #0
+        ldy temp
+        ora FontLo,y
+        ldy temp3
         sta ScoreGfx,y
         inc temp
         lda temp2
@@ -586,8 +565,7 @@ Logic  SUBROUTINE
         lda #1
         sta demo
         jsr NewGame
-.play   jsr Players
-        jsr BallLook
+.play   jsr BallLook        ; (i giocatori si muovono nel VBLANK, dove c'è più tempo: vedi Setup)
         ; suoni
         lda sndT0
         beq .s0off
@@ -876,9 +854,9 @@ MoveBall  SUBROUTINE
         cmp #NETTOP+1
         bcs .noNet
         lda bxh
-        cmp #74
+        cmp #74                 ; la palla (4 pixel) tocca la rete (pixel 76-83): zona simmetrica 74..81
         bcc .noNet
-        cmp #83
+        cmp #82
         bcs .noNet
         lda bvxh
         bmi .fromR
@@ -1740,14 +1718,14 @@ BallLook  SUBROUTINE
 ;                 alz.sx att.sx alz.dx att.dx
 HomeX      .byte 60,    22,    92,    130
 ApproachX  .byte 28,    0,     124            ; indice X-1: 0 = att. sinistro, 2 = att. destro
-TakeoffX   .byte 50,    0,     102
+TakeoffX   .byte 54,    0,     98
 BlockX     .byte 66,    0,     86             ; muro: X = 0 o 2
 ServeX     .byte 2, 150
 HoldOfs    .byte 6, $FE
 SetBallX   .byte 62, 94                       ; dove arriva il bagher (sopra l'alzatore)
 SideMin    .byte 8, 88
 SideMax    .byte 68, 148
-AtkBallX   .byte 56, 100                      ; dove l'alzata porta la palla per la schiacciata
+AtkBallX   .byte 60, 96                       ; dove l'alzata porta la palla per la schiacciata
 SpikeTX    .byte 112, 126, 146, 0, 44, 30, 10, 0   ; schiacciata corta/media/lunga (sinistra, destra)
 DinkTX     .byte 92, 64
 FreeTX     .byte 126, 30
@@ -1755,6 +1733,7 @@ BlockTX    .byte 44, 112                      ; muro: dove ricade la palla (camp
 ServeTX    .byte 100, 120, 144, 0, 56, 36, 12, 0
 NetTX      .byte 70, 86
 TargetPts  .byte 15, 21
+ArenaPtrs  .byte <BgI, >BgI, <Pf0I, >Pf0I, <Pf1I, >Pf1I, <Pf2I, >Pf2I, <PfcI, >PfcI, <BgB, >BgB, <Pf0B, >Pf0B, <Pf1B, >Pf1B, <Pf2B, >Pf2B, <PfcB, >PfcB
 ShirtCol   .byte $44, $84, $38, $C8
 LShift     .byte 2, 3, 4
 GcLo       .byte <410, <202, <98

@@ -45,14 +45,17 @@ SETS = [
     dict(H=0x1E, S=0x3C, T=0x38, P=0x86, L=0x3C, F=0x3A),   # spiaggia, sinistra: canotta arancio, piedi nudi
     dict(H=0xF2, S=0x2A, T=0xC8, P=0x56, L=0x2A, F=0x28),   # spiaggia, destra: canotta verde
 ]
+# colori in comune tra i fotogrammi: una tabella per le pose normali e una per quelle con le braccia in alto
+CK = [kinds[ORDER.index('stand')], kinds[ORDER.index('jump')]]
 for si, cs in enumerate(SETS):
     cols = []
-    for k in kinds:
+    for k in CK:
         cols += [cs[c] for c in k]
     emit(f"Cols{si}", cols, 12)
 out.append("ColSetLo  .byte <Cols0,<Cols1,<Cols2,<Cols3")
 out.append("ColSetHi  .byte >Cols0,>Cols1,>Cols2,>Cols3")
 out.append("FrameOfs  .byte " + ",".join(str(i * PH) for i in range(len(ORDER))))
+out.append("ColOfs    .byte " + ",".join(str(PH if n in ('jump', 'spike') else 0) for n in ORDER))
 
 # ---------- arene: per ogni coppia di righe (0 = in basso) colore di fondo, PF0, PF1, PF2, colore del PF ----------
 import random
@@ -145,14 +148,6 @@ for d in DIG:
     for r in d:
         v = int(r.replace('X', '1').replace('.', '0') + "0", 2)    # 4 bit: 3 pixel + spazio
         hi.append(v << 4); lo.append(v)
-emit("FontHi", hi, 15); emit("FontLo", lo, 15)
+emit("FontLo", lo, 15)   # (il nibble alto si ricava spostando di 4 bit)
 
-# ---------- rimbalzo sul giocatore: velocità orizzontale (8.8 con segno) secondo dove la palla tocca ----------
-# dx = centro palla - centro giocatore (-8..8); sinistra spinge a destra (+), destra a sinistra (-)
-def fx(v): n = int(round(v * 256)) & 0xFFFF; return n & 255, n >> 8
-for nm, d in (("L", 1), ("R", -1)):
-    lo_, hi_ = [], []
-    for dx in range(-8, 9):
-        l, h = fx(dx * 0.16 + d * 0.85); lo_.append(l); hi_.append(h)
-    emit(f"BumpLo{nm}", lo_, 17); emit(f"BumpHi{nm}", hi_, 17)
 print("\n".join(out))
