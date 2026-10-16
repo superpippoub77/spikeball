@@ -73,6 +73,7 @@ function rosterTeam(sq, i) {
     names: st.map(label),
     sks: st.map(p => p.pelle || (tipo === 'nazionale' ? base.sk : R_SKINS[H(p) % R_SKINS.length])),
     ha: st.map(p => p.capelli || R_HAIR[H(p) % R_HAIR.length]),
+    shs: st.map(p => p.maglia || null), trs: st.map(p => p.bordo || null),   // maglia diversa (es. libero)
     nums: st.map(p => p.numero != null && p.numero !== '' ? String(p.numero) : ''),
     roles: st.map(p => asciiUp(p.sigla) || p._roles[0]),
     ages: st.map(p => Number(p.eta) || null),

@@ -5,9 +5,10 @@
       "nome": "Valsesia Team Volley",
       "tipo": "club",
       "colori": {
-        "maglia": "#c81e2a",
-        "bordo": "#ffffff",
-        "pantaloncini": "#1a1a1a"
+        "maglia": "#1c1c1e",
+        "bordo": "#f07a1a",
+        "pantaloncini": "#141414",
+        "pavimento": "#b4553c"
       },
       "giocatori": [
         {
@@ -62,7 +63,9 @@
           "ruolo": "Libero",
           "sigla": "L1",
           "eta": 35,
-          "livello": 5
+          "livello": 5,
+          "maglia": "#f07a1a",
+          "bordo": "#141414"
         },
         {
           "nome": "Matteo",
@@ -80,7 +83,9 @@
           "ruolo": "Libero",
           "sigla": "L2",
           "eta": 15,
-          "livello": 5
+          "livello": 5,
+          "maglia": "#f07a1a",
+          "bordo": "#141414"
         },
         {
           "nome": "Loll",
