@@ -79,7 +79,7 @@ function rosterTeam(sq, i) {
     ages: st.map(p => Number(p.eta) || null),
     lv: st.map(p => Number(p.livello) || 5),
     roster: players.map(p => ({ nome: asciiUp(p.nome), cognome: surname(p), numero: p.numero, ruolo: asciiUp(p.ruolo), sigla: asciiUp(p.sigla), eta: Number(p.eta) || null, livello: Number(p.livello) || null })),
-    club: tipo === 'club', badge: asciiUp(sq.sigla_stemma || '').slice(0, 3) || code
+    club: tipo === 'club', badge: asciiUp(sq.sigla_stemma || '').slice(0, 3) || code, logo: sq.logo || base.logo || null
   });
   if (!sq.colori && tipo === 'club') err('nessun colore indicato: uso maglia blu');
   TEAMS[code] = pal;
@@ -113,6 +113,32 @@ async function loadRosters() {
     catch (e) { /* file:// o file assente: si può trascinare il file sulla finestra */ }
   }
   if (data) { try { applyRosters(data, src); } catch (e) { ROSTER.errors.push(`${src}: ${e.message}`); } }
+  // loghi delle squadre (squadre.json e campionati.json), caricati prima dell'avvio
+  const urls = Object.values(TEAMS).map(t => t.logo);
+  if (typeof LEAGUES !== 'undefined') LEAGUES.list.forEach(l => l.squadre.forEach(s => urls.push(s.logo)));
+  await preloadLogos(urls);
+}
+
+// ---------------- loghi ----------------
+const LOGO_CACHE = {};
+function preloadLogos(urls) {
+  const web = /^https?:$/.test(location.protocol);
+  return Promise.all([...new Set(urls.filter(Boolean))].map(u => new Promise(done => {
+    // da file:// il browser non lascia usare le immagini nel gioco (solo data:...): resta lo stemma
+    if (!web && !String(u).startsWith('data:')) { ROSTER.errors.push(`logo ${u}: apri il gioco con un server locale`); return done(); }
+    const im = new Image();
+    try { if (/^https?:/.test(u) && new URL(u).origin !== location.origin) im.crossOrigin = 'anonymous'; } catch (e) { /* */ }
+    im.onload = () => {
+      try {   // l'immagine deve poter andare in una texture (altrimenti il canvas resta "sporco")
+        const t = document.createElement('canvas'); t.width = t.height = 2; const g = t.getContext('2d');
+        g.drawImage(im, 0, 0, 2, 2); g.getImageData(0, 0, 1, 1); LOGO_CACHE[u] = im;
+      } catch (e) { ROSTER.errors.push(`logo ${u}: il sito non permette di usarlo`); }
+      done();
+    };
+    im.onerror = () => { ROSTER.errors.push(`logo non trovato: ${u}`); done(); };
+    setTimeout(done, 5000);
+    im.src = u;
+  })));
 }
 
 // stemma dei club al posto della bandiera
@@ -120,6 +146,13 @@ const _drawFlagRoster = drawFlag;
 drawFlag = function (c, x, y, w, h, code) {
   const P = TEAMS[code];
   if (!P || !P.club) return _drawFlagRoster(c, x, y, w, h, code);
+  const img = P.logo && LOGO_CACHE[P.logo];
+  if (img) {   // logo della squadra, intero e centrato su fondo bianco
+    c.fillStyle = '#ffffff'; c.fillRect(x, y, w, h);
+    const k = Math.min(w / img.width, h / img.height) * 0.94, iw = img.width * k, ih = img.height * k;
+    c.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+    return;
+  }
   c.fillStyle = P.sh; c.fillRect(x, y, w, h);
   c.fillStyle = P.tr; c.fillRect(x, y + h * 0.72, w, h * 0.12); c.fillRect(x + w * 0.08, y, w * 0.07, h);
   c.fillStyle = P.so; c.fillRect(x, y + h * 0.84, w, h * 0.16);
@@ -134,7 +167,12 @@ window.addEventListener('drop', e => {
   const f = e.dataTransfer && e.dataTransfer.files[0];
   if (!f) return;
   f.text().then(t => {
-    try { JSON.parse(t); localStorage.setItem('sf91_squadre', t); location.reload(); }
+    try {
+      const d = JSON.parse(t);
+      if (d && d.campionati) localStorage.setItem('sf91_campionati', t);
+      if (!d || !d.campionati || d.squadre) localStorage.setItem('sf91_squadre', t);
+      location.reload();
+    }
     catch (err) { alert('File squadre non valido: ' + err.message); }
   });
 });
@@ -151,5 +189,5 @@ MainMenuScene.prototype.create = function () {
   const msg = n ? `SQUADRE: ${n} da ${ROSTER.source}${ROSTER.source === 'file trascinato' ? '  (CANC per toglierlo)' : ''}` : 'SQUADRE PERSONALIZZATE: trascina un file .json sulla finestra';
   this.add.text(160, 200, msg, UI.f(4.5, ROSTER.errors.length ? '#ff9a6a' : '#8aa0c8')).setOrigin(0.5);
   if (ROSTER.errors.length) this.add.text(160, 192, ROSTER.errors[0], UI.f(4.5, '#ff9a6a')).setOrigin(0.5);
-  this.input.keyboard.on('keydown-DELETE', () => { try { localStorage.removeItem('sf91_squadre'); } catch (e) { /* */ } location.reload(); });
+  this.input.keyboard.on('keydown-DELETE', () => { try { localStorage.removeItem('sf91_squadre'); localStorage.removeItem('sf91_campionati'); } catch (e) { /* */ } location.reload(); });
 };

@@ -1,0 +1,865 @@
+{
+ "campionati": [
+  {
+   "id": "1DIV-M-2026",
+   "nome": "Prima Divisione Maschile 2026/27",
+   "set": 3,
+   "squadre": [
+    {
+     "nome": "ALTIORA"
+    },
+    {
+     "nome": "A.S.D. VOLLEY BELLINZAGO"
+    },
+    {
+     "nome": "VALSESIA TEAM VOLLEY"
+    },
+    {
+     "nome": "VOLLEY NOVARA 1 DIV"
+    },
+    {
+     "nome": "S.A.KOALA PALLAVOLO"
+    },
+    {
+     "nome": "2MILA8VOLLEY DOMODOSSOLA"
+    },
+    {
+     "nome": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+    },
+    {
+     "nome": "ERREESSE PAVIC"
+    },
+    {
+     "nome": "GAGLIANICO VOLLEY"
+    },
+    {
+     "nome": "GSO VARALLO POMBIA"
+    }
+   ],
+   "giornate": [
+    {
+     "numero": 1,
+     "gare": [
+      {
+       "data": "2026-10-18",
+       "ora": "18:00",
+       "gara": 573,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2026-10-15",
+       "ora": "21:00",
+       "gara": 574,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "risultato": [
+        3,
+        2
+       ],
+       "parziali": [
+        "25/20",
+        "24/26",
+        "25/21",
+        "17/25",
+        "15/13"
+       ],
+       "ospite": "VOLLEY NOVARA 1 DIV",
+       "arbitro": "Pollarolo Barbara"
+      },
+      {
+       "data": "2026-10-16",
+       "ora": "21:00",
+       "gara": 575,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2026-10-17",
+       "ora": "19:00",
+       "gara": 576,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2026-10-16",
+       "ora": "21:00",
+       "gara": 577,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "GSO VARALLO POMBIA"
+      }
+     ]
+    },
+    {
+     "numero": 2,
+     "gare": [
+      {
+       "data": "2026-10-24",
+       "ora": "17:00",
+       "gara": 578,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2026-10-24",
+       "ora": "20:00",
+       "gara": 579,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "GAGLIANICO VOLLEY"
+      },
+      {
+       "data": "2026-10-23",
+       "ora": "20:30",
+       "gara": 580,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2027-02-06",
+       "ora": "17:30",
+       "gara": 581,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2026-10-24",
+       "ora": "19:00",
+       "gara": 582,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      }
+     ]
+    },
+    {
+     "numero": 3,
+     "gare": [
+      {
+       "data": "2026-11-01",
+       "ora": "18:00",
+       "gara": 583,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2026-10-31",
+       "ora": "19:00",
+       "gara": 584,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2026-10-29",
+       "ora": "21:00",
+       "gara": 585,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2026-10-31",
+       "ora": "20:30",
+       "gara": 586,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2026-10-30",
+       "ora": "21:00",
+       "gara": 587,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      }
+     ]
+    },
+    {
+     "numero": 4,
+     "gare": [
+      {
+       "data": "2026-11-07",
+       "ora": "15:00",
+       "gara": 588,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2026-11-06",
+       "ora": "20:30",
+       "gara": 589,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2026-11-07",
+       "ora": "20:00",
+       "gara": 590,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "GAGLIANICO VOLLEY"
+      },
+      {
+       "data": "2026-11-06",
+       "ora": "20:30",
+       "gara": 591,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2026-11-07",
+       "ora": "19:00",
+       "gara": 592,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      }
+     ]
+    },
+    {
+     "numero": 5,
+     "gare": [
+      {
+       "data": "2026-11-15",
+       "ora": "18:00",
+       "gara": 593,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2026-11-14",
+       "ora": "19:00",
+       "gara": 594,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2026-11-14",
+       "ora": "19:00",
+       "gara": 595,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2026-11-12",
+       "ora": "21:00",
+       "gara": 596,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2026-11-13",
+       "ora": "21:00",
+       "gara": 597,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      }
+     ]
+    },
+    {
+     "numero": 6,
+     "gare": [
+      {
+       "data": "2026-11-21",
+       "ora": "20:00",
+       "gara": 598,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2026-11-21",
+       "ora": "19:00",
+       "gara": 599,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2026-11-21",
+       "ora": "17:30",
+       "gara": 600,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2026-11-20",
+       "ora": "21:00",
+       "gara": 601,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2026-11-20",
+       "ora": "21:00",
+       "gara": 602,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 7,
+     "gare": [
+      {
+       "data": "2026-11-29",
+       "ora": "19:30",
+       "gara": 603,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2026-11-28",
+       "ora": "19:00",
+       "gara": 604,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2026-11-28",
+       "ora": "19:00",
+       "gara": 605,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2026-11-27",
+       "ora": "20:30",
+       "gara": 606,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2026-11-26",
+       "ora": "21:00",
+       "gara": 607,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "GAGLIANICO VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 8,
+     "gare": [
+      {
+       "data": "2026-12-03",
+       "ora": "21:00",
+       "gara": 608,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2026-12-05",
+       "ora": "20:30",
+       "gara": 609,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2026-12-05",
+       "ora": "19:00",
+       "gara": 610,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2026-12-05",
+       "ora": "19:00",
+       "gara": 611,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2026-12-04",
+       "ora": "21:00",
+       "gara": 612,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "ERREESSE PAVIC"
+      }
+     ]
+    },
+    {
+     "numero": 9,
+     "gare": [
+      {
+       "data": "2026-12-13",
+       "ora": "19:30",
+       "gara": 613,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "GAGLIANICO VOLLEY"
+      },
+      {
+       "data": "2026-12-08",
+       "ora": "21:00",
+       "gara": 614,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2026-12-13",
+       "ora": "16:00",
+       "gara": 615,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2026-12-11",
+       "ora": "20:30",
+       "gara": 616,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2026-12-12",
+       "ora": "17:30",
+       "gara": 617,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "GSO VARALLO POMBIA"
+      }
+     ]
+    },
+    {
+     "numero": 10,
+     "gare": [
+      {
+       "data": "2026-12-17",
+       "ora": "20:30",
+       "gara": 618,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2026-12-19",
+       "ora": "19:00",
+       "gara": 619,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2026-12-18",
+       "ora": "20:30",
+       "gara": 620,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2026-12-19",
+       "ora": "17:30",
+       "gara": 621,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2026-12-18",
+       "ora": "20:30",
+       "gara": 622,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "GAGLIANICO VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 11,
+     "gare": [
+      {
+       "data": "2027-01-17",
+       "ora": "18:00",
+       "gara": 623,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2027-01-08",
+       "ora": "21:00",
+       "gara": 624,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2027-01-07",
+       "ora": "21:00",
+       "gara": 625,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2027-01-09",
+       "ora": "20:30",
+       "gara": 626,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2027-01-09",
+       "ora": "19:00",
+       "gara": 627,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "GSO VARALLO POMBIA"
+      }
+     ]
+    },
+    {
+     "numero": 12,
+     "gare": [
+      {
+       "data": "2027-01-15",
+       "ora": "20:30",
+       "gara": 628,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2027-01-16",
+       "ora": "19:00",
+       "gara": 629,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2027-01-16",
+       "ora": "17:30",
+       "gara": 630,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2027-01-16",
+       "ora": "19:00",
+       "gara": 631,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2027-01-16",
+       "ora": "19:00",
+       "gara": 632,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "GAGLIANICO VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 13,
+     "gare": [
+      {
+       "data": "2027-01-20",
+       "ora": "20:30",
+       "gara": 633,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2027-01-23",
+       "ora": "19:00",
+       "gara": 634,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2027-01-22",
+       "ora": "21:00",
+       "gara": 635,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2027-01-21",
+       "ora": "21:00",
+       "gara": 636,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2027-01-23",
+       "ora": "20:30",
+       "gara": 637,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      }
+     ]
+    },
+    {
+     "numero": 14,
+     "gare": [
+      {
+       "data": "2027-01-30",
+       "ora": "19:00",
+       "gara": 638,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2027-01-30",
+       "ora": "17:30",
+       "gara": 639,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2027-01-29",
+       "ora": "20:30",
+       "gara": 640,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2027-02-01",
+       "ora": "20:45",
+       "gara": 641,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2027-01-30",
+       "ora": "20:30",
+       "gara": 642,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "GAGLIANICO VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 15,
+     "gare": [
+      {
+       "data": "2027-02-14",
+       "ora": "18:00",
+       "gara": 643,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2027-02-13",
+       "ora": "19:00",
+       "gara": 644,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2027-02-13",
+       "ora": "19:00",
+       "gara": 645,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "ERREESSE PAVIC"
+      },
+      {
+       "data": "2027-02-12",
+       "ora": "20:30",
+       "gara": 646,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "GAGLIANICO VOLLEY"
+      },
+      {
+       "data": "2027-02-11",
+       "ora": "21:00",
+       "gara": 647,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      }
+     ]
+    },
+    {
+     "numero": 16,
+     "gare": [
+      {
+       "data": "2027-02-20",
+       "ora": "20:30",
+       "gara": 648,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2027-02-20",
+       "ora": "19:00",
+       "gara": 649,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2027-02-20",
+       "ora": "19:00",
+       "gara": 650,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2027-02-20",
+       "ora": "17:30",
+       "gara": 651,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2027-02-19",
+       "ora": "21:00",
+       "gara": 652,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 17,
+     "gare": [
+      {
+       "data": "2027-02-24",
+       "ora": "20:30",
+       "gara": 653,
+       "impianto": "PALESTRA L.S. BONAVENTURA CAVALIERI - VIA MADONNA DI CAMPAGNA, 18 - VERBANIA",
+       "casa": "ALTIORA",
+       "ospite": "VALSESIA TEAM VOLLEY"
+      },
+      {
+       "data": "2027-02-27",
+       "ora": "19:00",
+       "gara": 654,
+       "impianto": "PALASPORT - VIA CAMERI, 100 - BELLINZAGO NOVARESE",
+       "casa": "A.S.D. VOLLEY BELLINZAGO",
+       "ospite": "S.A.KOALA PALLAVOLO"
+      },
+      {
+       "data": "2027-02-27",
+       "ora": "19:00",
+       "gara": 655,
+       "impianto": "PALESTRA S.M.S. FORNARA - VIA PREMUDA, 30 - NOVARA",
+       "casa": "VOLLEY NOVARA 1 DIV",
+       "ospite": "AIAZZONE IMPRESA COSTRUZIONE SPB"
+      },
+      {
+       "data": "2027-02-26",
+       "ora": "20:30",
+       "gara": 656,
+       "impianto": "PALA RACCAGNI - VIA NATALE MENOTTI, 7 - DOMODOSSOLA",
+       "casa": "2MILA8VOLLEY DOMODOSSOLA",
+       "ospite": "GSO VARALLO POMBIA"
+      },
+      {
+       "data": "2027-02-27",
+       "ora": "17:30",
+       "gara": 657,
+       "impianto": "PALESTRA COMUNALE - VIA PIZZORNO, 6 - ROMAGNANO SESIA",
+       "casa": "ERREESSE PAVIC",
+       "ospite": "GAGLIANICO VOLLEY"
+      }
+     ]
+    },
+    {
+     "numero": 18,
+     "gare": [
+      {
+       "data": "2027-03-02",
+       "ora": "20:30",
+       "gara": 658,
+       "impianto": "PALESTRA SCUOLE MEDIE - PIAZZA AVIGNONE 1 - GAGLIANICO",
+       "casa": "GAGLIANICO VOLLEY",
+       "ospite": "ALTIORA"
+      },
+      {
+       "data": "2027-03-04",
+       "ora": "21:00",
+       "gara": 659,
+       "impianto": "PALESTRA COMUNALE ITALO GRASSI - VIA D'ADDA 33 - VARALLO SESIA",
+       "casa": "VALSESIA TEAM VOLLEY",
+       "ospite": "A.S.D. VOLLEY BELLINZAGO"
+      },
+      {
+       "data": "2027-03-06",
+       "ora": "20:30",
+       "gara": 660,
+       "impianto": "PALESTRA COMUNALE - strada provinciale 21 - FONTANETO D'AGOGNA",
+       "casa": "S.A.KOALA PALLAVOLO",
+       "ospite": "VOLLEY NOVARA 1 DIV"
+      },
+      {
+       "data": "2027-03-06",
+       "ora": "19:00",
+       "gara": 661,
+       "impianto": "PALESTRA SC. M. VILLAGGIO LAMARMORA - VIA 53^ FANTERIA - BIELLA",
+       "casa": "AIAZZONE IMPRESA COSTRUZIONE SPB",
+       "ospite": "2MILA8VOLLEY DOMODOSSOLA"
+      },
+      {
+       "data": "2027-03-06",
+       "ora": "19:00",
+       "gara": 662,
+       "impianto": "PALESTRA COMUNALE - via lana 1 - VARALLO POMBIA",
+       "casa": "GSO VARALLO POMBIA",
+       "ospite": "ERREESSE PAVIC"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

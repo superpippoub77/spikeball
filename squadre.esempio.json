@@ -4,28 +4,124 @@
       "codice": "PLB",
       "nome": "Polisportiva Lago Blu",
       "tipo": "club",
-      "colori": { "maglia": "#1a6ad8", "bordo": "#ffffff", "pantaloncini": "#0c1a40", "pavimento": "#e0a040" },
-      "titolari": [3, 9, 11, 1],
+      "colori": {
+        "maglia": "#1a6ad8",
+        "bordo": "#ffffff",
+        "pantaloncini": "#0c1a40",
+        "pavimento": "#e0a040"
+      },
+      "titolari": [
+        3,
+        9,
+        11,
+        1
+      ],
       "giocatori": [
-        { "nome": "Marco",   "cognome": "Rossi",    "numero": 3,  "ruolo": "Alzatore", "sigla": "P",  "eta": 27, "livello": 6 },
-        { "nome": "Paolo",   "cognome": "Bianchi",  "numero": 9,  "ruolo": "Centrale", "sigla": "C1", "eta": 24, "livello": 6 },
-        { "nome": "Andrea",  "cognome": "Verdi",    "numero": 11, "ruolo": "Opposto",  "sigla": "O",  "eta": 22, "livello": 7 },
-        { "nome": "Stefano", "cognome": "Neri",     "numero": 1,  "ruolo": "Libero",   "sigla": "L1", "eta": 30, "livello": 5 },
-        { "nome": "Luca",    "cognome": "Gialli",   "numero": 7,  "ruolo": "Banda",    "sigla": "S1", "eta": 19, "livello": 5 },
-        { "nome": "Davide",  "cognome": "Rossi",    "numero": 14, "ruolo": "Centrale", "sigla": "C2", "eta": 33, "livello": 4, "capelli": "#d8b060" }
-      ]
+        {
+          "nome": "Marco",
+          "cognome": "Rossi",
+          "numero": 3,
+          "ruolo": "Alzatore",
+          "sigla": "P",
+          "eta": 27,
+          "livello": 6
+        },
+        {
+          "nome": "Paolo",
+          "cognome": "Bianchi",
+          "numero": 9,
+          "ruolo": "Centrale",
+          "sigla": "C1",
+          "eta": 24,
+          "livello": 6
+        },
+        {
+          "nome": "Andrea",
+          "cognome": "Verdi",
+          "numero": 11,
+          "ruolo": "Opposto",
+          "sigla": "O",
+          "eta": 22,
+          "livello": 7
+        },
+        {
+          "nome": "Stefano",
+          "cognome": "Neri",
+          "numero": 1,
+          "ruolo": "Libero",
+          "sigla": "L1",
+          "eta": 30,
+          "livello": 5
+        },
+        {
+          "nome": "Luca",
+          "cognome": "Gialli",
+          "numero": 7,
+          "ruolo": "Banda",
+          "sigla": "S1",
+          "eta": 19,
+          "livello": 5
+        },
+        {
+          "nome": "Davide",
+          "cognome": "Rossi",
+          "numero": 14,
+          "ruolo": "Centrale",
+          "sigla": "C2",
+          "eta": 33,
+          "livello": 4,
+          "capelli": "#d8b060"
+        }
+      ],
+      "logo": "loghi/esempio-lago-blu.png"
     },
     {
       "codice": "MTV",
       "nome": "Monte Verde Volley",
       "tipo": "club",
-      "colori": { "maglia": "#1e9a40", "bordo": "#f2c818", "pantaloncini": "#ffffff" },
-      "statistiche": [78, 74, 80],
+      "colori": {
+        "maglia": "#1e9a40",
+        "bordo": "#f2c818",
+        "pantaloncini": "#ffffff"
+      },
+      "statistiche": [
+        78,
+        74,
+        80
+      ],
       "giocatori": [
-        { "nome": "Giorgio", "cognome": "Monti",  "numero": 2,  "ruolo": "Alzatore", "eta": 25, "livello": 6 },
-        { "nome": "Fabio",   "cognome": "Valle",  "numero": 5,  "ruolo": "Centrale", "eta": 28, "livello": 6 },
-        { "nome": "Nicola",  "cognome": "Prati",  "numero": 10, "ruolo": "Banda",    "eta": 21, "livello": 7 },
-        { "nome": "Enzo",    "cognome": "Boschi", "numero": 4,  "ruolo": "Libero",   "eta": 35, "livello": 5 }
+        {
+          "nome": "Giorgio",
+          "cognome": "Monti",
+          "numero": 2,
+          "ruolo": "Alzatore",
+          "eta": 25,
+          "livello": 6
+        },
+        {
+          "nome": "Fabio",
+          "cognome": "Valle",
+          "numero": 5,
+          "ruolo": "Centrale",
+          "eta": 28,
+          "livello": 6
+        },
+        {
+          "nome": "Nicola",
+          "cognome": "Prati",
+          "numero": 10,
+          "ruolo": "Banda",
+          "eta": 21,
+          "livello": 7
+        },
+        {
+          "nome": "Enzo",
+          "cognome": "Boschi",
+          "numero": 4,
+          "ruolo": "Libero",
+          "eta": 35,
+          "livello": 5
+        }
       ]
     }
   ]
