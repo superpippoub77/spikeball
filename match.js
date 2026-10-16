@@ -634,7 +634,7 @@ class MatchScene extends Phaser.Scene {
         if (t.plan && t.plan.kind === 'set' && t.plan.p === p && this.dirX(t) > 0) t.surprise = true;
       }
       if (p.z <= 0) { p.z = 0; p.vz = 0; p.vx = 0; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
-      else if (p.animT <= 0) p.state = t.blockers.includes(p) && b.lastTeam !== t ? 'block' : (p.vz > 40 ? 'jump' : p.state === 'spike' ? 'spike' : 'jump');
+      else if (p.animT <= 0) p.state = t.blockers.includes(p) && b.lastTeam !== t ? 'block' : (p.vz > 40 ? 'jump' : p.state === 'spike' || p.state === 'dump' ? p.state : 'jump');
       this.clampX(p); return;
     }
     if (this.state === 'serve' && p === this.server && this.servePhase !== 'walk') return;
@@ -930,7 +930,7 @@ class MatchScene extends Phaser.Scene {
     // palleggio di seconda (vietato nel beach: il palleggio deve andare dritto, niente "dump")
     if (p.z > 2 && !this.beach && (t.human ? t.surprise : (Math.random() < 0.05 + t.skill * 0.05))) {
       this.touch(t, p, 'spike');
-      p.state = 'spike'; p.animT = 0.25;
+      p.state = 'dump'; p.animT = 0.3;   // di fronte, colpo con il braccio più lontano dalla rete
       let v = PHYS.arcTo(b.x, b.h, -side * rnd(25, 55), 0, b.h + 8);
       for (let i = 0; i < 10 && !PHYS.clears(b.x, b.h, v, 3); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(25, 55), 0, b.h + 12 + i * 4);
       b.vx = v.vx; b.vy = v.vy; b.lastKind = 'dink';
@@ -1361,6 +1361,11 @@ class MatchScene extends Phaser.Scene {
     const t = p.team, b = this.ball;
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
     if (st === 'pass' && p.animT > 0.22) return 'passload';
+    // palleggio: mentre la palla scende l'alzatore si piega e porta le mani a finestra sopra la fronte, poi spinge
+    if (st !== 'set' && st !== 'dump' && st !== 'dive' && this.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'set' && b.vy < 0) {
+      const tl = PHYS.timeToH(b.h, b.vy, t.jumpSet ? CFG.SET_JUMP_H : 40);
+      if (tl !== null && tl < 0.35 && Math.abs(p.x - t.plan.xc) < 16) return 'setload';
+    }
     if (p.z > 0 && (st === 'jump' || st === 'idle')) {
       const attacking = (t.attacker === p && !p.decoy && b.lastTeam === t && t.touches === 2) ||
                         (this.state === 'serve' && this.server === p && this.serveKind === 'jump' && !p.served);
@@ -1378,7 +1383,12 @@ class MatchScene extends Phaser.Scene {
   // fotogramma e posizione degli sprite, riflessi, ombre, indicatori (punto di caduta, bersaglio d'attacco), HIT!/MOVE.
   render(dt) {
     const b = this.ball, FY = CFG.FLOOR_Y;
-    const fx = b.held ? b.x : b.x + b.vx * 0.12;
+    let fx = b.held ? b.x : b.x + b.vx * 0.12;
+    // battuta: appena la palla è lanciata la telecamera si sposta verso la squadra che riceve (come in TV),
+    // così la palla si vede arrivare in tempo per piazzare il ricevitore
+    const rs = this.serving ? -this.serving.side : 0;
+    if (this.state === 'serve' && this.servePhase === 'toss') fx = rs * 30;
+    else if (this.state === 'rally' && b.lastKind === 'serve' && b.live) fx = rs * 95;
     // telecamera morbida: obiettivo filtrato + "smooth damp" (niente scatti ai colpi)
     const target = clamp(SX(fx) - 160, 0, CFG.OX * 2 - CFG.W);
     if (this.camT === undefined) { this.camT = target; this.camV = 0; }

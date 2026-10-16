@@ -79,7 +79,7 @@ function photoBeach(d, R, W, H, sk, ref) {
 
 // pose statiche (menu, schermate) prese dalle animazioni
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 4], pass: ['bagher', 3], set: ['block', 2], jump: ['jump', 5],
-  spkload: ['spike', 3], spkfol: ['spike', 8], passload: ['bagher', 1],
+  spkload: ['spike', 3], spkfol: ['spike', 8], passload: ['bagher', 1], setload: ['block', 1], dump: ['spike', 6],
   spike: ['spike', 5], block: ['block', 4], dive: ['dive', 0], down: ['down', 0], cheer: ['block', 5], toss: ['serve', 3], sad: ['idle', 0] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
@@ -113,6 +113,7 @@ function photoFrame(m, p) {
   if (st === 'down') return pick('down', 0);
   if (st === 'pass') return pick('bagher', 2 + prog(0.3) * 4);                 // contatto e accompagnamento
   if (st === 'set') return pick('block', 2 + prog(0.3) * 2);                   // mani sopra la testa
+  if (st === 'dump') return pick('spike', 5 + prog(0.3) * 3);
   if (st === 'toss') return pick('serve', 2 + prog(0.4) * 2);
   if (st === 'spike') {
     if (m.server === p && m.ball.lastKind === 'serve') return pick('serve', 5 + prog(0.3) * 3);

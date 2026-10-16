@@ -120,15 +120,39 @@ for nm, beach in (("I", False), ("B", True)):
     tabs[4] = [c if (tabs[1][y] | tabs[2][y] | tabs[3][y]) or y == 5 else None for y, c in enumerate(tabs[4])]
     for lab, tab in zip(("Bg", "Pf0", "Pf1", "Pf2", "Pfc"), tabs):
         tables.append((f"{lab}{nm}", tab))
-blob, offs = [], {}
-def fits(o, tab):
-    return all(o + i >= len(blob) or v is None or blob[o + i] is None or blob[o + i] == v for i, v in enumerate(tab))
-for lab, tab in sorted(tables, key=lambda t: -sum(1 for v in t[1] if v is not None)):
-    o = next(o for o in range(len(blob) + 1) if fits(o, tab))
-    for i, v in enumerate(tab):
-        if o + i >= len(blob): blob.append(v)
-        elif blob[o + i] is None: blob[o + i] = v
-    offs[lab] = o
+# il TIA ignora il bit 0 dei colori e il nibble basso di PF0: anche quei bit sono "qualsiasi" (maschere).
+# Si prova qualche ordine di inserimento diverso e si tiene il blocco più corto.
+def mask_of(lab):
+    return 0xF0 if lab.startswith("Pf0") else 0xFE if lab.startswith(("Bg", "Pfc")) else 0xFF
+def pack(order):
+    blob, offs = [], {}
+    for lab, tab in order:
+        m = mask_of(lab)
+        def ok(o):
+            for i, v in enumerate(tab):
+                if v is None or o + i >= len(blob) or blob[o + i] is None: continue
+                bv, bm = blob[o + i]
+                if (v ^ bv) & m & bm: return False
+            return True
+        o = next(o for o in range(len(blob) + 1) if ok(o))
+        for i, v in enumerate(tab):
+            if v is None:
+                if o + i >= len(blob): blob.append(None)
+                continue
+            if o + i >= len(blob): blob.append((v & m, m))
+            elif blob[o + i] is None: blob[o + i] = (v & m, m)
+            else:
+                bv, bm = blob[o + i]; blob[o + i] = ((v & m) | (bv & bm & ~m & 0xFF), m | bm)
+        offs[lab] = o
+    return blob, offs
+order = sorted(tables, key=lambda t: -sum(1 for v in t[1] if v is not None))
+blob, offs = pack(order)
+RS = random.Random(1)
+for _ in range(400):
+    o = order[:]; RS.shuffle(o)
+    b2, f2 = pack(o)
+    if len(b2) < len(blob): blob, offs = b2, f2
+blob = [None if c is None else c[0] for c in blob]
 blob = [0 if v is None else v for v in blob]
 emit("ArenaBlob", blob, 16)
 for lab, _ in tables:

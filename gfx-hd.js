@@ -68,8 +68,8 @@ function hdLayer(R, fn) {
 
 // restituisce un canvas FW*R x FH*R con il giocatore; R = risoluzione (6 in HD)
 // alzatore di fronte in palleggio (stessa figura di drawPlayerFront in gfx.js, in versione vettoriale)
-function drawPlayerFrontHD(P, hair, R) {
-  const F = FRONT, B = P.beach, WHITE = '#f4f4f8';
+function drawPlayerFrontHD(P, hair, R, pose) {
+  const F = frontOf(pose), d = F.dy, B = P.beach, WHITE = '#f4f4f8';
   const legs = hdLayer(R, g => {
     for (const [h, k, f] of [[F.hipL, F.kneeL, F.footL], [F.hipR, F.kneeR, F.footR]]) {
       hdCel(g, hdMuscle(h, k, 2.6, 2.8, 2.8, 2.1), P.sk, 0.9, 0.5);
@@ -82,11 +82,12 @@ function drawPlayerFrontHD(P, hair, R) {
     }
   });
   const body = hdLayer(R, g => {
-    hdCel(g, hdPoly([[10, 27], [22, 27], [22.6, B ? 36 : 33], [17, B ? 36 : 33], [16, 30.5], [15, B ? 36 : 33], [9.4, B ? 36 : 33]]), P.so, 1, 0.5);
-    hdCel(g, g2 => { g2.beginPath(); g2.moveTo(9, 16); g2.quadraticCurveTo(16, 14.5, 23, 16); g2.lineTo(21.8, 28.5); g2.quadraticCurveTo(16, 29.5, 10.2, 28.5); g2.closePath(); }, P.sh, 1.4, 0.7);
+    g.translate(0, d);   // busto e testa abbassati/alzati secondo la posa (le braccia hanno coordinate finali)
+    hdCel(g, hdPoly([[11, 27], [21, 27], [21.6, B ? 36 : 33], [17, B ? 36 : 33], [16, 30.5], [15, B ? 36 : 33], [10.4, B ? 36 : 33]]), P.so, 1, 0.5);
+    hdCel(g, g2 => { g2.beginPath(); g2.moveTo(9.5, 16); g2.quadraticCurveTo(16, 14.8, 22.5, 16); g2.lineTo(20.6, 28.5); g2.quadraticCurveTo(16, 29.3, 11.4, 28.5); g2.closePath(); }, P.sh, 1.4, 0.7);
     g.strokeStyle = P.tr; g.lineWidth = 0.8; g.beginPath(); g.moveTo(13.5, 16); g.quadraticCurveTo(16, 18.5, 18.5, 16); g.stroke();   // scollo
     if (P.num) { g.font = 'bold 5px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 16, 22.5); g.fillStyle = P.tr; g.fillText(P.num, 16, 22.5); }
-    const [hx, hy] = F.head;
+    const hx = F.head[0], hy = F.head[1] - d;
     hdCel(g, hdCapsule([16, 16], [16, 13], 1.9, 1.8), P.sk, 0.6, 0.4);
     hdCel(g, hdEllipse([hx, hy], 3.9, 4.4), P.sk, 0.9, 0.45);
     hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx, hy - 1.2, 4.3, 3.6, 0, Math.PI * 1.02, Math.PI * 1.98); g2.lineTo(hx + 4.2, hy + 0.5); g2.quadraticCurveTo(hx, hy - 2.6, hx - 4.2, hy + 0.5); g2.closePath(); }, hair, 1, 0.7);
@@ -111,7 +112,7 @@ function drawPlayerFrontHD(P, hair, R) {
 }
 
 function drawPlayerHD(pose, P, hair, R) {
-  if (pose === 'set') return drawPlayerFrontHD(P, hair, R);
+  if (FRONTS[pose]) return drawPlayerFrontHD(P, hair, R, pose);
   const s0 = SKEL[pose];
   const K = 1.17;
   const sc = p => [16 + (p[0] - 16) * 1.06, 47 - (39 - p[1]) * K];
@@ -172,12 +173,12 @@ function drawPlayerHD(pose, P, hair, R) {
     leg(g, s.fl, false);
     // bacino / pantaloncini con riga laterale
     const w0 = lerpP(s.neck, s.hip, 0.84);
-    hdCel(g, hdCapsule(w0, s.hip, 3.8, 3.6), P.so, 1, 0.6, false);
+    hdCel(g, hdCapsule(w0, s.hip, 3.2, 3.0), P.so, 1, 0.6, false);
     g.strokeStyle = P.tr; g.lineWidth = 0.6; g.beginPath(); const t0 = Q(w0, 0.6), t1 = Q(s.hip, 1.4); g.moveTo(t0[0], t0[1]); g.lineTo(t1[0], t1[1] + 2); g.stroke();
-    // busto: spalle larghe, petto pieno, vita stretta
+    // busto da atleta, snello: spalle appena più larghe, vita stretta
     const c1 = lerpP(s.neck, s.hip, -0.04), c2 = lerpP(s.neck, s.hip, 0.88), cm = lerpP(c1, c2, 0.4);
     const torso = g2 => {
-      const p = [Q(c1, 5.6), Q(c1, -5.2), Q(cm, -6.6), Q(c2, -4.4), Q(c2, 4.4), Q(cm, 6)];
+      const p = [Q(c1, 4.8), Q(c1, -4.5), Q(cm, -5.4), Q(c2, -3.6), Q(c2, 3.6), Q(cm, 5)];
       g2.beginPath(); g2.moveTo(p[0][0], p[0][1]);
       g2.quadraticCurveTo(lerpP(p[0], p[1], 0.5)[0], lerpP(p[0], p[1], 0.5)[1] - 1.2, p[1][0], p[1][1]);
       g2.quadraticCurveTo(p[2][0], p[2][1], p[3][0], p[3][1]);

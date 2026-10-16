@@ -119,10 +119,11 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Cambiare i **tasti** | `match.js` → `setupInput`; menu → `Base.keysInit` in `scenes.js` |
 | Cambiare un **suono** | `audio.js` |
 | Colori e aspetto delle **arene moderne** | `modern.js` → `ARENAS`, `makeModernArena` |
-| Ritoccare una **posa** dei giocatori disegnati | `gfx.js` → `SKEL` (punti di anca, collo, testa, gambe, braccia); l'alzatore frontale è `drawPlayerFront` |
-| Cambiare le **fasi dei movimenti** (caricamento della schiacciata, piegamento del bagher) | `match.js` → `motion` (sceglie la posa secondo il momento del gesto) |
+| Ritoccare una **posa** dei giocatori disegnati | `gfx.js` → `SKEL` (punti di anca, collo, testa, gambe, braccia); le pose frontali dell'alzatore (palleggio caricato `setload`, spinta `set`, pallonetto di seconda `dump`) sono in `FRONTS` |
+| Cambiare le **fasi dei movimenti** (caricamento della schiacciata, piegamento del bagher, mani alla fronte nel palleggio) | `match.js` → `motion` (sceglie la posa secondo il momento del gesto) |
 | Rifare i **giocatori 3D** da un nuovo foglio sprite | `tools/photo/README.md` |
 | Cambiare le **schede del menu principale** | `modern.js` → `MainMenuScene` (`this.cards`) |
+| Cambiare dove guarda la **telecamera** (anche in battuta, verso chi riceve) | `match.js` → inizio di `render` |
 | Cambiare le **posizioni in campo** o aggiungere un numero di giocatori | `config.js` → `FORMATIONS` (posti: d, dep, pos) e `PLAYER_COUNTS` |
 | Regole del **beach volley** (punti, cambio campo, misure) | `beach.js` → `BEACH_FORMATS`, `startBeachMatch`; `CFG.BEACH_HALF`; in `match.js` cerca `this.beach` |
 | Aggiungere una **spiaggia** o una **coppia beach** | `beach.js` → `BEACH_ARENAS` / `makeBeachArena`, squadre all'inizio del file + `BEACH_TEAMS` |

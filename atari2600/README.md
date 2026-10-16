@@ -12,8 +12,11 @@ Accanto alla 16K c'è la cartuccia da **4K**, giocabile da [`4k/index.html`](4k/
 - **Difensore**: è disegnato da solo, riceve, batte e attacca dalla seconda linea.
 - **Alternanza**: le due linee si alternano a 30 Hz. La palla è sempre disegnata con il missile dello sprite che in quel fotogramma mostra un giocatore solo; il segno di caduta è l'oggetto *ball* del TIA.
 - **Alzate**: GIÙ = primo tempo del centrale (veloce, si mura una volta su due), verso il fondo = seconda linea del difensore, niente = palla alta allo schiacciatore.
-- **Comandi**: gli stessi della 16K, senza i menu (GAME SELECT: 1/2 giocatori, palazzetto/spiaggia).
-- **Compilazione**: `cd 4k && python3 gen_data.py > data.inc && node build.js` crea `sf4k.bin`, che occupa esattamente 4096 byte. Per farci stare i 4 giocatori, le tabelle delle arene si sovrappongono dove coincidono.
+- **GAME SELECT**: scorre 8 combinazioni. In alto a sinistra compare il numero di persone (**1** contro il computer, **2** uno contro l'altro), a destra i giocatori per squadra (**4** o **2**). Lo sfondo mostra l'arena: palazzetto (set a 15) o spiaggia (set a 21).
+- **2 contro 2**: in prima linea c'è solo l'alzatore (al posto del palleggio). Il difensore riceve, poi attacca a rete sull'alzata, come nel beach.
+- **Difficoltà**: le due levette danno 4 livelli del computer. **B B** = 1 (facile), **sinistra A** = 2, **destra A** = 3, **A A** = 4 (il più forte). A ogni livello il computer sbaglia la metà in ricezione e mura più spesso.
+- **Comandi**: gli stessi della 16K, senza i menu.
+- **Compilazione**: `cd 4k && python3 gen_data.py > data.inc && node build.js` crea `sf4k.bin`, che occupa esattamente 4096 byte. Per farci stare tutto, le tabelle delle arene si sovrappongono dove coincidono. Contano anche i bit che il TIA ignora: il bit 0 dei colori e il nibble basso di PF0.
 
 ## Modalità (versione 16K)
 - **1 PLAYER**: scegli la tua nazionale tra 10 (Italia, Francia, Germania, Spagna, Brasile, USA, Giappone, Cina, Cuba, URSS), poi affronti 6 livelli.
