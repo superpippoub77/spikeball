@@ -226,7 +226,7 @@ class MainMenuScene extends Base {
       { label: 'ARCADE', sub: 'POWER SPIKES 1991', hint: 'Il gioco arcade originale: gettoni, 5 avversari, Technic', icon: 'stick' },
       { label: 'SINGLE MATCH', sub: 'VS', hint: 'Partita singola: squadre, campo, pallone e regole a scelta', icon: 'vs' },
       { label: 'TUTORIAL', sub: 'PRATICA', hint: 'Allenati su ogni fondamentale con i comandi in sovraimpressione', icon: 'tut' },
-      { label: 'CAREER', sub: 'TORNEO', hint: 'Torneo a eliminazione contro 4 squadre del Gruppo I', icon: 'cup' }
+      { label: 'CAREER', sub: 'CAMPIONATI', hint: 'Campionati (campionati.json) o torneo contro le nazionali', icon: 'cup' }
     ];
     this.cardObjs = this.cards.map((cd, i) => {
       const x = 52 + i * 72, y = 112;
@@ -266,7 +266,7 @@ class MainMenuScene extends Base {
       if (this.sel === 0) { GS.attract = -1; nextAttract(this); }
       else if (this.sel === 1) { GS.career = null; this.scene.start('TeamSelect'); }
       else if (this.sel === 2) this.scene.start('Practice');
-      else { GS.career = { round: 0 }; this.scene.start('TeamSelect'); }
+      else this.scene.start('Leagues');
     }
   }
 }

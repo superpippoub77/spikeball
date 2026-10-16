@@ -68,8 +68,25 @@ Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squ
 | `statistiche` | facoltativo: ATTACK, DEFENSE, SPEED (0-100); altrimenti calcolate dai titolari |
 | `capelli`, `pelle` | facoltativi, colori del singolo giocatore |
 | `maglia`, `bordo` | facoltativi, maglia diversa per il singolo giocatore (es. il libero) |
+| `logo` (della squadra) | facoltativo: immagine PNG/JPG/SVG (es. `"logo": "loghi/valsesia.png"` nella cartella `loghi/`, o un indirizzo web che lo permetta). Sostituisce lo stemma ovunque. Serve aprire il gioco con un server (o il sito): da `file://` resta lo stemma |
 
 In campo si gioca 4 contro 4 come nell'arcade: centrale, alzatore, attaccante e difensore/battitore.
+
+### Campionati (campionati.json)
+Da **CAREER** scegli un campionato (o il vecchio torneo delle nazionali) e la tua squadra:
+- giochi le tue gare a set (**SET: 1 / 3 / 5**, il set decisivo a 15), oppure le **SIMULI**; le altre gare della giornata sono simulate secondo la forza delle squadre;
+- **classifica FIPAV**: 3 punti per il 3-0/3-1, 2-1 al tie-break; a pari punti contano vittorie, quoziente set e quoziente punti;
+- **Q/E** mostra classifica, risultati della giornata e calendario; la scheda della gara ha data, ora, palestra e arbitro;
+- i **risultati reali** già presenti nel calendario contano e non si rigiocano;
+- le squadre che sono in `squadre.json` (stesso nome) giocano con i loro giocatori; le altre vengono **create in automatico** (nomi, numeri, ruoli, età, colori; sempre uguali);
+- i progressi restano salvati nel browser (**RICOMINCIA** per ripartire).
+
+Per aggiungere un campionato copia il calendario dal sito della federazione in un file di testo e convertilo:
+```sh
+python3 tools/campionati/calendario2json.py calendario.txt campionati.json --id 1DIV-M-2026 --nome "Prima Divisione Maschile 2026/27"
+```
+Ogni squadra del campionato può avere anche `logo`, `colori` e `codice` (per collegarla a una squadra di `squadre.json`):
+`"squadre": [{ "nome": "VALSESIA TEAM VOLLEY", "logo": "loghi/valsesia.png" }, ...]`. Anche `campionati.json` si può trascinare sulla finestra.
 
 ### Bilanciamento (misurato su centinaia di scambi simulati)
 - Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
