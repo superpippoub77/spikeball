@@ -1,6 +1,6 @@
 # Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
 
-> **Atari 2600:** c'è anche una versione per Atari 2600 in stile Power Spikes (cartuccia da 16K con 6 livelli, beach volley e nazionali, assembly 6502): [atari2600/](atari2600/README.md). Si gioca nel browser da `atari2600/index.html`.
+> **Atari 2600:** c'è anche una versione per Atari 2600 in stile Power Spikes (cartuccia da 16K con 6 livelli, beach volley e nazionali, e cartuccia da 4K 4 contro 4; assembly 6502): [atari2600/](atari2600/README.md). Si gioca nel browser da `atari2600/index.html` e `atari2600/4k/index.html`.
 
 > **Vuoi modificare il gioco?** Leggi la [guida allo sviluppo](GUIDA-SVILUPPO.md): mappa dei file, concetti chiave e una tabella "dove si cambia cosa". Ogni file `.js` inizia con l'indice delle sue parti.
 
