@@ -4,7 +4,7 @@
 // ============================================================
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.0.0';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.0.1';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 const CFG = {
