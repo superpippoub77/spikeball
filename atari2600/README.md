@@ -6,7 +6,16 @@ Versione per **Atari 2600 (VCS)** di Spike Fever in stile **Power Spikes**: 2 co
 
 > **Perché 16K e non 4K?** La prima versione da 4K era già piena (4096 byte su 4096). Livelli, paesaggi, beach volley, tutte le mosse di Power Spikes, la scelta della nazionale e la schermata del titolo occupano circa 11K, quindi serve una cartuccia da 16K. È il formato dei giochi 2600 più ricchi e funziona su emulatori e cartucce flash.
 
-## Modalità
+## Versione 4K: 4 contro 4 (cartella [`4k/`](4k/))
+Accanto alla 16K c'è la cartuccia da **4K**, giocabile da [`4k/index.html`](4k/index.html), con **4 giocatori per squadra come in Power Spikes**.
+- **Prima linea**: centrale, alzatore e schiacciatore sono lo stesso sprite ripetuto 3 volte dall'hardware (copie NUSIZ a 16 pixel). Insieme fanno il **muro a tre** e saltano insieme in attacco, come nelle combinazioni di Power Spikes.
+- **Difensore**: è disegnato da solo, riceve, batte e attacca dalla seconda linea.
+- **Alternanza**: le due linee si alternano a 30 Hz. La palla è sempre disegnata con il missile dello sprite che in quel fotogramma mostra un giocatore solo; il segno di caduta è l'oggetto *ball* del TIA.
+- **Alzate**: GIÙ = primo tempo del centrale (veloce, si mura una volta su due), verso il fondo = seconda linea del difensore, niente = palla alta allo schiacciatore.
+- **Comandi**: gli stessi della 16K, senza i menu (GAME SELECT: 1/2 giocatori, palazzetto/spiaggia).
+- **Compilazione**: `cd 4k && python3 gen_data.py > data.inc && node build.js` crea `sf4k.bin`, che occupa esattamente 4096 byte. Per farci stare i 4 giocatori, le tabelle delle arene si sovrappongono dove coincidono.
+
+## Modalità (versione 16K)
 - **1 PLAYER**: scegli la tua nazionale tra 10 (Italia, Francia, Germania, Spagna, Brasile, USA, Giappone, Cina, Cuba, URSS), poi affronti 6 livelli.
 
   | Livello | Avversario | Paesaggio |
