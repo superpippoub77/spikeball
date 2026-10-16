@@ -13,7 +13,7 @@
         {
           "nome": "Filippo",
           "cognome": "Debernardi",
-          "numero": 1,
+          "numero": null,
           "ruolo": "Alzatore",
           "sigla": "P",
           "eta": 25,
@@ -22,7 +22,7 @@
         {
           "nome": "Luca",
           "cognome": "Dellavedova",
-          "numero": 2,
+          "numero": 7,
           "ruolo": "Alzatore",
           "sigla": "P",
           "eta": 24,
@@ -31,7 +31,7 @@
         {
           "nome": "Oscar",
           "cognome": "Barbonaglia",
-          "numero": 3,
+          "numero": 22,
           "ruolo": "Banda",
           "sigla": "S1",
           "eta": 19,
@@ -40,7 +40,7 @@
         {
           "nome": "Marco",
           "cognome": "Landrino",
-          "numero": 4,
+          "numero": 21,
           "ruolo": "Opposto",
           "sigla": "O/C2",
           "eta": 34,
@@ -49,7 +49,7 @@
         {
           "nome": "Giacomo",
           "cognome": "Preti",
-          "numero": 5,
+          "numero": 13,
           "ruolo": "Centrale",
           "sigla": "C1",
           "eta": 25,
@@ -58,7 +58,7 @@
         {
           "nome": "Andrea",
           "cognome": "Fizzotti",
-          "numero": 6,
+          "numero": 1,
           "ruolo": "Libero",
           "sigla": "L1",
           "eta": 35,
@@ -67,7 +67,7 @@
         {
           "nome": "Matteo",
           "cognome": "Stuppello",
-          "numero": 7,
+          "numero": null,
           "ruolo": "Centrale",
           "sigla": "C2",
           "eta": 34,
@@ -76,7 +76,7 @@
         {
           "nome": "Simone",
           "cognome": "Gario",
-          "numero": 8,
+          "numero": 2,
           "ruolo": "Libero",
           "sigla": "L2",
           "eta": 15,
@@ -85,7 +85,7 @@
         {
           "nome": "Loll",
           "cognome": "Kirtz",
-          "numero": 9,
+          "numero": 23,
           "ruolo": "Opposto",
           "sigla": "C2/O",
           "eta": 32,
@@ -94,7 +94,7 @@
         {
           "nome": "Lorenzo",
           "cognome": "Tomiello",
-          "numero": 10,
+          "numero": 5,
           "ruolo": "Alzatore",
           "sigla": "P",
           "eta": 29,
@@ -103,7 +103,7 @@
         {
           "nome": "Alberto",
           "cognome": "Cincinelli",
-          "numero": 11,
+          "numero": null,
           "ruolo": "Opposto",
           "sigla": "O",
           "eta": 26,
@@ -112,7 +112,7 @@
         {
           "nome": "Enrico",
           "cognome": "Romolo",
-          "numero": 12,
+          "numero": 10,
           "ruolo": "Banda",
           "sigla": "S2",
           "eta": 31,
@@ -121,7 +121,7 @@
         {
           "nome": "Matteo",
           "cognome": "Dellavedova",
-          "numero": 13,
+          "numero": 12,
           "ruolo": "Banda",
           "sigla": "S2",
           "eta": 30,
@@ -130,7 +130,7 @@
         {
           "nome": "Matteo",
           "cognome": "Torsetta",
-          "numero": 14,
+          "numero": 26,
           "ruolo": "Opposto",
           "sigla": "O",
           "eta": 14,
@@ -139,7 +139,7 @@
         {
           "nome": "Yoav",
           "cognome": "Gross",
-          "numero": 15,
+          "numero": null,
           "ruolo": "Banda",
           "sigla": "S2",
           "eta": 17,
@@ -148,7 +148,7 @@
         {
           "nome": "Amedeo",
           "cognome": "Bertoncini",
-          "numero": 16,
+          "numero": null,
           "ruolo": "Alzatore",
           "sigla": "P",
           "livello": 4
@@ -156,7 +156,7 @@
         {
           "nome": "Marco",
           "cognome": "Facciotti",
-          "numero": 17,
+          "numero": 4,
           "ruolo": "Banda",
           "sigla": "S1",
           "eta": 32,
@@ -165,7 +165,7 @@
         {
           "nome": "Davide",
           "cognome": "Merlo",
-          "numero": 18,
+          "numero": 11,
           "ruolo": "Centrale",
           "sigla": "C2/C1",
           "eta": 17,
@@ -174,7 +174,7 @@
         {
           "nome": "Alessio",
           "cognome": "Dematteo",
-          "numero": 19,
+          "numero": 15,
           "ruolo": "Centrale",
           "sigla": "C1",
           "eta": 17,
