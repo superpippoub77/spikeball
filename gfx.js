@@ -133,10 +133,17 @@ function texDone(t, frames = []) {
   }
 }
 
+// colori della squadra con i dati del giocatore i (pelle e numero di maglia dalle squadre JSON)
+function playerPal(code, i) {
+  const P = TEAMS[code];
+  if (!P.sks && !P.nums) return P;
+  return Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null });
+}
+
 function makePlayerTex(scene, code, i) {
   const key = `pl_${code}_${i}`;
   if (scene.textures.exists(key)) return key;
-  const P = TEAMS[code], hair = P.ha[i % P.ha.length];
+  const P = playerPal(code, i), hair = P.ha[i % P.ha.length];
   const { t, c } = canvasTex(scene, key, FW * POSES.length, FH);
   if (GR > 1) { c.setTransform(1, 0, 0, 1, 0, 0); POSES.forEach((p, k) => c.drawImage(drawPlayerHD(p, P, hair, GR), k * FW * GR, 0)); }
   else POSES.forEach((p, k) => drawPlayer(c, k * FW, p, P, hair));
@@ -155,7 +162,7 @@ function hashStr(t) {
 
 // ritratto 40x40; expr: 'neutral' | 'cheer'
 function drawFace(ctx, ox, oy, code, idx, expr) {
-  const P = TEAMS[code], R = seeded(hashStr(code + ':' + idx)); R(); R();
+  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
   const skin = P.sk, dk = shade(skin, 0.72), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
   const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli

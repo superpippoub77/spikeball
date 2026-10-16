@@ -741,7 +741,7 @@ class MatchScene extends Phaser.Scene {
           const sp = b.lastKind === 'serve' && ((this.phantom && this.phantom.on) || (this.thunder && !this.thunder.armed)) ? 0.35 : 0;
           // in ricezione la velocità della battuta pesa meno che in difesa sulla schiacciata (troppi ace)
           const kSpd = b.lastKind === 'serve' ? 0.3 : 1.1;
-          p.miss = ai && Math.random() < clamp(0.02 + sp + this.speedPen() * kSpd - (t.skill - 0.5) * 0.35 - (t.defK || 0), 0.02, 0.8);
+          p.miss = ai && Math.random() < clamp(0.02 + sp + this.speedPen() * kSpd - (t.skill - 0.5) * 0.35 - (t.defK || 0) - this.plK(p), 0.02, 0.8);
         }
         if (p.diveT > 0 || p.state === 'dive') {
           const cx = p.x + p.diveDir * 9;
@@ -755,7 +755,7 @@ class MatchScene extends Phaser.Scene {
           if (pl.kind === 'over') { this.doOver(t, p); return; }
           let q;
           if (ai) q = clamp(t.skill * 0.95 + rnd(-0.3, 0.25) - this.speedPen(), 0, 1);
-          else { q = clamp(1 - Math.abs(dx) / reach * 0.55 - this.speedPen() * 0.7 + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
+          else { q = clamp(1 - Math.abs(dx) / reach * 0.55 - this.speedPen() * 0.7 + this.plK(p) + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
           this.doPass(t, p, q, false); return;
         }
         if (b.vy < 0 && b.h < 40 && p.decided !== b.ver) {
@@ -902,7 +902,7 @@ class MatchScene extends Phaser.Scene {
     else this.announce(`SPIKE BY ${p.name}!`);
     let d = t.human ? (t.aimD || 6) : this.modern ? this.aiSpikeTarget(t) : rnd(3, 8.4);
     if (type === 'back') d = Math.max(d, 5);
-    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
+    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p)) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
     let v;
     const aiErr = !t.human && Math.random() < 0.05 + (1 - t.skill) * 0.16;
     const errQ = style === 'power' ? 0.3 : 0.18;
@@ -914,6 +914,12 @@ class MatchScene extends Phaser.Scene {
     }
     b.vx = v.vx; b.vy = v.vy;
     SFX.spike(); this.cameras.main.shake(90, style === 'power' ? 0.009 : 0.006);
+  }
+
+  // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
+  plK(p) {
+    const lv = p.team.pal.lv; if (!lv) return 0;
+    return ((lv[p.ni] || 0) - lv.reduce((a, v) => a + v, 0) / lv.length) * 0.03;
   }
 
   // modalità moderna: l'IA cerca il buco nella difesa; più la squadra è forte, più alternative valuta

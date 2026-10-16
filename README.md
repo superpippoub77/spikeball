@@ -26,6 +26,44 @@
   - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
 - **ESC** durante la partita torna al menu.
 
+### Squadre personalizzate (squadre.json)
+Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squadre.json` dalla cartella del gioco; se non c'è usa `squadre.esempio.json`.
+- **Con un server locale** (`npx serve`) basta salvare il file accanto a `index.html`.
+- **Aprendo `index.html` direttamente** il browser non lascia leggere i file: **trascina il file .json sulla finestra del gioco**. Resta salvato nel browser; nel menu principale **CANC** lo toglie.
+- `squadre.json` è escluso da git (`.gitignore`): i dati della tua squadra restano sul tuo computer.
+
+```json
+{
+  "squadre": [
+    {
+      "codice": "VTV",
+      "nome": "Valsesia Team Volley",
+      "tipo": "club",
+      "colori": { "maglia": "#c81e2a", "bordo": "#ffffff", "pantaloncini": "#1a1a1a", "pavimento": "#2f6fe0" },
+      "titolari": [2, 5, 4, 6],
+      "statistiche": [85, 80, 82],
+      "giocatori": [
+        { "nome": "Mario", "cognome": "Rossi", "numero": 2, "ruolo": "Alzatore", "sigla": "P", "eta": 24, "livello": 7 }
+      ]
+    }
+  ]
+}
+```
+| Campo | Note |
+|---|---|
+| `codice` | 3 lettere, compare sul tabellone; per una nazionale è il suo codice (`ITA`, `BRA`...) |
+| `tipo` | `club` (nuova squadra, gruppo CLUB nella selezione) o `nazionale` (sostituisce i giocatori di una nazionale esistente) |
+| `colori` | maglia, bordo (numeri e finiture), pantaloncini, pavimento (arena Classic 1991); facoltativi |
+| `giocatori` | almeno 4; `ruolo` Alzatore/Centrale/Opposto/Banda/Libero oppure `sigla` P, C1, O, S1, L1, anche doppia (`O/C2`): conta la prima |
+| `numero` | numero di maglia: sulla schiena in HD e nelle schede |
+| `livello` | 1-10: forza del giocatore (schiacciata, difesa) e statistiche della squadra |
+| `eta` | età: incide un poco sulla SPEED della squadra |
+| `titolari` | facoltativo: numeri di maglia tra cui scegliere i 4 in campo; altrimenti li sceglie il gioco per ruolo e livello |
+| `statistiche` | facoltativo: ATTACK, DEFENSE, SPEED (0-100); altrimenti calcolate dai titolari |
+| `capelli`, `pelle` | facoltativi, colori del singolo giocatore |
+
+In campo si gioca 4 contro 4 come nell'arcade: centrale, alzatore, attaccante e difensore/battitore.
+
 ### Bilanciamento (misurato su centinaia di scambi simulati)
 - Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
 - Muro: un solo tentativo per schiacciata (prima poteva ritentare a ogni fotogramma e toccava quasi tutto); più murate vincenti, tocchi a muro più rari e che schizzano via.

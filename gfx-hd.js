@@ -131,6 +131,13 @@ function drawPlayerHD(pose, P, hair, R) {
     g.strokeStyle = shade(P.sh, 0.6); g.lineWidth = 0.35;
     const f0 = Q(lerpP(c1, c2, 0.55), -1), f1 = Q(lerpP(c1, c2, 0.9), -3);
     g.beginPath(); g.moveTo(f0[0], f0[1]); g.quadraticCurveTo(f1[0] + 1, f0[1] + 1, f1[0], f1[1]); g.stroke();
+    if (P.num) {   // numero di maglia sulla schiena
+      const nb = Q(lerpP(c1, c2, 0.56), 3.5);
+      g.save(); g.translate(nb[0], nb[1]); g.rotate(Math.atan2(dir[1], dir[0]) - Math.PI / 2);
+      g.font = 'bold 4px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 0, 0); g.fillStyle = P.tr; g.fillText(P.num, 0, 0);
+      g.restore();
+    }
     // collo e testa
     const [hx, hy] = s.head;
     hdCel(g, hdCapsule(s.neck, lerpP(s.neck, s.head, 0.55), 1.9, 1.8), P.sk, 0.6, 0.4);
@@ -229,7 +236,7 @@ function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
 // ---------------- ritratti ----------------
 function hdStrokeFill(c, path, fill, ink = HD_INK, lw = 0.7) { path(c); c.fillStyle = fill; c.fill(); c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); }
 function drawFaceHD(c, ox, oy, code, idx, expr) {
-  const P = TEAMS[code], R = seeded(hashStr(code + ':' + idx)); R(); R();
+  const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + idx)); R(); R();
   const skin = P.sk, dk = shade(skin, 0.74), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
   const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli

@@ -31,6 +31,7 @@ const GROUPS = [
   ['BRA', 'ARG', 'USA', 'ITA', 'FRA', 'POL', 'JPN', 'CUB', 'URS', 'SRB', 'CAN', 'GER'],
   ['CHN', 'KOR', 'NED', 'UKR', 'EGY', 'ESP', 'GRE', 'POR', 'SWE', 'NOR', 'DEN', 'GBR']
 ];
+const GROUP_NAMES = ['GROUP I', 'GROUP II'];   // roster.js aggiunge i gruppi CLUB
 const statsOf = c => TEAM_STATS[c] || [70, 70, 70];
 
 // ---------------- bandiere aggiuntive ----------------
@@ -298,9 +299,10 @@ class TeamSelectScene extends Base {
       const ai = s ? MSET.rightAI : MSET.leftAI;
       const fxp = s ? ox + 40 : ox + 108;
       D(this.add.image(fxp, 34, makeFlagTex(this, code, 42, 28)));
-      D(this.add.text(fxp, 56, TEAMS[code].name, UI.f(8, '#ffffff', true)).setOrigin(0.5, 0));
+      const nm = TEAMS[code].name;
+      D(this.add.text(fxp, 56, nm, UI.f(nm.length > 16 ? 5 : nm.length > 11 ? 6 : 8, '#ffffff', true)).setOrigin(0.5, 0));
       UI.bars(this, s ? ox + 84 : ox + 16, 22, code, !!s).forEach(D);
-      D(this.add.text(ox + 8, 80, `GROUP ${'I'.repeat(this.grp[s] + 1)}`, UI.f(7, '#ffffff', true)));
+      D(this.add.text(ox + 8, 80, GROUP_NAMES[this.grp[s]] || `GROUP ${this.grp[s] + 1}`, UI.f(7, '#ffffff', true)));
       D(this.add.text(ox + 140, 80, ai ? 'AI' : (s ? 'P2' : 'P1'), UI.f(7, ai ? '#7ad0ff' : '#ffd23a', true)).setOrigin(1, 0));
       GROUPS[this.grp[s]].forEach((c, i) => {
         const fx = ox + 10 + (i % 6) * 23, fy = 96 + Math.floor(i / 6) * 18;
@@ -312,7 +314,13 @@ class TeamSelectScene extends Base {
         const g = D(this.add.graphics()); g.fillStyle(0x0e2a6a).fillRect(cx, cy, 30, 50); g.lineStyle(1, 0x5a9af0).strokeRect(cx + 0.5, cy + 0.5, 29, 49);
         const ni = [3, 0, 2, 1][i];
         D(this.add.image(cx + 15, cy + 13, makeFaceTex(this, code, ni, 'neutral')).setScale(0.5));
-        D(this.add.text(cx + 15, cy + 25, TEAMS[code].names[ni], UI.f(4.5, '#ffffff')).setOrigin(0.5, 0));
+        const P = TEAMS[code], pn = P.names[ni];
+        D(this.add.text(cx + 15, cy + 25, pn, UI.f(pn.length > 10 ? 3.4 : 4.5, '#ffffff')).setOrigin(0.5, 0));
+        if (P.lv) {   // squadra da file JSON: numero di maglia, ruolo, livello ed età
+          D(this.add.text(cx + 15, cy + 32, `#${P.nums[ni] || '-'} ${P.roles[ni]}`, UI.f(4.5, '#ffd23a', true)).setOrigin(0.5, 0));
+          D(this.add.text(cx + 15, cy + 40, `${lvToStat(P.lv[ni])}${P.ages[ni] ? '  ' + P.ages[ni] + 'a' : ''}`, UI.f(4.5, '#7ad0ff', true)).setOrigin(0.5, 0));
+          return;
+        }
         D(this.add.text(cx + 15, cy + 32, r, UI.f(5, '#ffd23a', true)).setOrigin(0.5, 0));
         const st = statsOf(code), v = Math.round((st[[1, 0, 0, 2][i]] + (ni * 7) % 9) - 4);
         D(this.add.text(cx + 15, cy + 40, String(v), UI.f(6, '#7ad0ff', true)).setOrigin(0.5, 0));
@@ -328,7 +336,8 @@ class TeamSelectScene extends Base {
     if (this.jd('left')) { this.idx[s] = (this.idx[s] + n - 1) % n; ch = true; }
     if (this.jd('right')) { this.idx[s] = (this.idx[s] + 1) % n; ch = true; }
     if (this.jd('up') || this.jd('down')) { this.idx[s] = (this.idx[s] + 6) % n; ch = true; }
-    if (Phaser.Input.Keyboard.JustDown(this.kq) || Phaser.Input.Keyboard.JustDown(this.ke)) { this.grp[s] = 1 - this.grp[s]; this.idx[s] = Math.min(this.idx[s], GROUPS[this.grp[s]].length - 1); ch = true; }
+    const gd = Phaser.Input.Keyboard.JustDown(this.kq) ? -1 : Phaser.Input.Keyboard.JustDown(this.ke) ? 1 : 0;
+    if (gd) { this.grp[s] = (this.grp[s] + gd + GROUPS.length) % GROUPS.length; this.idx[s] = Math.min(this.idx[s], GROUPS[this.grp[s]].length - 1); ch = true; }
     if (Phaser.Input.Keyboard.JustDown(this.kc)) { if (s) MSET.rightAI = !MSET.rightAI; else MSET.leftAI = !MSET.leftAI; ch = true; }
     if (ch) { SFX.blip(); this.draw(); }
     if (this.jd('esc')) { if (s === 1) { this.side = 0; this.draw(); } else { this.gone = true; this.scene.start('MainMenu'); } return; }
