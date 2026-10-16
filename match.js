@@ -303,6 +303,8 @@ class MatchScene extends Phaser.Scene {
   // rapporto tra il campo attuale e quello indoor da 9 m (beach: 8/9): le distanze in metri dell'IA si adattano
   courtK() { return CFG.HALF / 180; }
   announce(m) { this.annText.setText(m); }
+  // scossa dello schermo su schiacciate, battute in salto e muri: leggera, e solo con ARCADE FX attivo
+  shake(ms, k) { if (this.rules.fx) this.cameras.main.shake(ms, k); }
 
   // ------------------------------------------------ ciclo principale
   update(time, delta) {
@@ -379,7 +381,8 @@ class MatchScene extends Phaser.Scene {
     const t = this.serving, s = this.server, b = this.ball, side = t.side;
     const hum = !!t.human;
     if (this.servePhase === 'walk') {
-      if (this.stateT > 0.5) {
+      // l'arbitro fischia quando il battitore è al suo posto dietro la linea di fondo
+      if (this.stateT > 0.5 && (Math.abs(s.x - side * CFG.SERVE_X) < 2 || this.stateT > 3)) {
         this.servePhase = 'ready'; this.countT = 0; this.count = CFG.SERVE_COUNT; this.panelT = 0;
         this.showServePanel(true); SFX.whistle();
       }
@@ -523,7 +526,7 @@ class MatchScene extends Phaser.Scene {
         v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp);
         for (let i = 0; i < 25 && !PHYS.clears(b.x, b.h, v, 4); i++) { if (d < 8.6 * K) d += 0.3; else sp *= 0.93; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
       }
-      s.state = 'spike'; s.animT = 0.3; SFX.spike(); this.cameras.main.shake(70, 0.004);
+      s.state = 'spike'; s.animT = 0.3; SFX.spike(); this.shake(70, 0.002);
     }
     b.vx = v.vx; b.vy = v.vy; b.ver++;
     b.lastTeam = t; b.lastPlayer = s; b.lastKind = 'serve';
@@ -639,7 +642,8 @@ class MatchScene extends Phaser.Scene {
     const plan = t.plan;
     let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1), human = false;
     const own = this.state === 'rally' && b.lastTeam === t;
-    if (this.state === 'serve' && p === this.server) target = side * CFG.SERVE_X;
+    // il battitore va subito dietro la linea di fondo (anche durante la presentazione), da dove parte la rincorsa della battuta in salto
+    if ((this.state === 'serve' || this.state === 'intro') && p === this.server) target = side * CFG.SERVE_X;
     else if (this.state === 'dead' || this.state === 'end') target = p.x;
     else if (plan && plan.p === p && plan.kind === 'spike') {
       // rincorsa sincronizzata: arriva al punto di stacco esattamente quando deve saltare
@@ -684,7 +688,8 @@ class MatchScene extends Phaser.Scene {
     // pulsante a terra: quick attack (prima dell'alzata) o finta dell'asso
     if (t.human && this.pressed(t) && this.state === 'rally' && b.lastTeam === t) {
       if (t.touches === 1 && !t.attacker) { t.quickReq = true; if (!t.mishit) t.quickPlan = true; }
-      else if (t.touches === 2 && t.attacker === p && plan && plan.kind === 'spike' && plan.tc > 0.35 && !p.decoy) this.fakeAttack(t, p);
+      // finta: solo sull'attacco di palla alta dell'asso (in seconda linea e primo tempo il pulsante non fa fintare)
+      else if (t.touches === 2 && t.attacker === p && t.attackType === 'high' && plan && plan.kind === 'spike' && plan.tc > 0.35 && !p.decoy) this.fakeAttack(t, p);
     }
     // alzata in salto
     if (plan && plan.p === p && plan.kind === 'set' && t.jumpSet && p.jumpedVer !== b.ver) {
@@ -1013,7 +1018,7 @@ class MatchScene extends Phaser.Scene {
       for (let i = 0; i < 30 && !PHYS.clears(b.x, b.h, v, 2); i++) { if (d < 8.7 * K) d += 0.3; else sp *= 0.92; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
     }
     b.vx = v.vx; b.vy = v.vy;
-    SFX.spike(); this.cameras.main.shake(90, style === 'power' ? 0.009 : 0.006);
+    SFX.spike(); this.shake(90, style === 'power' ? 0.004 : 0.0025);
   }
 
   // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
@@ -1063,7 +1068,7 @@ class MatchScene extends Phaser.Scene {
       b.vx = -b.vx * rnd(0.25, 0.45); b.vy = -rnd(40, 90); b.x = -t.side * 3;
       b.lastTeam = t; b.lastPlayer = p; b.lastKind = 'block'; b.ver++; t.touches = 0;
       this.announce('THE SPIKE WAS BLOCKED.');
-      SFX.block(); this.cameras.main.shake(100, 0.007);
+      SFX.block(); this.shake(100, 0.003);
     } else if (r < chance + 0.15) {
       // tocco a muro: la palla schizza via, difficile da recuperare (non una palla regalata)
       b.vx = b.vx * rnd(0.3, 0.6); b.vy = rnd(70, 140);

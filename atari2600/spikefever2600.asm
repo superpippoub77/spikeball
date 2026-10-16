@@ -1,90 +1,122 @@
 ; ============================================================================
-;  SPIKE FEVER 2600 - pallavolo in stile POWER SPIKES per Atari 2600 (VCS), cartuccia da 4K
-;  by SpikeCode AI
+;  SPIKE FEVER 2600 - pallavolo in stile POWER SPIKES per Atari 2600 (VCS)
+;  Cartuccia da 16K (bank switching F6, 4 banchi da 4K)    by SpikeCode AI
 ;
-;  2 contro 2: per ogni squadra un ALZATORE (vicino alla rete) e un ATTACCANTE/RICEVITORE.
-;  Come in Power Spikes:
-;    - BATTUTA: pulsante = lancio, pulsante di nuovo quando la palla diventa ROSSA = colpo
-;               (joystick verso la rete = corta, verso il fondo = lunga);
-;    - RICEZIONE: muovi il ricevitore sul segno giallo a terra, il bagher è automatico;
-;    - ALZATA automatica;
-;    - SCHIACCIATA: rincorsa e salto automatici, premi il pulsante quando la palla è ROSSA
-;      (verso la rete = corta, verso il fondo = lunga, su = pallonetto). Se non premi, la palla passa facile;
-;    - MURO: quando attaccano gli avversari premi il pulsante per far saltare il tuo alzatore.
-;  GAME SELECT: 1 o 2 giocatori, palazzetto (set a 15) o spiaggia (set a 21). GAME RESET: nuova partita.
-;  Difficoltà destra A = computer più forte.
+;  BANCO 0: ciclo principale, logica di gioco e dei menu
+;  BANCO 1: kernel della partita, sprite, colori delle nazionali, 6 arene (paesaggi)
+;  BANCO 2: kernel delle schermate: titolo (logo come Power Spikes), scelta della squadra,
+;           presentazione del livello, game over, campione; scritte e bandiere
+;  BANCO 3: libero
+;  I salti tra i banchi passano dagli "stub" agli stessi indirizzi in ogni banco ($FFC0-$FFE5):
+;  leggere $1FF6/$1FF7/$1FF8 seleziona il banco 0/1/2 e l'istruzione successiva arriva dal nuovo banco.
 ;
-;  KERNEL (area di gioco a 2 righe, 168 righe):
-;    riga A: colore di fondo, PF0, PF1, giocatore sinistro (grafica e colore riga per riga), palla
-;    riga B: PF2, colore del playfield, segno di caduta (missile 0), giocatore destro
-;  In alto: titolo SPIKEFEVER in playfield asimmetrico oppure punteggio nei colori delle squadre.
-;  Il TIA disegna solo due giocatori per riga: i due compagni di squadra si alternano a ogni fotogramma (30 Hz).
-;  La palla è il missile 1 (colore ballCol: bianca, ROSSA quando bisogna colpire).
-;  Compilazione: python3 gen_data.py > data.inc ; node build.js  -> spikefever2600.bin
+;  GIOCO (2 contro 2: alzatore + attaccante, come in Power Spikes)
+;    battuta : pulsante = lancio; quando la palla è ROSSA di nuovo = colpo.  Al lancio: SU = battuta altissima
+;              (towering), VERSO LA RETE = battuta in salto, niente = battuta normale.  Al colpo: verso la rete
+;              = corta, verso il fondo = lunga.
+;    ricezione: muovi il ricevitore sul segno giallo; se la palla è lontana premi il pulsante = TUFFO.
+;    alzata  : GIÙ = primo tempo (veloce), VERSO IL FONDO = seconda linea, VERSO LA RETE + pulsante =
+;              palleggio di seconda dell'alzatore (sorpresa), niente = palla alta.
+;    attacco : pulsante quando la palla è ROSSA.  SU = pallonetto, GIÙ = schiacciata potente (fuori se
+;              sbagli il tempo), verso la rete = corta, verso il fondo = lunga.  Senza pulsante: palla facile.
+;    muro    : quando attaccano gli avversari premi il pulsante (salta il tuo alzatore).
+;  1 GIOCATORE: 6 livelli (set a 11, in spiaggia a 15) contro Cina, Brasile, USA, Cuba, Giappone, URSS in 6 paesaggi
+;               (palestra, Copacabana, arena di Los Angeles, Caraibi al tramonto, monte Fuji, Mosca);
+;               Brasile e Cuba si giocano sulla sabbia (beach volley).
+;  2 GIOCATORI: ognuno sceglie la nazionale, poi si sceglie l'arena.
+;  GAME RESET = schermata del titolo.  GAME SELECT (nel titolo) = 1 o 2 giocatori.
+;
+;  KERNEL DELLA PARTITA (banco 1): 24 righe in alto (punteggio nei colori delle maglie o titolo nella
+;  dimostrazione) + area di gioco a 2 righe (168 righe): riga A fondo/PF0/PF1/giocatore sinistro/palla,
+;  riga B PF2/colore PF/segno di caduta/giocatore destro. I compagni di squadra si alternano a 30 Hz.
+;  Compilazione: python3 gen_data.py && node build.js  -> spikefever2600.bin (16384 byte)
 ; ============================================================================
         processor 6502
         include "vcs.h"
         include "macro.h"
 
-PH      = 12            ; altezza dei giocatori (coppie di righe)
-BH      = 2             ; altezza della palla
-PAIRS   = 84            ; coppie di righe dell'area di gioco
-FLOOR   = 8             ; coppia dei piedi
-NETTOP  = 22            ; fascia alta della rete
-HAND    = FLOOR+PH+1    ; altezza delle mani (palla in battuta, alzata)
-HITH    = FLOOR+PH+9    ; altezza di colpo della schiacciata (in cima al salto)
-DIGH    = FLOOR+5       ; altezza del bagher
-GRAV    = $0D           ; gravità della palla (8.8 coppie/fotogramma²)
-PGRAV   = $13           ; gravità dei giocatori
-MARKROW = 5             ; coppia del segno di caduta
-MARKCOL = $1E           ; giallo
+PH      = 12
+BH      = 2
+PAIRS   = 84
+FLOOR   = 8
+NETTOP  = 22
+HAND    = FLOOR+PH+1
+HITH    = FLOOR+PH+9
+DIGH    = FLOOR+5
+GRAV    = $0D
+MARKROW = 5
+MARKCOL = $1E
 WHITE   = $0E
 RED     = $44
 
+; schermate
+SC_TITLE  = 0
+SC_SELECT = 1
+SC_INTRO  = 2
+SC_GAME   = 3
+SC_OVER   = 4
+SC_CHAMP  = 5
+; stati della partita
 ST_SERVE = 0
 ST_TOSS  = 1
 ST_RALLY = 2
 ST_POINT = 3
 ST_OVER  = 4
-
-NX_RECV = 0             ; prossimo tocco: bagher della squadra "team"
-NX_SET  = 1             ;                 alzata
-NX_HIT  = 2             ;                 attacco
-NX_NONE = 3             ;                 nessuno (la palla cade)
+; prossimo tocco
+NX_RECV = 0
+NX_SET  = 1
+NX_HIT  = 2
+NX_NONE = 3
+; fotogrammi degli sprite
+FR_JUMP  = 3
+FR_BUMP  = 4
+FR_SPIKE = 5
+FR_DIVE  = 6
 
 ; ---------------------------------------------------------------- RAM
         SEG.U vars
         ORG $80
 frame   ds 1
 rand    ds 1
-mode    ds 1            ; bit0 = spiaggia, bit1 = due giocatori
-demo    ds 1            ; 1 = dimostrazione (computer contro computer, titolo in alto)
+screen  ds 1
+menuSel ds 1            ; titolo: 0 = 1 giocatore, 1 = 2 giocatori
+twoP    ds 1
+selStep ds 1            ; scelta: 0 nazione P1, 1 nazione P2, 2 arena
+nat     ds 2            ; nazione della squadra sinistra e destra
+level   ds 1
+arena   ds 1
+beach   ds 1
+demo    ds 1
+idleT   ds 1
 state   ds 1
 stateT  ds 1
 score   ds 2
-server  ds 1            ; squadra al servizio
+server  ds 1
 winner  ds 1
 next    ds 1
-team    ds 1            ; squadra del prossimo tocco
-fT      ds 1            ; fotogrammi dall'ultimo colpo
+team    ds 1
+fT      ds 1
+tHit    ds 1            ; fotogramma del colpo d'attacco (64 palla alta / seconda linea, 32 primo tempo)
 lastSide ds 1
-tx      ds 1            ; bersaglio della traiettoria (x della palla)
-th      ds 1            ; altezza d'arrivo
+tx      ds 1
+th      ds 1
 blockPend ds 1
 aiErr   ds 1
-; giocatori: 0 alzatore sinistro, 1 attaccante sinistro, 2 alzatore destro, 3 attaccante destro
-px      ds 4
-pz      ds 4
-pzf     ds 4
-pvz     ds 4
-pvzf    ds 4
+skill   ds 1            ; bravura del computer (livello)
+setType ds 1            ; 0 alta, 1 primo tempo, 2 seconda linea
+serveKind ds 1          ; 0 normale, 1 in salto, 2 altissima
+recvPen ds 1            ; ricezione più difficile (battute speciali, schiacciate potenti)
+dumpReq ds 1
+px      ds 4            ; giocatori: 0 alzatore sx, 1 attaccante sx, 2 alzatore dx, 3 attaccante dx
+jT      ds 4            ; fotogramma del salto (0 = a terra)
 animT   ds 4
 pose    ds 4
 anim    ds 4
-moved   ds 4
-tgt     ds 4
-joy     ds 2            ; joystick per squadra: $80 destra, $40 sinistra, $20 giù, $10 su
-press   ds 2            ; $80 = pulsante appena premuto
+moved   ds 1            ; bit = giocatore che si è mosso
+joy     ds 2
+joyOld  ds 2
+joyNew  ds 2
+press   ds 2
 fireOld ds 2
 bxl     ds 1
 bxh     ds 1
@@ -97,10 +129,10 @@ bvyh    ds 1
 ballCol ds 1
 markX   ds 1
 selOld  ds 1
-showT   ds 1
 sndT0   ds 1
 sndT1   ds 1
-P0Ptr   ds 2            ; puntatori del kernel (P0Ptr, P0Col, P1Ptr, P1Col in quest'ordine)
+; puntatori del kernel (nelle schermate: puntatori delle scritte/bandiere)
+P0Ptr   ds 2
 P0Col   ds 2
 P1Ptr   ds 2
 P1Col   ds 2
@@ -119,26 +151,46 @@ temp2   ds 1
 temp3   ds 1
 temp4   ds 1
 RAMEND
+; alias per le schermate (banco 2)
+T0P = P0Ptr
+T1P = P0Col
+T2P = P1Ptr
+T3P = P1Col
+T4P = P0D               ; (P0D,P1D)
+T5P = BlD               ; (BlD,MkD)
+TCP = BgPtr
+tRows = Pf0Ptr
+tLines = Pf0Ptr+1
 
-; ---------------------------------------------------------------- ROM
+; stub per cambiare banco: identici in tutti i banchi
+        MAC STUBS
+        lda $1FF7               ; $FFC0 -> banco 1
+        jsr GameKernel          ; $FFC3 (eseguito nel banco 1)
+        lda $1FF6               ; $FFC6 -> banco 0
+        rts                     ; $FFC9 (eseguito nel banco 0)
+        ds 6, 0
+        lda $1FF8               ; $FFD0 -> banco 2
+        jsr ScreenKernel        ; $FFD3 (banco 2)
+        lda $1FF6               ; $FFD6 -> banco 0
+        rts                     ; $FFD9 (banco 0)
+        ds 6, 0
+        lda $1FF6               ; $FFE0 accensione: banco 0
+        jmp Reset0              ; $FFE3
+        ENDM
+
+; ============================================================================ BANCO 0
         SEG code
-        ORG $F000
+        ORG $0000
+        RORG $F000
 
-Reset:
+Reset0:
         CLEAN_START
         lda #$A7
         sta rand
-        lda #1
-        sta demo
-        lda #8
-        sta REFP1               ; la squadra destra guarda a sinistra
-        lda #$20
-        sta NUSIZ1              ; missile 1 (palla) largo 4
-        lda #$30
-        sta NUSIZ0              ; missile 0 (segno di caduta) largo 8
-        jsr NewGame
+        lda #5
+        sta nat+1
+        jsr GoTitle
 
-; ================================================================ ciclo principale
 MainLoop:
         lda #2
         sta WSYNC
@@ -150,144 +202,22 @@ MainLoop:
         sta WSYNC
         lda #0
         sta VSYNC
-
-        jsr Setup
-
-.vblank lda INTIM
-        bne .vblank
+        lda screen
+        cmp #SC_GAME
+        bne .noSetup
+        jsr GameSetup
+.noSetup
+.vb     lda INTIM
+        bne .vb
         sta WSYNC
         sta VBLANK
-
-; ---------------------------------------------------------------- parte alta: titolo o punteggio (24 righe)
-        lda #$80
-        sta COLUBK
-        lda #0
-        sta GRP0
-        sta GRP1
-        sta ENAM0
-        sta ENAM1
-        sta PF0
-        sta PF1
-        sta PF2
-        sta WSYNC               ; riga 1 (la riga 2 resta vuota: la chiude il primo WSYNC del ciclo)
-        lda demo
-        beq .score
-        lda showT
-        bne .score
-        lda #0
-        sta CTRLPF
-; titolo SPIKEFEVER: playfield asimmetrico, 5 righe di lettere alte 4 righe
-        ldx #0
-.trow   ldy #4
-.tline  sta WSYNC               ; 0
-        lda TCol,x              ; 4
-        sta COLUPF              ; 7
-        lda TL0,x               ; 11
-        sta PF0                 ; 14
-        lda TL1,x               ; 18
-        sta PF1                 ; 21
-        lda TL2,x               ; 25
-        sta PF2                 ; 28
-        lda TR0,x               ; 32
-        sta PF0                 ; 35  (tra 28 e 49)
-        lda TR1,x               ; 39
-        sta PF1                 ; 42  (tra 39 e 54)
-        nop                     ; 44
-        lda TR2,x               ; 48
-        sta PF2                 ; 51  (tra 50 e 65)
-        dey
-        bne .tline
-        inx
-        cpx #5
-        bne .trow
-        jmp .topDone
-
-; punteggio: modo SCORE, metà sinistra col colore della squadra sinistra e viceversa
-.score  lda #2
-        sta CTRLPF
-        ldx #0
-.srow   ldy #4
-.sline  sta WSYNC               ; 0
-        lda ScoreGfx,x          ; 4
-        sta PF1                 ; 7
-        SLEEP 30                ; 37
-        lda ScoreGfx+5,x        ; 41
-        sta PF1                 ; 44  (metà destra)
-        dey
-        bne .sline
-        inx
-        cpx #5
-        bne .srow
-
-.topDone
-        sta WSYNC               ; riga 23
-        lda #0
-        sta PF0
-        sta PF1
-        sta PF2
-        lda #$21                ; playfield riflesso
-        sta CTRLPF
-        sta WSYNC               ; riga 24
-
-; ---------------------------------------------------------------- area di gioco: 84 coppie di righe
-        ldy #PAIRS-1
-GameLoop:
-        sta WSYNC               ; --- riga A
-        lda (BgPtr),y           ; 5
-        sta COLUBK              ; 8
-        lda (Pf0Ptr),y          ; 13
-        sta PF0                 ; 16
-        lda (Pf1Ptr),y          ; 21
-        sta PF1                 ; 24
-        lda #PH-1               ; 26
-        dcp P0D                 ; 31
-        bcs .draw0              ; 33
-        lda #0                  ; 35
-        sta GRP0                ; 38
-        lda #MARKCOL            ; 40  (fuori dal giocatore: colore del segno a terra)
-        sta COLUP0              ; 43
-        jmp .p0done             ; 46
-.draw0  lda (P0Ptr),y           ; 39
-        sta GRP0                ; 42
-        lda (P0Col),y           ; 47
-        sta COLUP0              ; 50
-.p0done lda #BH-1               ; 52
-        dcp BlD                 ; 57
-        lda #0                  ; 59
-        rol                     ; 61
-        rol                     ; 63
-        sta ENAM1               ; 66  palla
-        sta WSYNC               ; --- riga B
-        lda (Pf2Ptr),y          ; 5
-        sta PF2                 ; 8
-        lda (PfcPtr),y          ; 13
-        sta COLUPF              ; 16
-        lda #0                  ; 18
-        dcp MkD                 ; 23
-        lda #0                  ; 25
-        rol                     ; 27
-        rol                     ; 29
-        sta ENAM0               ; 32  segno di caduta
-        lda #PH-1               ; 34
-        dcp P1D                 ; 39
-        bcs .draw1              ; 41
-        lda #0                  ; 43
-        sta GRP1                ; 46
-        lda ballCol             ; 49
-        sta COLUP1              ; 52
-        dey                     ; 54
-        bpl GameLoop            ; 57
-        jmp .gameEnd
-.draw1  lda (P1Ptr),y           ; 47
-        sta GRP1                ; 50
-        lda (P1Col),y           ; 55
-        sta COLUP1              ; 58
-        dey                     ; 60
-        bpl GameLoop            ; 63
-.gameEnd
-
-; ---------------------------------------------------------------- fine immagine
-        sta WSYNC
+        lda screen
+        cmp #SC_GAME
+        bne .scr
+        jsr CallGame
+        jmp .os
+.scr    jsr CallScreen
+.os     sta WSYNC
         lda #2
         sta VBLANK
         lda #0
@@ -301,27 +231,41 @@ GameLoop:
         lda #35
         sta TIM64T
         jsr Logic
-.over   lda INTIM
-        bne .over
+.ow     lda INTIM
+        bne .ow
         jmp MainLoop
 
-; ================================================================ preparazione del fotogramma (VBLANK)
-Setup  SUBROUTINE
+CallGame   = $FFC0
+CallScreen = $FFD0
+
+; ---------------------------------------------------------------- preparazione della partita (VBLANK)
+GameSetup  SUBROUTINE
         jsr Players
-        ; scenario: 5 puntatori (fondo, PF0, PF1, PF2, colore PF) del palazzetto o della spiaggia
-        lda mode
-        and #1
-        beq .ar
-        lda #10
-.ar     tay
+        lda #$30
+        sta NUSIZ0
+        lda #$20
+        sta NUSIZ1
+        lda #0
+        sta REFP0
+        lda #8
+        sta REFP1
+        ; scenario dell'arena: 5 puntatori
+        lda arena
+        asl
+        sta temp
+        asl
+        asl
+        clc
+        adc temp                ; arena * 10
+        tay
         ldx #0
-.arena  lda ArenaPtrs,y
+.ar     lda ArenaPtrs,y
         sta BgPtr,x
         iny
         inx
         cpx #10
-        bne .arena
-        ; quale compagno di squadra si disegna in questo fotogramma
+        bne .ar
+        ; compagno di squadra da disegnare in questo fotogramma
         lda frame
         and #1
         tax
@@ -333,36 +277,26 @@ Setup  SUBROUTINE
         tax
         ldy #1
         jsr SetupPlayer
-        ; palla
         lda #PAIRS
         sec
         sbc byh
         sta BlD
-        ; punteggio: una squadra per fotogramma (si aggiorna in 2 fotogrammi, metà del tempo)
-        lda frame
-        and #1
-        tax
-        jsr ScoreDigits
-        lda mode
-        and #1
-        asl
-        tay
-        lda ShirtCol,y
+        ldx nat
+        lda ShirtCol,x
         sta COLUP0
-        lda ShirtCol+1,y
+        ldx nat+1
+        lda ShirtCol,x
         sta COLUP1
         lda state
         cmp #ST_OVER
-        bne .noBlink
+        bne .nb
         lda frame
         and #16
-        beq .noBlink
+        beq .nb
         ldx winner
         lda #WHITE
         sta COLUP0,x
-.noBlink
-        ; posizioni orizzontali: P0, P1, segno (M0), palla (M1)
-        lda frame
+.nb     lda frame
         and #1
         tax
         lda px,x
@@ -384,13 +318,16 @@ Setup  SUBROUTINE
         sta HMOVE
         rts
 
-; puntatori di grafica e colori: X = giocatore (0-3), Y = sprite (0 = P0, 1 = P1)
+; X = giocatore, Y = sprite (0/1): puntatori di grafica e colori (nazione, scarpe o piedi nudi)
 SetupPlayer  SUBROUTINE
         tya
         asl
         asl
-        sta temp3               ; 0 per P0, 4 per P1
-        lda pz,x
+        sta temp3
+        lda jT,x
+        stx temp4
+        tax
+        lda JumpZ,x
         clc
         adc #FLOOR
         sta temp                ; coppia più bassa
@@ -398,15 +335,14 @@ SetupPlayer  SUBROUTINE
         sec
         sbc temp
         sta P0D,y
+        ldx temp4
         lda anim,x
         tax
-        lda ColOfs,x            ; tabella dei colori (pose normali o braccia in alto)
+        lda ColOfs,x
         pha
         lda FrameOfs,x
-        sta temp2
-        lda #<Gfx
         clc
-        adc temp2
+        adc #<Gfx
         sta temp4
         lda #>Gfx
         adc #0
@@ -420,20 +356,16 @@ SetupPlayer  SUBROUTINE
         sbc #0
         sta P0Ptr+1,x
         pla
-        sta temp2
-        ; colori: arena*2 + squadra
-        lda mode
-        and #1
+        sta temp2               ; offset dei colori
+        lda nat,y
         asl
-        sta temp4
-        tya
-        ora temp4
+        ora beach
         tax
-        lda ColSetLo,x
+        lda NatColLo,x
         clc
         adc temp2
         sta temp4
-        lda ColSetHi,x
+        lda NatColHi,x
         adc #0
         pha
         lda temp4
@@ -446,24 +378,10 @@ SetupPlayer  SUBROUTINE
         sta P0Col+1,x
         rts
 
-; righe del punteggio della squadra X (decine nel nibble alto, zero iniziale nascosto)
+; righe del punteggio della squadra X
 ScoreDigits  SUBROUTINE
         lda score,x
-        ldy showT
-        beq .val
-        cpx #0                  ; SELECT: a sinistra i giocatori, a destra i punti del set
-        bne .tgt
-        lda mode
-        lsr
-        lsr
-        clc
-        adc #1
-        jmp .val
-.tgt    lda mode
-        and #1
-        tay
-        lda TargetPts,y
-.val    ldy #0
+        ldy #0
 .div10  cmp #10
         bcc .gotD
         sbc #10
@@ -489,12 +407,12 @@ ScoreDigits  SUBROUTINE
         sta temp4
 .drow   ldy temp2
         beq .noT
-        lda FontLo,y            ; decina: stessa cifra spostata nel nibble alto
+        lda FontLo,y
         asl
         asl
         asl
         asl
-        .byte $2C               ; (salta lda #0)
+        .byte $2C
 .noT    lda #0
         ldy temp
         ora FontLo,y
@@ -509,7 +427,6 @@ ScoreDigits  SUBROUTINE
         bne .drow
         rts
 
-; posizionamento orizzontale: A = x, X = oggetto (0 P0, 1 P1, 2 M0, 3 M1, 4 palla)
 PosObject  SUBROUTINE
         sec
         sta WSYNC
@@ -524,48 +441,30 @@ PosObject  SUBROUTINE
         sta RESP0,x
         rts
 
-; ================================================================ logica (overscan)
+; ---------------------------------------------------------------- logica (overscan)
 Logic  SUBROUTINE
         inc frame
         lda rand
         lsr
-        bcc .noEor
+        bcc .ne
         eor #$B4
-.noEor  sta rand
-        jsr Console
-        lda showT
-        beq .nst
-        dec showT
-.nst    jsr ReadInput
-        inc fT
-        lda state
-        cmp #ST_SERVE
-        bne .n0
-        jsr ServeState
-        jmp .play
-.n0     cmp #ST_TOSS
-        bne .n1
-        jsr TossState
-        jmp .play
-.n1     cmp #ST_RALLY
-        bne .n2
-        jsr RallyState
-        jmp .play
-.n2     inc stateT
-        cmp #ST_POINT
-        bne .n3
-        lda stateT
-        cmp #90
-        bcc .play
-        jsr AfterPoint
-        jmp .play
-.n3     lda stateT              ; fine partita: dopo qualche secondo torna la dimostrazione
-        cmp #250
-        bcc .play
-        lda #1
-        sta demo
-        jsr NewGame
-.play   jsr BallLook        ; (i giocatori si muovono nel VBLANK, dove c'è più tempo: vedi Setup)
+.ne     sta rand
+        jsr ReadInput
+        ; GAME RESET: torna al titolo
+        lda SWCHB
+        lsr
+        bcs .nr
+        jsr GoTitle
+.nr     inc stateT
+        lda screen
+        asl
+        tax
+        lda ScreenLogic+1,x
+        pha
+        lda ScreenLogic,x
+        pha
+        rts                     ; salta alla logica della schermata (indirizzo-1 in tabella)
+LogicDone
         ; suoni
         lda sndT0
         beq .s0off
@@ -586,7 +485,292 @@ Logic  SUBROUTINE
         sta AUDV1
         rts
 
-; joystick e pulsanti delle due squadre (la squadra destra usa il secondo joystick)
+ScreenLogic
+        .word TitleLogic-1, SelectLogic-1, IntroLogic-1, GameLogic-1, OverLogic-1, ChampLogic-1
+
+GoTitle  SUBROUTINE
+        lda #SC_TITLE
+SetScreen
+        sta screen
+        lda #0
+        sta stateT
+        sta idleT
+        sta demo
+        rts
+
+; ---------------------------------------------------------------- titolo
+TitleLogic  SUBROUTINE
+        lda frame
+        and #3
+        bne .ni
+        inc idleT
+.ni     lda idleT
+        cmp #250                ; circa 17 secondi senza toccare nulla: dimostrazione
+        bcc .nd
+        jmp StartDemo
+.nd     ; SELECT o joystick su/giù: 1 o 2 giocatori
+        lda SWCHB
+        and #2
+        eor #2
+        tax
+        cpx selOld
+        stx selOld
+        beq .nsel
+        cpx #0
+        beq .nsel
+        jmp .toggle
+.nsel   lda joyNew
+        and #$30
+        beq .nt
+.toggle lda menuSel
+        eor #1
+        sta menuSel
+        lda #0
+        sta idleT
+        ldy #4
+        jsr Sound
+.nt     lda press
+        beq .done
+        lda menuSel
+        sta twoP
+        lda #0
+        sta selStep
+        ldy #4
+        jsr Sound
+        lda #SC_SELECT
+        jsr SetScreen
+.done   jmp LogicDone
+
+StartDemo
+        lda rand
+        and #7
+        sta nat
+        lda rand
+        lsr
+        lsr
+        lsr
+        and #7
+        clc
+        adc #2
+        sta nat+1
+        cmp nat
+        bne .d1
+        inc nat+1
+.d1     lda frame
+        and #3
+        clc
+        adc rand
+        and #3
+        clc
+        adc #1                  ; arene 1-4 nella dimostrazione
+        sta arena
+        tax
+        lda ArenaBeach,x
+        sta beach
+        lda #3
+        sta skill
+        lda #SC_GAME
+        jsr SetScreen
+        lda #1
+        sta demo
+        jsr NewGame
+        jmp LogicDone
+
+; ---------------------------------------------------------------- scelta della squadra / arena
+SelectLogic  SUBROUTINE
+        ldx selStep
+        cpx #2
+        beq .arena
+        ; nazione del giocatore selStep (joystick e pulsante del giocatore)
+        lda joyNew,x
+        bpl .nr
+        inc nat,x
+        lda nat,x
+        cmp #NNAT
+        bcc .snd
+        lda #0
+        sta nat,x
+        beq .snd
+.nr     and #$40
+        beq .fire
+        dec nat,x
+        bpl .snd
+        lda #NNAT-1
+        sta nat,x
+.snd    ldy #4
+        jsr Sound
+.fire   lda press,x
+        beq .done
+        ldy #3
+        jsr Sound
+        lda twoP
+        beq StartArcade
+        inc selStep
+        lda #0
+        sta stateT
+        beq .done
+.arena  lda joyNew
+        bpl .ar2
+        inc arena
+        lda arena
+        cmp #NARENA
+        bcc .as
+        lda #0
+        sta arena
+        beq .as
+.ar2    and #$40
+        beq .af
+        dec arena
+        bpl .as
+        lda #NARENA-1
+        sta arena
+.as     ldy #4
+        jsr Sound
+.af     lda press
+        beq .done
+        ldx arena
+        lda ArenaBeach,x
+        sta beach
+        lda #4
+        sta skill
+        lda #SC_GAME
+        jsr SetScreen
+        jsr NewGame
+.done   jmp LogicDone
+
+StartArcade
+        lda #0
+        sta level
+        jsr SetupLevel
+        lda #SC_INTRO
+        jsr SetScreen
+        jmp LogicDone
+
+; avversario e arena del livello (se il giocatore ha scelto la stessa nazione dell'avversario, l'avversario cambia)
+SetupLevel  SUBROUTINE
+        ldx level
+        lda LevelNat,x
+        cmp nat
+        bne .ok
+        lda nat
+        eor #1
+.ok     sta nat+1
+        lda LevelArena,x
+        sta arena
+        tay
+        lda ArenaBeach,y
+        sta beach
+        stx skill
+        rts
+
+; ---------------------------------------------------------------- presentazione del livello
+IntroLogic  SUBROUTINE
+        lda stateT
+        cmp #20
+        bcc .done
+        lda press
+        bne .go
+        lda stateT
+        cmp #220
+        bcc .done
+.go     lda #SC_GAME
+        jsr SetScreen
+        jsr NewGame
+.done   jmp LogicDone
+
+; ---------------------------------------------------------------- game over (continua?) e campione
+OverLogic  SUBROUTINE
+        lda stateT
+        cmp #30
+        bcc .done
+        lda press
+        beq .wait
+        jsr SetupLevel          ; si rigioca lo stesso livello
+        lda #SC_INTRO
+        jsr SetScreen
+        jmp LogicDone
+.wait   lda stateT
+        cmp #250
+        bcc .done
+        jsr GoTitle
+.done   jmp LogicDone
+
+ChampLogic  SUBROUTINE
+        lda stateT
+        cmp #60
+        bcc .done
+        lda press
+        bne .t
+        lda stateT
+        cmp #250
+        bcc .done
+.t      jsr GoTitle
+.done   jmp LogicDone
+
+; ---------------------------------------------------------------- partita
+GameLogic  SUBROUTINE
+        lda demo                ; nella dimostrazione il pulsante riporta al titolo
+        beq .play
+        lda press
+        beq .play
+        jsr GoTitle
+        jmp LogicDone
+.play   dec stateT              ; (lo stato della partita usa il suo contatore)
+        inc fT
+        lda state
+        cmp #ST_SERVE
+        bne .n0
+        jsr ServeState
+        jmp .end
+.n0     cmp #ST_TOSS
+        bne .n1
+        jsr TossState
+        jmp .end
+.n1     cmp #ST_RALLY
+        bne .n2
+        jsr RallyState
+        jmp .end
+.n2     inc stateT
+        cmp #ST_POINT
+        bne .n3
+        lda stateT
+        cmp #90
+        bcc .end
+        jsr AfterPoint
+        jmp .end
+.n3     lda stateT
+        cmp #160
+        bcc .end
+        jsr MatchEnd
+.end    jsr BallLook
+        lda frame               ; punteggio: una squadra per fotogramma (qui c'è più tempo che nel VBLANK)
+        and #1
+        tax
+        jsr ScoreDigits
+        jmp LogicDone
+
+; fine partita: avanti di livello, game over, campione, oppure titolo dopo la dimostrazione
+MatchEnd  SUBROUTINE
+        lda demo
+        beq .real
+        jmp GoTitle
+.real   lda twoP
+        bne .champ
+        lda winner
+        bne .lost
+        inc level
+        lda level
+        cmp #NLEVEL
+        bcs .champ
+        jsr SetupLevel
+        lda #SC_INTRO
+        jmp SetScreen
+.lost   lda #SC_OVER
+        jmp SetScreen
+.champ  lda #SC_CHAMP
+        jmp SetScreen
+
+; joystick e pulsanti (squadra destra = secondo joystick); joyNew = direzioni appena premute
 ReadInput  SUBROUTINE
         lda SWCHA
         eor #$FF
@@ -601,9 +785,16 @@ ReadInput  SUBROUTINE
         and #$F0
         sta joy+1
         ldx #1
-.btn    lda INPT4,x
+.btn    lda joy,x
+        tay
+        eor joyOld,x
+        and joy,x
+        sta joyNew,x
+        tya
+        sta joyOld,x
+        lda INPT4,x
         eor #$80
-        and #$80                ; $80 = premuto
+        and #$80
         tay
         eor fireOld,x
         and #$80
@@ -611,55 +802,24 @@ ReadInput  SUBROUTINE
         tya
         sta fireOld,x
         and temp
-        sta press,x             ; $80 = appena premuto
+        sta press,x
         dex
         bpl .btn
         rts
 
-; la squadra A è comandata da una persona? (Z = 0 sì)  usa temp4
+; la squadra A è comandata da una persona? (Z = 0 sì)
 Human  SUBROUTINE
         sta temp4
         lda demo
         bne .cpu
         lda temp4
         beq .yes
-        lda mode
-        and #2
+        lda twoP
         rts
 .yes    lda #1
         rts
 .cpu    lda #0
         rts
-
-; GAME RESET e GAME SELECT
-Console  SUBROUTINE
-        lda SWCHB
-        lsr
-        bcs .noReset
-        lda #0
-        sta demo
-        jmp NewGame
-.noReset
-        lsr
-        lda #0
-        rol
-        eor #1
-        tax
-        cpx selOld
-        stx selOld
-        beq .cdone
-        cpx #1
-        bne .cdone
-        inc mode
-        lda mode
-        and #3
-        sta mode
-        lda #150
-        sta showT
-        lda #1
-        sta demo
-        jmp NewGame
-.cdone  rts
 
 NewGame  SUBROUTINE
         lda #0
@@ -671,6 +831,8 @@ NewGame  SUBROUTINE
         ldx #3
 .pos    lda HomeX,x
         sta px,x
+        lda #0
+        sta jT,x
         dex
         bpl .pos
 StartServe
@@ -684,17 +846,15 @@ StartServe
         sta bvxh
         sta bvyl
         sta bvyh
+        sta dumpReq
         lda #NX_NONE
         sta next
         lda server
         sta lastSide
         rts
 
-; dopo la pausa del punto: fine set o nuova battuta
 AfterPoint  SUBROUTINE
-        lda mode
-        and #1
-        tay
+        ldy beach               ; set a 15 (palazzetto) o 21 (spiaggia)
         ldx server
         lda score,x
         cmp TargetPts,y
@@ -715,7 +875,6 @@ AfterPoint  SUBROUTINE
         rts
 .goOn   jmp StartServe
 
-; punto alla squadra A (rally point: batte chi fa il punto)
 Point  SUBROUTINE
         tax
         inc score,x
@@ -732,16 +891,16 @@ Point  SUBROUTINE
         lda #NX_NONE
         sta next
         lda demo
-        bne .quiet
+        bne .q
         lda #4
         sta AUDC1
         lda #10
         sta AUDV1
         lda #45
         sta sndT1
-.quiet  rts
+.q      rts
 
-; suono sul canale 0: Y = 0 bagher, 1 schiacciata, 2 rete/terra, 3 battuta, 4 alzata, 5 muro
+; suono: Y = 0 bagher, 1 schiacciata, 2 rete/terra, 3 battuta, 4 alzata/menu, 5 muro
 Sound  SUBROUTINE
         lda demo
         bne .nos
@@ -755,8 +914,7 @@ Sound  SUBROUTINE
         sta sndT0
 .nos    rts
 
-; traiettoria verso (tx, th) in un tempo fisso: Y = 0 (64 fotogrammi), 1 (32), 2 (16).
-; vx = dx * 256/T, vy = dh * 256/T + g*(T-1)/2: la palla arriva esattamente dopo T fotogrammi.
+; traiettoria verso (tx, th) in T fotogrammi: Y = 0 (64), 1 (32), 2 (16), 3 (128)
 Launch  SUBROUTINE
         lda #0
         sta bxl
@@ -792,7 +950,6 @@ Launch  SUBROUTINE
         sta bvyh
         rts
 
-; movimento della palla: gravità, rete, terra, fuori
 MoveBall  SUBROUTINE
         lda bxl
         clc
@@ -815,22 +972,13 @@ MoveBall  SUBROUTINE
         lda bvyh
         sbc #0
         sta bvyh
-        lda byh
-        cmp #PAIRS-2
-        bcc .noTop
-        cmp #200
-        bcs .noTop
-        lda #PAIRS-2
-        sta byh
-.noTop  ; fuori dallo schermo: fuori
         lda bxh
         cmp #156
         bcc .inX
 .outP   lda lastSide
         eor #1
         jmp Point
-.inX    ; a terra
-        lda byh
+.inX    lda byh
         cmp #FLOOR
         bcc .land
         cmp #200
@@ -839,7 +987,7 @@ MoveBall  SUBROUTINE
         jsr Sound
         lda bxh
         cmp #3
-        bcc .outP               ; oltre la linea di fondo
+        bcc .outP
         cmp #153
         bcs .outP
         clc
@@ -849,12 +997,11 @@ MoveBall  SUBROUTINE
         rol
         eor #1
         jmp Point
-.air    ; rete: la palla tocca il nastro e cade
-        lda byh
+.air    lda byh
         cmp #NETTOP+1
         bcs .noNet
         lda bxh
-        cmp #74                 ; la palla (4 pixel) tocca la rete (pixel 76-83): zona simmetrica 74..81
+        cmp #74
         bcc .noNet
         cmp #82
         bcs .noNet
@@ -862,19 +1009,18 @@ MoveBall  SUBROUTINE
         bmi .fromR
         lda #73
         sta bxh
-        lda #$FF                ; rimbalzo debole all'indietro
+        lda #$FF
         sta bvxh
         lda #$C0
         sta bvxl
-        bne .netDone
+        bne .nd
 .fromR  lda #83
         sta bxh
         lda #0
         sta bvxh
         lda #$40
         sta bvxl
-.netDone
-        lda #NX_NONE
+.nd     lda #NX_NONE
         sta next
         lda #0
         sta blockPend
@@ -891,13 +1037,32 @@ ServeState  SUBROUTINE
         beq .ai
         ldx server
         lda press,x
-        bne Toss
-        rts
+        beq .no
+        ; tipo di battuta dal joystick al lancio: su = altissima, verso la rete = in salto
+        ldy joy,x
+        tya
+        and #$10
+        beq .notUp
+        lda #2
+        bne .kind
+.notUp  tya
+        cpx #0
+        beq .j0
+        asl                     ; squadra destra: la rete è a sinistra
+.j0     bpl .k0
+        lda #1
+        bne .kind
+.k0     lda #0
+        beq .kind
 .ai     lda stateT
         cmp #60
-        bcs Toss
-        rts
-Toss    lda #ST_TOSS
+        bcc .no
+        lda rand
+        and #7
+        tay
+        lda AiServe,y
+.kind   sta serveKind
+        lda #ST_TOSS
         sta state
         lda #1
         sta bvyh
@@ -907,8 +1072,20 @@ Toss    lda #ST_TOSS
         sta bvxl
         sta bvxh
         sta stateT
-        ldy #4
+        lda serveKind
+        cmp #1
+        bne .snd
+        lda #$60                ; battuta in salto: la palla va avanti con la rincorsa
+        sta bvxl
+        lda server
+        beq .snd
+        lda #$A0
+        sta bvxl
+        lda #$FF
+        sta bvxh
+.snd    ldy #4
         jmp Sound
+.no     rts
 
 HoldBall  SUBROUTINE
         lda server
@@ -932,55 +1109,73 @@ TossState  SUBROUTINE
         lda state
         cmp #ST_TOSS
         bne .done
+        ; battuta in salto: il battitore segue la palla e stacca
+        lda serveKind
+        cmp #1
+        bne .nj
+        lda server
+        asl
+        ora #1
+        tax
+        lda bxh
+        ldy server
+        sec
+        sbc HoldOfs,y
+        sta px,x
+        lda stateT
+        cmp #15
+        bne .nj
+        jsr Jump
+.nj     inc stateT
         lda byh
         cmp #HAND-2
         bcs .up
-        lda server              ; la palla è ricaduta: fallo di battuta
+        lda server
         eor #1
         jmp Point
 .up     lda bvyh
-        bpl .done               ; sta ancora salendo
+        bpl .done
+        ldy serveKind           ; finestra del colpo: più alta per la battuta in salto
         lda server
         jsr Human
         beq .ai
         ldx server
         lda press,x
         beq .done
-        ; colpo: la finestra giusta è quando la palla è rossa (HAND+3..HAND+9)
         lda byh
-        cmp #HAND+3
+        cmp WinLo,y
         bcc .bad
-        cmp #HAND+10
+        cmp WinHi,y
         bcs .bad
         lda #0
         beq Serve
 .bad    lda rand
-        and #1                  ; fuori tempo: una volta su due va in rete
+        and #1
         beq Serve
         lda #2
         bne Serve
 .ai     lda byh
-        cmp #HAND+6
+        cmp WinAI,y
         bcs .done
         lda rand
-        cmp #12                 ; il computer sbaglia ogni tanto
+        cmp #14
         lda #0
         bcs Serve
         lda #2
         bne Serve
 .done   rts
 
-; battuta: A = 0 buona, 2 in rete. Direzione dal joystick (verso la rete = corta, verso il fondo = lunga)
+; battuta: A = 0 buona, 2 in rete
 Serve   sta temp3
         ldx server
-        lda #1                  ; media
+        lda #1
         sta temp2
         lda joy,x
         cpx #0
         beq .j0
-        asl                     ; squadra destra: la rete è a sinistra (bit 6 -> bit 7)
+        asl
 .j0     bpl .notNet
-        lda #0                  ; corta
+        lda #0
         sta temp2
         beq .dirOk
 .notNet lda joy,x
@@ -988,7 +1183,7 @@ Serve   sta temp3
         bne .j1
         asl
 .j1     bpl .dirOk
-        lda #2                  ; lunga
+        lda #2
         sta temp2
 .dirOk  lda server
         asl
@@ -999,11 +1194,13 @@ Serve   sta temp3
         lda ServeTX,y
         ldy temp3
         beq .ok
-        lda NetTX,x             ; in rete
+        lda NetTX,x
 .ok     sta tx
         lda #FLOOR
         sta th
-        ldy #0
+        ldy serveKind
+        lda ServeT,y
+        tay
         jsr Launch
         lda #ST_RALLY
         sta state
@@ -1013,52 +1210,58 @@ Serve   sta temp3
         sta team
         lda #NX_RECV
         sta next
+        ldy serveKind
+        lda ServePen,y
+        sta recvPen
         jsr AiError
         lda server
         asl
         ora #1
         tax
-        lda #5
+        lda #FR_SPIKE
         jsr SetPose
         ldy #3
         jmp Sound
 
-; errore di piazzamento del computer in ricezione (dimezzato con la difficoltà A)
+; errore di piazzamento del computer in ricezione: più piccolo ai livelli alti e con la difficoltà A
 AiError  SUBROUTINE
         lda rand
         and #15
         sec
         sbc #8
-        bit SWCHB
-        bpl .keep
+        ldx skill
+        cpx #3
+        bcc .k
         cmp #$80
         ror
-.keep   sta aiErr
+.k      bit SWCHB
+        bpl .k2
+        cmp #$80
+        ror
+.k2     sta aiErr
         rts
 
-; posa del giocatore X per qualche fotogramma: A = fotogramma (3 braccia su, 4 bagher, 5 schiacciata)
 SetPose  SUBROUTINE
         sta pose,x
         lda #12
         sta animT,x
         rts
 
-; ---------------------------------------------------------------- scambio: bagher, alzata, attacco, muro
+; ---------------------------------------------------------------- scambio
 RallyState  SUBROUTINE
         jsr MoveBall
         lda state
         cmp #ST_RALLY
         bne .done
-        ; muro deciso al momento della schiacciata: la palla torna indietro quando arriva alla rete
         lda blockPend
-        beq .noBlk
+        beq .nb
         lda bxh
         sec
         sbc #70
         cmp #13
-        bcs .noBlk
+        bcs .nb
         jmp Block
-.noBlk  lda next
+.nb     lda next
         cmp #NX_RECV
         bne .nr
         jmp Recv
@@ -1070,44 +1273,79 @@ RallyState  SUBROUTINE
         jmp Attack
 .done   rts
 
-; bagher del ricevitore della squadra "team" quando la palla scende vicino a lui
+; bagher (o tuffo) del ricevitore della squadra "team"
 Recv    SUBROUTINE
-        lda byh
+        jmp .start
+.no0    rts
+.start  lda byh
         cmp #DIGH+1
-        bcs .no
+        bcs .no0
         lda bvyh
-        bpl .no
+        bpl .no0
         lda team
         asl
         ora #1
         tax
-        lda pz,x
-        bne .no
+        lda jT,x
+        bne .no0
         lda bxh
         sec
         sbc px,x
         sec
         sbc #2                  ; dx = centro palla - centro giocatore
-        clc
-        adc #9
-        cmp #19
-        bcs .no
-        sec
-        sbc #9                  ; dx con segno
+        sta temp2               ; dx con segno
         bpl .pos
         eor #$FF
         clc
         adc #1
 .pos    sta temp                ; |dx|
-        lda #4
+        cmp #10
+        bcc .dig
+        cmp #23
+        bcs .no0
+        ; tuffo: la persona preme il pulsante, il computer ci prova da solo
+        lda team
+        jsr Human
+        beq .aiDive
+        ldy team
+        lda press,y
+        beq .no0
+        bne .dive
+.aiDive lda skill
+        asl
+        asl
+        asl
+        asl
+        adc #70
+        cmp rand
+        bcc .no
+.dive   lda temp2               ; il ricevitore si allunga verso la palla
+        clc
+        adc px,x
+        sta px,x
+        lda temp
+        sec
+        sbc #6
+        sta temp
+        lda #FR_DIVE
         jsr SetPose
+        jmp .pass
+.dig    lda #FR_BUMP
+        jsr SetPose
+.pass   lda temp
+        clc
+        adc recvPen
+        sta temp
+        lda #0
+        sta recvPen
+        sta dumpReq
         ldy team
         lda SetBallX,y
         sta tx
         lda temp
         sec
         sbc #3
-        bcc .exact              ; vicino: palla precisa all'alzatore
+        bcc .exact
         asl
         asl
         sta temp
@@ -1120,7 +1358,7 @@ Recv    SUBROUTINE
 .minus  lda tx
         sec
         sbc temp
-.clamp  ldy team                ; resta nella propria metà campo
+.clamp  ldy team
         cmp SideMin,y
         bcs .c1
         lda SideMin,y
@@ -1140,29 +1378,90 @@ Recv    SUBROUTINE
         jmp Sound
 .no     rts
 
-; alzata: dopo 64 fotogrammi la palla è sulle mani dell'alzatore, che la alza all'attaccante
+; alzata: alta, primo tempo, seconda linea o palleggio di seconda (sorpresa)
 SetBall SUBROUTINE
-        lda fT
-        cmp #64
-        bne .no
+        ; la persona chiede il palleggio di seconda con VERSO LA RETE + pulsante mentre la palla arriva
         lda team
+        jsr Human
+        beq .nreq
+        ldy team
+        lda press,y
+        beq .nreq
+        lda joy,y
+        cpy #0
+        beq .q0
+        asl
+.q0     bpl .nreq
+        sta dumpReq
+.nreq   lda fT
+        cmp #64
+        beq .now
+        rts
+.now    lda team
         asl
         tax
-        lda bxh                 ; l'alzatore deve essere arrivato sotto la palla
+        lda bxh
         sec
         sbc px,x
         clc
         adc #8
         cmp #18
-        bcs .miss
-        lda #3
+        bcc .ok
+        lda #NX_NONE            ; l'alzatore non è arrivato: la palla cade
+        sta next
+        rts
+.ok     lda #FR_JUMP
         jsr SetPose
+        ; tipo di alzata
+        lda team
+        jsr Human
+        beq .ai
+        lda dumpReq
+        bne .dump
         ldy team
-        lda AtkBallX,y
-        sta tx
-        lda #HITH
+        lda joy,y
+        and #$20
+        bne .quick              ; giù: primo tempo
+        lda joy,y
+        cpy #0
+        bne .b1
+        asl
+.b1     bmi .back               ; verso il fondo: seconda linea
+        lda #0
+        beq .typ
+.ai     lda rand
+        cmp skill
+        bcc .dumpAi
+        cmp #50
+        bcc .quick
+        cmp #110
+        bcc .back
+        lda #0
+        beq .typ
+.dumpAi lda skill
+        cmp #2
+        bcs .dump
+        lda #0
+        beq .typ
+.quick  lda #1
+        bne .typ
+.back   lda #2
+.typ    sta setType
+        tay
+        lda SetTH,y
         sta th
-        ldy #0
+        lda team
+        asl
+        asl
+        clc
+        adc setType
+        tax
+        lda SetTX,x
+        sta tx
+        lda SetHitT,y
+        sta tHit
+        lda SetLT,y
+        tay
         jsr Launch
         lda #NX_HIT
         sta next
@@ -1170,21 +1469,42 @@ SetBall SUBROUTINE
         sta blockPend
         ldy #4
         jmp Sound
-.miss   lda #NX_NONE
+.dump   ; l'alzatore schiaccia di seconda appena oltre la rete
+        ldy team
+        lda DumpTX,y
+        sta tx
+        lda #FLOOR
+        sta th
+        ldy #1
+        jsr Launch
+        lda team
+        asl
+        tax
+        lda #FR_SPIKE
+        jsr SetPose
+        lda team
+        sta lastSide
+        eor #1
+        sta team
+        lda #NX_RECV
         sta next
-.no     rts
+        jsr AiError
+        ldy #1
+        jmp Sound
 
-; attacco: l'attaccante salta da solo a fT = 48; si colpisce con il pulsante quando la palla è rossa
+; attacco
 Attack  SUBROUTINE
         lda team
         asl
         ora #1
         tax                     ; X = attaccante
-        lda fT
-        cmp #48
+        lda tHit
+        sec
+        sbc #16
+        cmp fT
         bne .nj
-        jsr Jump
-.nj     ; muro: l'alzatore avversario salta col pulsante (persona) o da solo (computer)
+        jsr Jump                ; stacco: in cima al salto quando arriva la palla
+.nj     ; muro avversario
         lda team
         eor #1
         jsr Human
@@ -1194,20 +1514,29 @@ Attack  SUBROUTINE
         tay
         lda press,y
         beq .blkDone
-        lda fT
-        cmp #36
-        bcc .blkDone
+        lda tHit
+        sec
+        sbc #28
+        cmp fT
+        bcs .blkDone
         tya
         asl
         tax
         jsr Jump
         jmp .blkDone
-.aiBlk  lda fT
-        cmp #50
+.aiBlk  lda tHit
+        sec
+        sbc #14
+        cmp fT
         bne .blkDone
-        lda rand
-        cmp #110
-        bcs .blkDone
+        lda skill
+        asl
+        asl
+        asl
+        asl
+        adc #60
+        cmp rand
+        bcc .blkDone
         lda team
         eor #1
         asl
@@ -1222,22 +1551,31 @@ Attack  SUBROUTINE
         lda press,y
         beq .late
         lda fT
-        cmp #56
-        bcc .late
-        cmp #71
-        bcs .late
         sec
-        sbc #64
+        sbc tHit                ; anticipo (-) o ritardo (+)
+        clc
+        adc #8
+        cmp #15
+        bcs .late               ; fuori dalla finestra
+        sec
+        sbc #8
         bpl .pp
         eor #$FF
         clc
         adc #1
-.pp     cmp #5
-        bcs .soft               ; fuori tempo di poco: palla piazzata lenta
-        ldy team                ; direzione dal joystick
+.pp     sta temp3               ; errore di tempo
+        ldy team
         lda joy,y
         and #$10
-        bne .dink
+        beq .ndk
+        jmp .dink
+.ndk
+        lda joy,y
+        and #$20
+        bne .power
+        lda temp3
+        cmp #6
+        bcs .soft
         lda joy,y
         cpy #0
         beq .j0
@@ -1254,64 +1592,81 @@ Attack  SUBROUTINE
         beq .spike
 .long   lda #2
         bne .spike
-.late   lda fT
-        cmp #72
-        bcs .free               ; non ha colpito: palla facile di là
+.late   lda tHit
+        clc
+        adc #8
+        cmp fT
+        bcc .free
         rts
 .ai     lda fT
-        cmp #64
+        cmp tHit
         bne .done
         lda rand
-        cmp #12
+        cmp #10
         bcc .free
-        cmp #40
+        cmp #45
         bcc .dink
+        cmp #95
+        bcc .powerAi
         and #3
         cmp #3
         bne .spike
         lda #1
         bne .spike
+.powerAi
+        lda #0
+        sta temp3
+.power  lda temp3               ; potente: tempo sbagliato = fuori
+        cmp #3
+        bcc .pw
+        ldy team
+        lda OutTX,y
+        sta tx
+        ldy #2
+        lda #FR_SPIKE
+        bne .launch
+.pw     ldy team
+        lda PowerTX,y
+        sta tx
+        ldy #2
+        lda #FR_SPIKE+$80       ; (bit 7: potente, muro più difficile)
+        bne .launch
 .done   rts
 .free   ldy team
         lda FreeTX,y
         sta tx
         ldy #0
-        lda #3
+        lda #FR_JUMP
         bne .launch
 .soft   lda #1
-        bne .spikeSlow
+        sta temp
+        ldy #1
+        lda #FR_SPIKE
+        bne .spk2
 .dink   ldy team
         lda DinkTX,y
         sta tx
         ldy #1
-        lda #3
+        lda #FR_JUMP
         bne .launch
-; schiacciata: A = 0 corta, 1 media, 2 lunga
 .spike  sta temp
+        ldy #2                  ; schiacciata normale: 16 fotogrammi
+        lda setType
+        cmp #2
+        bne .nb
+        ldy #1                  ; seconda linea: più lunga (32)
+.nb     lda #FR_SPIKE
+.spk2   pha
         lda team
         asl
         asl
         clc
         adc temp
-        tay
-        lda SpikeTX,y
+        tax
+        lda SpikeTX,x
         sta tx
-        ldy #2
-        lda #5
-        bne .launch
-.spikeSlow
-        sta temp
-        lda team
-        asl
-        asl
-        clc
-        adc temp
-        tay
-        lda SpikeTX,y
-        sta tx
-        ldy #1
-        lda #5
-.launch sta temp2               ; posa
+        pla
+.launch sta temp2               ; posa (+ bit 7 = potente)
         lda #FLOOR
         sta th
         jsr Launch
@@ -1320,34 +1675,49 @@ Attack  SUBROUTINE
         ora #1
         tax
         lda temp2
+        and #$7F
         jsr SetPose
-        ; muro: l'alzatore avversario è in aria abbastanza in alto?
+        ; muro: l'alzatore avversario in aria (salto tra 6 e 26)?
         lda temp2
-        cmp #5                  ; solo le schiacciate si murano
+        and #$7F
+        cmp #FR_SPIKE
         bne .noBlock
         lda team
         eor #1
         asl
         tax
-        lda pz,x
-        cmp #4
+        lda jT,x
+        cmp #6
         bcc .noBlock
+        cmp #27
+        bcs .noBlock
         lda team
         eor #1
         jsr Human
-        beq .aiChance
-        lda rand
-        cmp #130
-        bcs .noBlock
-        bcc .yesBlock
-.aiChance
-        lda rand
-        cmp #70
-        bit SWCHB
-        bpl .ac
-        cmp #100
-.ac     bcs .noBlock
-.yesBlock
+        beq .aiCh
+        lda #140
+        bne .chance
+.aiCh   lda skill
+        asl
+        asl
+        asl
+        asl
+        adc #50
+.chance ldy setType             ; primo tempo e seconda linea si murano meno
+        cpy #1
+        bne .c2
+        lsr
+.c2     cpy #2
+        bne .c3
+        lsr
+        sta temp
+        lsr
+        adc temp
+.c3     bit temp2
+        bpl .c4
+        lsr                     ; potente: metà
+.c4     cmp rand
+        bcc .noBlock
         lda #1
         sta blockPend
 .noBlock
@@ -1357,19 +1727,30 @@ Attack  SUBROUTINE
         sta team
         lda #NX_RECV
         sta next
+        ; ricezione più difficile dopo il primo tempo e la schiacciata potente
+        lda #0
+        bit temp2
+        bpl .np
+        lda #3
+.np     ldy setType
+        cpy #1
+        bne .nq
+        clc
+        adc #1
+.nq     sta recvPen
         jsr AiError
         ldy #1
         lda temp2
-        cmp #5
+        and #$7F
+        cmp #FR_SPIKE
         beq .snd
         ldy #0
 .snd    jmp Sound
 
-; muro: la palla rimbalza nel campo di chi ha attaccato (che può ancora difenderla)
 Block   SUBROUTINE
         lda #0
         sta blockPend
-        lda team                ; "team" adesso è la squadra che mura
+        lda team
         sta lastSide
         eor #1
         sta team
@@ -1386,21 +1767,24 @@ Block   SUBROUTINE
         eor #1
         asl
         tax
-        lda #3
+        lda #FR_JUMP
         jsr SetPose
         ldy #5
         jmp Sound
 
-; ---------------------------------------------------------------- giocatori: obiettivi, movimento, salto, animazione
+; ---------------------------------------------------------------- giocatori
 Players  SUBROUTINE
+        lda #0
+        sta moved
         ldx #3
 .loop   stx temp3
-        jsr Target              ; A = x obiettivo
+        jsr Target
         ldx temp3
-        sta tgt,x
-        lda #0
-        sta moved,x
-        ; persona: il ricevitore della squadra che deve ricevere si muove col joystick
+        sta temp2               ; obiettivo (non temp4: lo usa Human)
+        ; persona: il ricevitore della squadra che riceve si muove col joystick
+        lda screen
+        cmp #SC_GAME
+        bne .auto
         lda state
         cmp #ST_RALLY
         bne .auto
@@ -1434,26 +1818,22 @@ Players  SUBROUTINE
         jmp .phys
 .auto   ldx temp3
         lda px,x
-        cmp tgt,x
+        cmp temp2
         beq .phys
         bcs .gl
         jsr StepRight
-        ldx temp3
-        txa
-        and #1
-        bne .phys               ; gli alzatori sono più rapidi
+        jsr Fast
+        bne .phys
         lda px,x
-        cmp tgt,x
+        cmp temp2
         bcs .phys
         jsr StepRight
         jmp .phys
 .gl     jsr StepLeft
-        ldx temp3
-        txa
-        and #1
+        jsr Fast
         bne .phys
         lda px,x
-        cmp tgt,x
+        cmp temp2
         beq .phys
         bcc .phys
         jsr StepLeft
@@ -1465,7 +1845,26 @@ Players  SUBROUTINE
         jmp .loop
 .end    rts
 
-; un passo: 1 o 2 pixel a fotogrammi alterni (1,5 pixel/fotogramma)
+; Z = 1 se il giocatore X corre veloce (alzatori, attaccante del primo tempo)
+Fast    ldx temp3
+        txa
+        and #1
+        beq .yes
+        lda next
+        cmp #NX_HIT
+        bne .no
+        lda setType
+        cmp #1
+        bne .no
+        txa
+        lsr
+        cmp team
+        bne .no
+.yes    lda #0
+        rts
+.no     lda #1
+        rts
+
 StepRight
         lda frame
         and #1
@@ -1496,13 +1895,20 @@ ClampX  SUBROUTINE
         lda #151
 .cd     cmp px,x
         beq .nm
-        inc moved,x
+        pha
+        lda BitOf,x
+        ora moved
+        sta moved
+        pla
 .nm     sta px,x
         rts
 
-; obiettivo del giocatore temp3 secondo la fase di gioco (A = x)
+; obiettivo del giocatore temp3 (A = x)
 Target  SUBROUTINE
         ldx temp3
+        lda screen
+        cmp #SC_GAME
+        bne .stay
         lda state
         cmp #ST_RALLY
         beq .rally
@@ -1510,7 +1916,7 @@ Target  SUBROUTINE
         beq .serve
         cmp #ST_SERVE
         bne .stay
-.serve  txa                     ; battitore dietro la linea di fondo, gli altri a casa
+.serve  txa
         lsr
         cmp server
         bne .home
@@ -1528,23 +1934,21 @@ Target  SUBROUTINE
         lsr
         cmp team
         beq .mine
-        ; squadra che non ha la palla: alzatore a muro quando l'altra costruisce l'attacco, ricevitore in difesa
         txa
         and #1
         bne .home
         lda next
         cmp #NX_SET
         bcc .home
-        lda BlockX,x            ; X = 0 o 2
+        lda BlockX,x
         rts
 .mine   txa
         and #1
         beq .setter
-        ; ricevitore / attaccante
         lda next
         cmp #NX_RECV
         bne .notR
-        lda tx                  ; sotto la palla (con l'errore del computer)
+        lda tx
         sec
         sbc #2
         clc
@@ -1557,68 +1961,55 @@ Target  SUBROUTINE
         beq .atk
         cmp #NX_SET
         bne .home
-        lda ApproachX-1,x       ; X = 1 o 3
-        rts
-.atk    lda fT
-        cmp #24
-        bcs .run
         lda ApproachX-1,x
         rts
-.run    lda TakeoffX-1,x
+.atk    ; rincorsa secondo il tipo di alzata
+        lda setType
+        asl
+        asl
+        clc
+        adc temp3               ; tipo*4 + giocatore (1 o 3)
+        tay
+        lda fT
+        cmp #24
+        bcs .run
+        lda AppTab-1,y
+        rts
+.run    lda TakeTab-1,y
         rts
 .setter lda next
         cmp #NX_SET
         bne .home
-        lda tx                  ; sotto la palla che arriva
+        lda tx
         sec
         sbc #2
         rts
 
-; salto del giocatore X (se è a terra)
 Jump    SUBROUTINE
-        lda pz,x
+        lda jT,x
         bne .no
         lda #1
-        sta pvz,x
-        lda #$28
-        sta pvzf,x
-        lda #0
-        sta pzf,x
+        sta jT,x
 .no     rts
 
-; fisica del salto e fotogramma dell'animazione del giocatore X
+; salto (da tabella) e fotogramma dell'animazione del giocatore X
 Physics SUBROUTINE
-        lda pz,x
-        ora pvz,x
-        ora pvzf,x
-        beq .ground
-        lda pzf,x
-        clc
-        adc pvzf,x
-        sta pzf,x
-        lda pz,x
-        adc pvz,x
-        sta pz,x
-        lda pvzf,x
-        sec
-        sbc #PGRAV
-        sta pvzf,x
-        lda pvz,x
-        sbc #0
-        sta pvz,x
-        lda pz,x
-        bpl .ground
+        lda jT,x
+        beq .g
+        inc jT,x
+        lda jT,x
+        cmp #32
+        bcc .g
         lda #0
-        sta pz,x
-        sta pzf,x
-        sta pvz,x
-        sta pvzf,x
-.ground lda animT,x
+        sta jT,x
+.g      lda animT,x
         beq .nt
         dec animT,x
         lda pose,x
         bne .set
-.nt     ; battitore con la palla in mano: braccia su
+.nt     lda screen
+        cmp #SC_GAME
+        bne .nsv
         lda state
         cmp #ST_TOSS+1
         bcs .nsv
@@ -1629,9 +2020,11 @@ Physics SUBROUTINE
         lsr
         cmp server
         bne .nsv
-        lda #3
+        lda jT,x
+        bne .nsv
+        lda #FR_JUMP
         bne .set
-.nsv    lda state               ; fine partita: chi ha vinto esulta
+.nsv    lda state
         cmp #ST_OVER
         bne .nov
         txa
@@ -1642,13 +2035,12 @@ Physics SUBROUTINE
         and #3
         bne .nov
         jsr Jump
-.nov    lda pz,x
-        ora pvz,x
-        ora pvzf,x
+.nov    lda jT,x
         beq .onG
-        lda #3
+        lda #FR_JUMP
         bne .set
-.onG    lda moved,x
+.onG    lda moved
+        and BitOf,x
         beq .still
         lda frame
         lsr
@@ -1662,7 +2054,7 @@ Physics SUBROUTINE
 .set    sta anim,x
         rts
 
-; colore della palla: ROSSA quando una persona deve colpire (battuta o schiacciata); segno di caduta per chi riceve
+; palla ROSSA quando una persona deve colpire; segno di caduta per chi riceve
 BallLook  SUBROUTINE
         lda #WHITE
         sta ballCol
@@ -1674,10 +2066,11 @@ BallLook  SUBROUTINE
         beq .mark
         lda bvyh
         bpl .mark
+        ldy serveKind
         lda byh
-        cmp #HAND+3
+        cmp WinLo,y
         bcc .mark
-        cmp #HAND+10
+        cmp WinHi,y
         bcs .mark
         bcc .red
 .nt     cmp #ST_RALLY
@@ -1689,9 +2082,11 @@ BallLook  SUBROUTINE
         jsr Human
         beq .mark
         lda fT
-        cmp #58
-        bcc .mark
-        cmp #70
+        clc
+        adc #6
+        sec
+        sbc tHit
+        cmp #11
         bcs .mark
 .red    lda #RED
         sta ballCol
@@ -1714,37 +2109,693 @@ BallLook  SUBROUTINE
         sta MkD
 .nm     rts
 
-; ================================================================ dati
+; ---------------------------------------------------------------- dati del banco 0
+BitOf      .byte 1, 2, 4, 8
 ;                 alz.sx att.sx alz.dx att.dx
 HomeX      .byte 60,    22,    92,    130
-ApproachX  .byte 28,    0,     124            ; indice X-1: 0 = att. sinistro, 2 = att. destro
-TakeoffX   .byte 54,    0,     98
-BlockX     .byte 66,    0,     86             ; muro: X = 0 o 2
+ApproachX  .byte 28,    0,     124
+BlockX     .byte 66,    0,     86
+; rincorsa e stacco per tipo di alzata (indice tipo*4 + giocatore-1: 0 = att. sx, 2 = att. dx)
+AppTab     .byte 28, 0, 124, 0,   52, 0, 100, 0,   14, 0, 136, 0
+TakeTab    .byte 54, 0, 98, 0,    56, 0, 96, 0,    34, 0, 118, 0
 ServeX     .byte 2, 150
 HoldOfs    .byte 6, $FE
-SetBallX   .byte 62, 94                       ; dove arriva il bagher (sopra l'alzatore)
+SetBallX   .byte 62, 94
 SideMin    .byte 8, 88
 SideMax    .byte 68, 148
-AtkBallX   .byte 60, 96                       ; dove l'alzata porta la palla per la schiacciata
-SpikeTX    .byte 112, 126, 146, 0, 44, 30, 10, 0   ; schiacciata corta/media/lunga (sinistra, destra)
+; alzata: x della palla per squadra*4 + tipo (alta, primo tempo, seconda linea), altezza, tempo
+SetTX      .byte 60, 64, 40, 0,   96, 92, 116, 0
+SetTH      .byte HITH, HITH, HITH+1
+SetHitT    .byte 64, 32, 64
+SetLT      .byte 0, 1, 0
+DumpTX     .byte 90, 66
+SpikeTX    .byte 112, 126, 146, 0, 44, 30, 10, 0
+PowerTX    .byte 120, 36
+OutTX      .byte 158, 158
 DinkTX     .byte 92, 64
 FreeTX     .byte 126, 30
-BlockTX    .byte 44, 112                      ; muro: dove ricade la palla (campo di chi attacca)
+BlockTX    .byte 44, 112
 ServeTX    .byte 100, 120, 144, 0, 56, 36, 12, 0
 NetTX      .byte 70, 86
-TargetPts  .byte 15, 21
-ArenaPtrs  .byte <BgI, >BgI, <Pf0I, >Pf0I, <Pf1I, >Pf1I, <Pf2I, >Pf2I, <PfcI, >PfcI, <BgB, >BgB, <Pf0B, >Pf0B, <Pf1B, >Pf1B, <Pf2B, >Pf2B, <PfcB, >PfcB
-ShirtCol   .byte $44, $84, $38, $C8
-LShift     .byte 2, 3, 4
-GcLo       .byte <410, <202, <98
-GcHi       .byte >410, >202, >98
+AiServe    .byte 0, 0, 1, 0, 1, 2, 0, 1      ; battute del computer: normale, in salto, altissima
+ServeT     .byte 0, 1, 3                ; tempo della battuta: normale 64, in salto 32, altissima 128
+ServePen   .byte 0, 2, 3
+WinLo      .byte HAND+3, HAND+7, HAND+3
+WinHi      .byte HAND+10, HAND+13, HAND+10
+WinAI      .byte HAND+6, HAND+10, HAND+6
+TargetPts  .byte 11, 15                  ; punti del set: palazzetto, spiaggia
+LShift     .byte 2, 3, 4, 1
+GcLo       .byte <410, <202, <98, <826
+GcHi       .byte >410, >202, >98, >826
 SndC       .byte $0C, $08, $0F, $04, $0C, $06
 SndF       .byte $0C, $03, $1C, $09, $08, $14
 SndV       .byte $0A, $0C, $0A, $08, $08, $0C
 SndT       .byte 4, 10, 7, 5, 4, 8
 
-        include "data.inc"
+        include "bank0.inc"
 
-        ORG $FFFC
-        .word Reset
-        .word Reset
+        ORG $0FC0
+        RORG $FFC0
+        STUBS
+        ORG $0FFC
+        RORG $FFFC
+        .word $FFE0, $FFE0
+
+; ============================================================================ BANCO 1: kernel della partita
+        ORG $1000
+        RORG $F000
+
+GameKernel  SUBROUTINE
+        lda #$80
+        sta COLUBK
+        lda #0
+        sta GRP0
+        sta GRP1
+        sta ENAM0
+        sta ENAM1
+        sta PF0
+        sta PF1
+        sta PF2
+        sta WSYNC               ; riga 1
+        lda demo
+        beq .score
+        lda #0
+        sta CTRLPF
+        ldx #0
+.trow   ldy #4
+.tline  sta WSYNC
+        lda TCol,x
+        sta COLUPF
+        lda TL0,x
+        sta PF0
+        lda TL1,x
+        sta PF1
+        lda TL2,x
+        sta PF2
+        lda TR0,x
+        sta PF0
+        lda TR1,x
+        sta PF1
+        nop
+        lda TR2,x
+        sta PF2
+        dey
+        bne .tline
+        inx
+        cpx #5
+        bne .trow
+        jmp .topDone
+.score  lda #2
+        sta CTRLPF
+        ldx #0
+.srow   ldy #4
+.sline  sta WSYNC
+        lda ScoreGfx,x
+        sta PF1
+        SLEEP 30
+        lda ScoreGfx+5,x
+        sta PF1
+        dey
+        bne .sline
+        inx
+        cpx #5
+        bne .srow
+.topDone
+        sta WSYNC
+        lda #0
+        sta PF0
+        sta PF1
+        sta PF2
+        lda #$21
+        sta CTRLPF
+        sta WSYNC
+
+        ldy #PAIRS-1
+GameLoop
+        sta WSYNC               ; --- riga A
+        lda (BgPtr),y
+        sta COLUBK
+        lda (Pf0Ptr),y
+        sta PF0
+        lda (Pf1Ptr),y
+        sta PF1
+        lda #PH-1
+        dcp P0D
+        bcs .draw0
+        lda #0
+        sta GRP0
+        lda #MARKCOL
+        sta COLUP0
+        jmp .p0done
+.draw0  lda (P0Ptr),y
+        sta GRP0
+        lda (P0Col),y
+        sta COLUP0
+.p0done lda #BH-1
+        dcp BlD
+        lda #0
+        rol
+        rol
+        sta ENAM1
+        sta WSYNC               ; --- riga B
+        lda (Pf2Ptr),y
+        sta PF2
+        lda (PfcPtr),y
+        sta COLUPF
+        lda #0
+        dcp MkD
+        lda #0
+        rol
+        rol
+        sta ENAM0
+        lda #PH-1
+        dcp P1D
+        bcs .draw1
+        lda #0
+        sta GRP1
+        lda ballCol
+        sta COLUP1
+        dey
+        bpl GameLoop
+        rts
+.draw1  lda (P1Ptr),y
+        sta GRP1
+        lda (P1Col),y
+        sta COLUP1
+        dey
+        bpl GameLoop
+        rts
+
+        include "bank1.inc"
+
+        ORG $1FC0
+        RORG $FFC0
+        STUBS
+        ORG $1FFC
+        RORG $FFFC
+        .word $FFE0, $FFE0
+
+; ============================================================================ BANCO 2: schermate
+        ORG $2000
+        RORG $F000
+
+ScreenKernel  SUBROUTINE
+        lda #0
+        sta COLUBK
+        sta GRP0
+        sta GRP1
+        sta ENAM0
+        sta ENAM1
+        sta PF0
+        sta PF1
+        sta PF2
+        sta CTRLPF
+        sta REFP0
+        sta REFP1
+        lda screen
+        asl
+        tax
+        lda ScreenDraw+1,x
+        pha
+        lda ScreenDraw,x
+        pha
+        rts
+ScreenDraw
+        .word DrawTitle-1, DrawSelect-1, DrawIntro-1, 0, DrawOver-1, DrawChamp-1
+
+; A righe vuote
+Blank   SUBROUTINE
+        tax
+.b      sta WSYNC
+        dex
+        bne .b
+        rts
+
+; prepara la scritta A (colori: Y = 0 bianco, 1 giallo, 2 arancio, 3 grigio)
+SetStr  SUBROUTINE
+        sta WSYNC
+        tax
+        lda StrLo,x
+        sta T0P
+        lda StrHi,x
+        sta T0P+1
+        lda #5
+        sta tRows
+        lda #5
+        jmp SetCols
+; prepara il logo A (0 = SPIKE, 1 = FEVER)
+SetLogo
+        sta WSYNC
+        tax
+        lda LogoLo,x
+        sta T0P
+        lda LogoHi,x
+        sta T0P+1
+        lda #9
+        sta tRows
+        ldy #4
+        lda #9
+; puntatori delle 6 colonne (passo A) e dei colori (tabella Y)
+SetCols
+        sta temp
+        ldx #0
+.c      lda T0P,x
+        clc
+        adc temp
+        sta T0P+2,x
+        lda T0P+1,x
+        adc #0
+        sta T0P+3,x
+        inx
+        inx
+        cpx #10
+        bne .c
+        lda ColTabLo,y
+        sta TCP
+        lda ColTabHi,y
+        sta TCP+1
+        ldy #0
+        lda (TCP),y
+        sta COLUPF
+        rts
+
+; disegna le righe della scritta (tRows righe da tLines linee), playfield asimmetrico
+DrawRows  SUBROUTINE
+        ldy #0
+.row    ldx tLines
+.line   sta WSYNC               ; 0
+        lda (T0P),y             ; 5
+        sta PF0                 ; 8
+        lda (T1P),y             ; 13
+        sta PF1                 ; 16
+        lda (T2P),y             ; 21
+        sta PF2                 ; 24
+        lda (T3P),y             ; 29
+        sta PF0                 ; 32  (28..49)
+        lda (T4P),y             ; 37
+        sta PF1                 ; 40  (39..54)
+        nop                     ; 42
+        lda (T5P),y             ; 47
+        sta PF2                 ; 50  (50..65)
+        lda (TCP),y
+        sta COLUPF
+        dex
+        bne .line
+        iny
+        cpy tRows
+        bne .row
+        sta WSYNC
+        lda #0
+        sta PF0
+        sta PF1
+        sta PF2
+        rts
+
+; scritta completa: A = scritta, Y = colore, righe alte X linee
+Text    SUBROUTINE
+        stx tLines
+        jsr SetStr
+        jmp DrawRows
+
+; bandiera della nazione A (12 righe da 4 linee): fondo, PF, COLUP0/COLUP1 (modo SCORE + riflesso)
+DrawFlag  SUBROUTINE
+        sta WSYNC
+        tax
+        lda FlagLo,x
+        sta T0P
+        lda FlagHi,x
+        sta T0P+1
+        lda #12
+        sta temp
+        ldx #0
+.c      lda T0P,x
+        clc
+        adc temp
+        sta T0P+2,x
+        lda T0P+1,x
+        adc #0
+        sta T0P+3,x
+        inx
+        inx
+        cpx #10
+        bne .c
+        lda #3
+        sta CTRLPF
+        ldy #0
+.row    ldx #4
+.line   sta WSYNC
+        lda (T0P),y
+        sta COLUBK
+        lda (T1P),y
+        sta PF0
+        lda (T2P),y
+        sta PF1
+        lda (T3P),y
+        sta PF2
+        lda (T4P),y
+        sta COLUP0
+        lda (T5P),y
+        sta COLUP1
+        dex
+        bne .line
+        iny
+        cpy #12
+        bne .row
+        sta WSYNC
+        lda #0
+        sta COLUBK
+        sta PF0
+        sta PF1
+        sta PF2
+        sta CTRLPF
+        rts
+
+; ---------------------------------------------------------------- titolo (come Power Spikes: logo grande sfumato)
+DrawTitle  SUBROUTINE
+        lda #3
+        jsr Blank
+        lda #0
+        jsr SetLogo
+        lda #3
+        sta tLines
+        jsr DrawRows            ; SPIKE
+        lda #3
+        jsr Blank
+        lda #1
+        jsr SetLogo
+        lda #3
+        sta tLines
+        jsr DrawRows            ; FEVER
+        sta WSYNC
+        lda #$2A                ; filetto arancio sotto il logo
+        sta COLUBK
+        sta WSYNC
+        sta WSYNC
+        lda #0
+        sta COLUBK
+        ; quadro: schiacciata contro muro sopra la rete
+        lda #52
+        ldx #0
+        jsr PosObj2
+        lda #84
+        ldx #1
+        jsr PosObj2
+        lda #66
+        ldx #3
+        jsr PosObj2
+        sta WSYNC
+        sta HMOVE
+        lda #$05
+        sta NUSIZ0
+        lda #$25
+        sta NUSIZ1
+        lda #8
+        sta REFP1
+        lda #1
+        sta CTRLPF
+        lda #$80
+        sta PF2
+        lda #$06
+        sta COLUPF
+        lda #$82
+        sta COLUBK
+        lda #WHITE
+        sta COLUP1
+        lda #2
+        sta ENAM1               ; la palla sopra la mano
+        lda #4
+        jsr Blank
+        lda #0
+        sta ENAM1
+        ldx #PH-1
+.prow   ldy #4
+.pl     sta WSYNC
+        lda TGfx+5*PH,x
+        sta GRP0
+        lda TCols,x
+        sta COLUP0
+        lda TGfx+3*PH,x
+        sta GRP1
+        lda TCols+PH,x
+        sta COLUP1
+        dey
+        bne .pl
+        dex
+        bpl .prow
+        sta WSYNC
+        lda #0
+        sta GRP0
+        sta GRP1
+        sta PF2
+        lda #$2C
+        sta COLUBK
+        sta WSYNC
+        sta WSYNC
+        lda #0
+        sta COLUBK
+        sta CTRLPF
+        sta NUSIZ0
+        sta NUSIZ1
+        sta REFP1
+        lda #3
+        jsr Blank
+        ; menu: 1 PLAYER / 2 PLAYERS (quello scelto in giallo)
+        ldy #1
+        lda menuSel
+        beq .m1
+        ldy #3
+.m1     lda #S_1P
+        ldx #2
+        jsr Text
+        lda #2
+        jsr Blank
+        ldy #3
+        lda menuSel
+        beq .m2
+        ldy #1
+.m2     lda #S_2P
+        ldx #2
+        jsr Text
+        lda #3
+        jsr Blank
+        lda #S_SC
+        ldy #2
+        ldx #2
+        jsr Text
+        lda #TITLE_PAD
+        jmp Blank
+
+; ---------------------------------------------------------------- scelta della squadra o dell'arena
+DrawSelect  SUBROUTINE
+        lda #8
+        jsr Blank
+        lda #S_SEL
+        ldy #1
+        ldx #3
+        jsr Text
+        lda #2
+        jsr Blank
+        lda selStep
+        clc
+        adc #S_P1
+        cmp #S_P1+2
+        bcc .p
+        lda #S_ARENA
+.p      ldy #0
+        ldx #2
+        jsr Text
+        lda #8
+        jsr Blank
+        lda selStep
+        cmp #2
+        beq .ar
+        tax
+        lda nat,x
+        pha
+        jsr DrawFlag
+        lda #8
+        jsr Blank
+        pla
+        clc
+        adc #S_NAT
+        ldy #0
+        ldx #3
+        jsr Text
+        jmp .fire
+.ar     lda #60
+        jsr Blank
+        lda arena
+        clc
+        adc #S_ARN
+        ldy #2
+        ldx #3
+        jsr Text
+.fire   lda #8
+        jsr Blank
+        lda frame
+        and #32
+        beq .on
+        lda #15
+        jsr Blank
+        jmp .end
+.on     lda #S_FIRE
+        ldy #1
+        ldx #2
+        jsr Text
+.end    lda #SELECT_PAD
+        jmp Blank
+
+; ---------------------------------------------------------------- presentazione del livello
+DrawIntro  SUBROUTINE
+        lda #8
+        jsr Blank
+        lda level
+        clc
+        adc #S_STAGE
+        ldy #1
+        ldx #3
+        jsr Text
+        lda #6
+        jsr Blank
+        lda #S_VS
+        ldy #0
+        ldx #2
+        jsr Text
+        lda #6
+        jsr Blank
+        lda nat+1
+        jsr DrawFlag
+        lda #6
+        jsr Blank
+        lda nat+1
+        clc
+        adc #S_NAT
+        ldy #0
+        ldx #3
+        jsr Text
+        lda #4
+        jsr Blank
+        lda arena
+        clc
+        adc #S_ARN
+        ldy #2
+        ldx #2
+        jsr Text
+        lda #INTRO_PAD
+        jmp Blank
+
+; ---------------------------------------------------------------- game over
+DrawOver  SUBROUTINE
+        lda #20
+        jsr Blank
+        lda #S_OVER
+        ldy #2
+        ldx #4
+        jsr Text
+        lda #10
+        jsr Blank
+        lda nat
+        jsr DrawFlag
+        lda #10
+        jsr Blank
+        lda frame
+        and #16
+        beq .on
+        lda #15
+        jsr Blank
+        jmp .e
+.on     lda #S_CONT
+        ldy #0
+        ldx #2
+        jsr Text
+.e      lda #6
+        jsr Blank
+        lda #S_FIRE
+        ldy #1
+        ldx #2
+        jsr Text
+        lda #OVER_PAD
+        jmp Blank
+
+; ---------------------------------------------------------------- campione / vincitore
+DrawChamp  SUBROUTINE
+        lda #14
+        jsr Blank
+        lda #S_CHAMP
+        ldx twoP
+        beq .c
+        lda #S_WIN
+.c      ldy #1
+        ldx #4
+        jsr Text
+        lda #10
+        jsr Blank
+        ldx winner
+        lda twoP
+        bne .w
+        ldx #0
+.w      lda nat,x
+        pha
+        jsr DrawFlag
+        lda #8
+        jsr Blank
+        pla
+        clc
+        adc #S_NAT
+        ldy #0
+        ldx #3
+        jsr Text
+        lda #8
+        jsr Blank
+        lda #S_SC
+        ldy #2
+        ldx #2
+        jsr Text
+        lda #CHAMP_PAD
+        jmp Blank
+
+PosObj2  SUBROUTINE
+        sec
+        sta WSYNC
+.divide sbc #15
+        bcs .divide
+        eor #7
+        asl
+        asl
+        asl
+        asl
+        sta.wx HMP0,x
+        sta RESP0,x
+        rts
+
+; righe vuote finali di ogni schermata (per arrivare esattamente a 192)
+TITLE_PAD  = 5
+SELECT_PAD = 34
+INTRO_PAD  = 38
+OVER_PAD   = 37
+CHAMP_PAD  = 38
+
+ColTabLo   .byte <TxtWhite, <TxtYellow, <TxtOrange, <TxtGrey, <LogoCol
+ColTabHi   .byte >TxtWhite, >TxtYellow, >TxtOrange, >TxtGrey, >LogoCol
+LogoLo     .byte <LogoA, <LogoB
+LogoHi     .byte >LogoA, >LogoB
+
+        include "bank2.inc"
+
+        ORG $2FC0
+        RORG $FFC0
+        STUBS
+        ORG $2FFC
+        RORG $FFFC
+        .word $FFE0, $FFE0
+
+; ============================================================================ BANCO 3: libero
+        ORG $3000
+        RORG $F000
+        .byte 0
+        ORG $3FC0
+        RORG $FFC0
+        STUBS
+        ORG $3FFC
+        RORG $FFFC
+        .word $FFE0, $FFE0

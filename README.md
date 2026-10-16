@@ -1,6 +1,6 @@
 # Spike Fever '91 — Power Spikes (1991) + Thunder Spikes (2026) in Phaser 3
 
-> **Atari 2600:** c'è anche una versione per Atari 2600 in stile Power Spikes (cartuccia da 4K, assembly 6502): [atari2600/](atari2600/README.md). Si gioca nel browser da `atari2600/index.html`.
+> **Atari 2600:** c'è anche una versione per Atari 2600 in stile Power Spikes (cartuccia da 16K con 6 livelli, beach volley e nazionali, assembly 6502): [atari2600/](atari2600/README.md). Si gioca nel browser da `atari2600/index.html`.
 
 > **Vuoi modificare il gioco?** Leggi la [guida allo sviluppo](GUIDA-SVILUPPO.md): mappa dei file, concetti chiave e una tabella "dove si cambia cosa". Ogni file `.js` inizia con l'indice delle sue parti.
 
@@ -57,7 +57,7 @@
   - REBOUND INDICATOR: EASY/HARD/OFF;
   - ATTACK TARGET: ON/OFF;
   - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
-  - ARCADE FX: telecronaca, arbitro, volti e battute speciali di Power Spikes sì/no.
+  - ARCADE FX: telecronaca, arbitro, volti, battute speciali di Power Spikes e leggera scossa dello schermo su schiacciate e muri sì/no.
 - **In partita:**
   - pavimento lucido con i riflessi;
   - telecamera che allarga in battuta e stringe durante lo scambio;

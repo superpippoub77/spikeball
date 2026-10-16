@@ -64,8 +64,45 @@ function limb(ctx, ox, a, b, w0, w1, color) {
   ctx.beginPath(); ctx.arc(ox + b[0], b[1], w1 / 2, 0, 7); ctx.fill();
 }
 // disegno pixel art di un giocatore nella posa indicata (versione ARCADE); P = colori della squadra
+// alzatore in palleggio: come in Power Spikes si gira di fronte, braccia in alto e mani sopra la testa
+const FRONT = { head: [16, 10], hands: [[13, 3], [19, 3]], elbows: [[7, 10], [25, 10]], sh: [[10, 17], [22, 17]],
+  hipL: [13, 32], hipR: [19, 32], kneeL: [12, 39], kneeR: [20, 39], footL: [12, 46], footR: [20, 46] };
+function drawPlayerFront(ctx, ox, P, hair) {
+  const F = FRONT, B = P.beach, skin = P.sk, skinD = shade(P.sk, 0.74), shirt = P.sh, shirtD = shade(P.sh, 0.7);
+  // gambe (ginocchiere, calzettoni e scarpe; in spiaggia piedi nudi)
+  for (const [h, k, f] of [[F.hipL, F.kneeL, F.footL], [F.hipR, F.kneeR, F.footR]]) {
+    limb(ctx, ox, h, k, 5, 4.2, skin); limb(ctx, ox, k, f, 4, 3, skinD);
+    if (!B) {
+      limb(ctx, ox, lerpP(k, f, 0.55), f, 3.4, 3, '#f2f2f2');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(ox + f[0] - 3, f[1] - 1, 6, 2);
+      ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.ellipse(ox + k[0], k[1], 2.8, 2.6, 0, 0, 7); ctx.fill();
+    } else { ctx.fillStyle = skin; ctx.fillRect(ox + f[0] - 2, f[1] - 1, 4, 2); }
+  }
+  // pantaloncini e busto di fronte
+  poly(ctx, ox, [[10, 27], [22, 27], [22.5, B ? 36 : 33], [17, B ? 36 : 33], [16, 30], [15, B ? 36 : 33], [9.5, B ? 36 : 33]], P.so);
+  poly(ctx, ox, [[9, 16], [23, 16], [22, 28], [10, 28]], shirt);
+  poly(ctx, ox, [[9, 16], [12, 16], [12, 28], [10, 28]], shirtD);
+  if (P.num) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25); ctx.textAlign = 'left'; }
+  // braccia alzate verso il pallone
+  for (let i = 0; i < 2; i++) {
+    limb(ctx, ox, F.sh[i], F.elbows[i], 4, 3.4, skin); limb(ctx, ox, F.elbows[i], F.hands[i], 3.4, 2.8, skin);
+    if (!B) limb(ctx, ox, F.sh[i], lerpP(F.sh[i], F.elbows[i], 0.4), 4.6, 4, shirt);
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(ox + F.hands[i][0], F.hands[i][1], 1.8, 0, 7); ctx.fill();
+  }
+  // testa di fronte: capelli, occhi, bocca
+  const [hx, hy] = F.head;
+  limb(ctx, ox, [16, 16], [16, 13], 3.4, 3.4, skinD);
+  ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx, hy - 3, 4.6, 2.6, 0, 0, 7); ctx.fill();
+  ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, 4); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, 4);
+  if (B) { ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx - 3.5, hy - 1, 7, 2); }
+  else { ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx - 2.5, hy - 1, 1, 1.4); ctx.fillRect(ox + hx + 1.5, hy - 1, 1, 1.4); }
+  ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1);
+}
+
 function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.imageSmoothingEnabled = false;
+  if (pose === 'set') return drawPlayerFront(ctx, ox, P, hair);
   const s0 = SKEL[pose];
   // corporatura "arcade": figura di ~30 px, testa grande, busto largo (misure dal video HD)
   const K = 1.17;   // scala del corpo: da ~34 a ~40 px
