@@ -59,6 +59,9 @@ camp = {'id': a.id, 'nome': a.nome, 'set': a.set, 'squadre': [{'nome': s} for s 
 data = {'campionati': []}
 if os.path.exists(a.out):
     data = json.load(open(a.out, encoding='utf-8'))
+    # se il campionato c'era già, si tengono logo, colori e codice delle squadre
+    old = {s['nome']: s for c in data.get('campionati', []) if c.get('id') == a.id for s in c.get('squadre', [])}
+    camp['squadre'] = [{**{k: v for k, v in old.get(s['nome'], {}).items()}, **s} for s in camp['squadre']]
 data['campionati'] = [c for c in data.get('campionati', []) if c.get('id') != a.id] + [camp]
 json.dump(data, open(a.out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 ng = sum(len(v) for v in gior.values())

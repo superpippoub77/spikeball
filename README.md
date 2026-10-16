@@ -87,6 +87,9 @@ python3 tools/campionati/calendario2json.py calendario.txt campionati.json --id 
 ```
 Ogni squadra del campionato può avere anche `logo`, `colori` e `codice` (per collegarla a una squadra di `squadre.json`):
 `"squadre": [{ "nome": "VALSESIA TEAM VOLLEY", "logo": "loghi/valsesia.png" }, ...]`. Anche `campionati.json` si può trascinare sulla finestra.
+Rigenerando un campionato con lo stesso `--id`, logo, colori e codice delle squadre restano.
+
+Loghi disponibili in `loghi/`: Bellinzago, Koala Fontaneto, Pavic, Volley Novara (già collegati alla Prima Divisione), Salussola, Santhià, Vigliano Biellese, Volley Crescentino, Volley Vercelli.
 
 ### Bilanciamento (misurato su centinaia di scambi simulati)
 - Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
