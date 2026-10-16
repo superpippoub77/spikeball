@@ -1354,6 +1354,25 @@ class MatchScene extends Phaser.Scene {
     g.fillStyle(this.serving === b ? red : 0x4a1410, 1).fillRect(x + 55, y + 31, 20, 2);
   }
 
+  // movimenti in più tempi, come nella pallavolo vera (versioni ARCADE e HD):
+  //  - schiacciata: in salto il braccio si carica dietro la testa, al colpo si distende in alto, poi accompagna verso il basso;
+  //  - bagher: mentre la palla arriva il ricevitore si piega sulle gambe con le braccia tese in basso, al contatto spinge.
+  motion(p, st) {
+    const t = p.team, b = this.ball;
+    if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
+    if (st === 'pass' && p.animT > 0.22) return 'passload';
+    if (p.z > 0 && (st === 'jump' || st === 'idle')) {
+      const attacking = (t.attacker === p && !p.decoy && b.lastTeam === t && t.touches === 2) ||
+                        (this.state === 'serve' && this.server === p && this.serveKind === 'jump' && !p.served);
+      if (attacking) return p.vz > 70 ? 'jump' : 'spkload';
+    }
+    if (p.z <= 0 && (st === 'idle' || st === 'run') && this.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'pass' && b.vy < 0) {
+      const tl = PHYS.timeToH(b.h, b.vy, 14);
+      if (tl !== null && tl < 0.4 && Math.abs(p.x - (t.plan.xc + t.side * 6)) < 14) return 'passload';
+    }
+    return st;
+  }
+
   // ------------------------------------------------ rendering
   // DISEGNO (ogni frame, dopo la simulazione): telecamera (anche zoom e inseguimento nelle versioni moderne/3D),
   // fotogramma e posizione degli sprite, riflessi, ombre, indicatori (punto di caduta, bersaglio d'attacco), HIT!/MOVE.
@@ -1393,7 +1412,7 @@ class MatchScene extends Phaser.Scene {
     }
 
     for (const t of this.teams) for (const p of t.players) {
-      let st = p.state;
+      let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
       p.spr.setFrame(PHOTO.on ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z;

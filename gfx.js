@@ -11,7 +11,8 @@
 // Le versioni HD e 3D sostituiscono alcune funzioni: gfx-hd.js (disegni vettoriali) e photo.js (giocatori foto).
 // FW x FH = cella di un fotogramma del giocatore in pixel nativi; POSES = elenco delle pose (PF['spike'] = indice).
 const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (misurati sul video HD)
-const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad'];
+const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
+               'spkload', 'spkfol', 'passload'];   // schiacciata: caricamento e accompagnamento; bagher: piegamento
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -20,10 +21,16 @@ const SKEL = {
   idle:  { hip: [14, 25], neck: [17, 14], head: [19, 9], bl: [[17, 31], [13, 38]], fl: [[20, 31], [17, 38]], ba: [[18, 21], [22, 23]], fa: [[19, 21], [23, 22]] },
   run1:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[13, 30], [10, 36]], fl: [[20, 30], [20, 38]], ba: [[15, 19], [13, 22]], fa: [[21, 18], [23, 15]] },
   run2:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[16, 31], [17, 38]], fl: [[18, 30], [13, 34]], ba: [[20, 18], [22, 15]], fa: [[15, 19], [13, 22]] },
-  pass:  { hip: [13, 29], neck: [18, 20], head: [21, 16], bl: [[17, 33], [12, 38]], fl: [[21, 33], [21, 38]], ba: [[22, 25], [27, 28]], fa: [[22, 25], [27, 28]] },
+  // bagher in due tempi: passload = piegati sulle gambe, braccia tese e unite in basso; pass = spinta di gambe e braccia verso l'alto
+  passload: { hip: [12, 31], neck: [17, 22], head: [20, 18], bl: [[17, 34], [11, 38]], fl: [[21, 34], [22, 38]], ba: [[22, 29], [27, 32]], fa: [[22, 29], [27, 32]] },
+  pass:  { hip: [14, 27], neck: [18, 17], head: [21, 13], bl: [[16, 32], [12, 38]], fl: [[20, 32], [21, 38]], ba: [[23, 21], [28, 19]], fa: [[23, 21], [28, 19]] },
   set:   { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[15, 8], [17, 3]],  fa: [[19, 8], [19, 3]] },
   jump:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 30], [12, 35]], fl: [[19, 30], [16, 36]], ba: [[13, 17], [10, 14]], fa: [[14, 18], [11, 16]] },
+  // schiacciata in tre tempi: spkload = corpo inarcato, braccio d'attacco caricato dietro la testa, l'altro punta la palla;
+  // spike = braccio teso in alto davanti al colpo; spkfol = accompagnamento, il braccio scende davanti al corpo
+  spkload: { hip: [14, 24], neck: [15, 13], head: [17, 9], bl: [[12, 29], [14, 35]], fl: [[16, 30], [18, 35]], ba: [[20, 9], [23, 5]], fa: [[11, 7], [7, 11]] },
   spike: { hip: [15, 24], neck: [16, 13], head: [18, 9],  bl: [[13, 30], [15, 36]], fl: [[18, 30], [15, 37]], ba: [[19, 16], [22, 18]], fa: [[19, 7], [22, 2]] },
+  spkfol: { hip: [15, 24], neck: [18, 14], head: [21, 10], bl: [[14, 30], [13, 36]], fl: [[18, 30], [18, 36]], ba: [[14, 18], [11, 21]], fa: [[22, 17], [23, 23]] },
   block: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [15, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 6], [17, 1]],  fa: [[18, 6], [19, 1]] },
   dive:  { hip: [9, 32],  neck: [21, 33], head: [25, 32], bl: [[5, 31], [1, 30]],   fl: [[5, 33], [1, 33]],   ba: [[25, 35], [30, 35]], fa: [[25, 34], [30, 33]] },
   down:  { hip: [10, 36], neck: [22, 36], head: [26, 35], bl: [[6, 37], [2, 38]],   fl: [[6, 38], [2, 37]],   ba: [[26, 38], [30, 38]], fa: [[26, 37], [30, 37]] },
