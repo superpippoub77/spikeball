@@ -118,13 +118,13 @@ function canvasTex(scene, key, w, h) {
   return { t, c };
 }
 // frames: [nome, x, y, w, h] in pixel nativi
-function texDone(t, frames = []) {
+function texDone(t, frames = [], R = GR) {
   t.refresh();
-  for (const [n, x, y, w, h] of frames) t.add(n, 0, x * GR, y * GR, w * GR, h * GR);
-  if (GR === 1) return;
+  for (const [n, x, y, w, h] of frames) t.add(n, 0, x * R, y * R, w * R, h * R);
+  if (R === 1) return;
   t.setFilter(Phaser.Textures.FilterMode.LINEAR);
   for (const n of t.getFrameNames(true)) {
-    const f = t.get(n), k = 1 / GR;
+    const f = t.get(n), k = 1 / R;
     f.cutWidth *= k; f.cutHeight *= k; f.width *= k; f.height *= k; f.x *= k; f.y *= k;
     f.halfWidth = f.width / 2; f.halfHeight = f.height / 2; f.centerX = Math.floor(f.width / 2); f.centerY = Math.floor(f.height / 2);
     const d = f.data;
@@ -141,7 +141,11 @@ function playerPal(code, i) {
     sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
 }
 
+// chiave della texture di un giocatore: con i giocatori "foto" una sola texture per squadra
+function plKey(code, i) { return typeof PHOTO !== 'undefined' && PHOTO.on ? 'ph_' + code : `pl_${code}_${i}`; }
+
 function makePlayerTex(scene, code, i) {
+  if (typeof PHOTO !== 'undefined' && PHOTO.on) return makePhotoTex(scene, code);
   const key = `pl_${code}_${i}`;
   if (scene.textures.exists(key)) return key;
   const P = playerPal(code, i), hair = P.ha[i % P.ha.length];

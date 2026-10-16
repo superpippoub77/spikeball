@@ -26,6 +26,12 @@
   - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
 - **ESC** durante la partita torna al menu.
 
+### Versione 3D (giocatori fotorealistici)
+Tre versioni grafiche, si cambia col tasto **H** (o `index.html?gfx=pixel|hd|3d`): **ARCADE** (pixel art), **HD** (giocatori disegnati), **3D**.
+Nella 3D i giocatori sono fotogrammi presi da un foglio sprite fotografico (66 pose: attesa, corsa, salto, schiacciata, bagher, muro, battuta; tuffo e caduta generati),
+in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
+Per rigenerare i fotogrammi: `tools/photo/README.md`.
+
 ### Squadre personalizzate (squadre.json)
 Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squadre.json` dalla cartella del gioco; se non c'è usa `squadre.esempio.json`.
 - **Con un server locale** (`npx serve`) basta salvare il file accanto a `index.html`.
@@ -81,11 +87,13 @@ Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro
 ## Avvio
 Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso (`phaser.min.js`).
 
-### Grafica: pixel art o HD
-- **Pixel art** (predefinita): la grafica originale a 320×224.
+### Grafica: ARCADE, HD o 3D
+- **ARCADE** (predefinita): la pixel art originale a 320×224.
 - **HD**: tutta la grafica a 1920 px, senza pixel art (`gfx-hd.js`): giocatori vettoriali con contorni netti e ombreggiatura, ritratti e arbitro disegnati, pallone, pubblico, bandiere, cartelloni e testi nitidi (carattere Russo One). Ogni texture è disegnata a 6× e mostrata alla misura originale, quindi regole e logica di gioco sono identiche.
 
-Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=hd` / `index.html?gfx=pixel`. La scelta viene ricordata.
+- **3D**: come HD, ma con i giocatori fotorealistici (vedi sotto).
+
+Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=pixel` / `hd` / `3d`. La scelta viene ricordata.
 
 ## Tasti
 | | Giocatore 1 | Giocatore 2 |
@@ -95,7 +103,7 @@ Si cambia con il tasto **H** (ricarica la pagina) oppure dall'indirizzo: `index.
 | Start | Invio o 1 | 2 |
 | Gettone | 5 o C | |
 | Pausa / muto | P / M | |
-| Grafica pixel / HD | H | |
+| Grafica ARCADE / HD / 3D | H | |
 
 ## Come si gioca (dal manuale)
 - **Battuta:** il battitore è già fuori dal campo con la palla in mano. Pulsante per lanciare, pulsante per colpire quando la palla diventa rossa ("HIT! PRESS BUTTON!"). Frecce riferite al battitore rivolto verso la rete:

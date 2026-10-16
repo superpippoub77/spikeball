@@ -70,13 +70,13 @@ class LogoScene extends Base {
     makePlayerTex(this, 'ITA', 0); makePlayerTex(this, 'CHN', 1);
     // tre "fotogrammi" che entrano, come nell'intro originale
     const panel = (x, y, w, h, fn) => { const c = this.add.container(x, y); const r = this.add.rectangle(0, 0, w, h, 0x101010).setOrigin(0); c.add(r); fn(c); return c; };
-    const p1 = panel(-120, 14, 92, 64, c => { c.add(this.add.rectangle(2, 2, 88, 60, 0xc86a3a).setOrigin(0)); c.add(this.add.sprite(46, 64, 'pl_ITA_0', PF.spike).setOrigin(0.5, 1).setScale(1.6)); });
-    const p2 = panel(340, 30, 76, 70, c => { c.add(this.add.rectangle(2, 2, 72, 66, 0x2a2a2a).setOrigin(0)); c.add(this.add.sprite(38, 72, 'pl_ITA_0', PF.set).setOrigin(0.5, 1).setScale(1.8)); });
+    const p1 = panel(-120, 14, 92, 64, c => { c.add(this.add.rectangle(2, 2, 88, 60, 0xc86a3a).setOrigin(0)); c.add(this.add.sprite(46, 64, plKey('ITA', 0), PF.spike).setOrigin(0.5, 1).setScale(1.6)); });
+    const p2 = panel(340, 30, 76, 70, c => { c.add(this.add.rectangle(2, 2, 72, 66, 0x2a2a2a).setOrigin(0)); c.add(this.add.sprite(38, 72, plKey('ITA', 0), PF.set).setOrigin(0.5, 1).setScale(1.8)); });
     const p3 = panel(100, 240, 130, 74, c => {
       c.add(this.add.rectangle(2, 2, 126, 70, 0x1a1a1a).setOrigin(0));
       const g = this.add.graphics(); g.lineStyle(1, 0x606060); for (let i = 0; i < 8; i++) g.lineBetween(4, 28 + i * 5, 124, 28 + i * 5); for (let i = 0; i < 24; i++) g.lineBetween(4 + i * 5, 28, 4 + i * 5, 64);
       g.fillStyle(0xd0d0d0).fillRect(4, 26, 120, 3); c.add(g);
-      c.add(this.add.sprite(44, 80, 'pl_CHN_1', PF.block).setOrigin(0.5, 1).setScale(1.8));
+      c.add(this.add.sprite(44, 80, plKey('CHN', 1), PF.block).setOrigin(0.5, 1).setScale(1.8));
       c.add(this.add.image(88, 20, 'ballbig').setScale(1));
     });
     this.tweens.add({ targets: p1, x: 18, duration: 600, ease: 'Cubic.out' });
@@ -410,8 +410,8 @@ class YouWonScene extends Base {
     const fr = this.add.rectangle(160, 92, 112, 86, 0x101010);
     this.add.rectangle(160, 92, 108, 82, 0x2a3a70);
     const code = this.d.team;
-    this.add.sprite(140, 132, `pl_${code}_0`, PF.cheer).setOrigin(0.5, 1).setScale(2);
-    this.add.sprite(180, 132, `pl_${code}_1`, PF.cheer).setOrigin(0.5, 1).setScale(2).setFlipX(true);
+    this.add.sprite(140, 132, plKey(code, 0), PF.cheer).setOrigin(0.5, 1).setScale(2);
+    this.add.sprite(180, 132, plKey(code, 1), PF.cheer).setOrigin(0.5, 1).setScale(2).setFlipX(true);
     this.add.text(160, 150, 'YOU WON!', TXT(12)).setOrigin(0.5);
     this.bonus = this.d.bonus;
     this.bTxt = this.add.text(160, 176, '', TXT(8)).setOrigin(0.5);
@@ -459,7 +459,7 @@ class CongratsScene extends Base {
     this.add.text(8, 6, `SCORE: ${GS.score}`, TXT(8));
     this.add.rectangle(160, 80, 200, 110, 0x101010); this.add.rectangle(160, 80, 196, 106, 0x2a4a50);
     this.add.rectangle(160, 128, 196, 10, 0xd0d0c0);
-    for (let i = 0; i < 8; i++) this.add.sprite(78 + i * 23, 126, `pl_${GS.p1}_${i % 4}`, PF.cheer).setOrigin(0.5, 1).setScale(1.3);
+    for (let i = 0; i < 8; i++) this.add.sprite(78 + i * 23, 126, plKey(GS.p1, i % 4), PF.cheer).setOrigin(0.5, 1).setScale(1.3);
     const t = this.add.text(160, 160, 'CONGRATULATIONS!', { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '22px', fontStyle: 'italic bold', color: '#ffd030' }).setOrigin(0.5).setStroke('#7a4a00', 4).setScale(0);
     this.tweens.add({ targets: t, scale: 1, duration: 700, ease: 'Back.out' });
     SFX.jingle(); this.time.delayedCall(600, () => SFX.jingle());
@@ -575,13 +575,13 @@ class PracticeScene extends Base {
 
 // ---------------- avvio ----------------
 function startGame() {
-  if (GFX === 'hd') {   // testi nitidi alla risoluzione dello schermo
+  if (HIRES) {   // testi nitidi alla risoluzione dello schermo
     const F = Phaser.GameObjects.GameObjectFactory.prototype, text = F.text;
     F.text = function (x, y, s, style) { return text.call(this, x, y, s, Object.assign({}, style, { resolution: CFG.ZOOM })); };
   }
   window.__game = new Phaser.Game({
     // rendering a 3x della risoluzione nativa: lo scorrimento è fluido (sub-pixel) e la grafica resta a pixel
-    type: GFX === 'hd' ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
+    type: HIRES ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
@@ -591,10 +591,10 @@ function startGame() {
   window.addEventListener('keydown', e => {
     SFX.init();
     if (e.key === '5' || e.key === 'c' || e.key === 'C') { GS.credits = Math.min(9, GS.credits + 1); SFX.coin(); }
-    // H: passa da pixel art ad HD e viceversa (ricarica la pagina)
-    if (e.key === 'h' || e.key === 'H') { const u = new URL(location.href); u.searchParams.set('gfx', GFX === 'hd' ? 'pixel' : 'hd'); location.href = u.href; }
+    // H: ARCADE -> HD -> 3D -> ARCADE (ricarica la pagina)
+    if (e.key === 'h' || e.key === 'H') { const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[(GFX_MODES.indexOf(GFX) + 1) % GFX_MODES.length]); location.href = u.href; }
   });
-  if (GFX === 'hd') document.body.classList.add('hd');
+  if (HIRES) document.body.classList.add('hd');
 }
 
 (function boot() {

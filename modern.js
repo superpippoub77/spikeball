@@ -219,7 +219,7 @@ class MainMenuScene extends Base {
     g.fillStyle(0x203028, 1).fillRect(0, 180, 320, 44);
     g.fillStyle(0xc02020, 1).fillRect(40, 140, 2, 42);
     makePlayerTex(this, 'BRA', 0); makePlayerTex(this, 'ITA', 1);
-    this.add.sprite(280, 186, 'pl_BRA_0', PF.idle).setOrigin(0.5, 1).setFlipX(true).setTint(0x8a8a8a);
+    this.add.sprite(280, 186, plKey('BRA', 0), PF.idle).setOrigin(0.5, 1).setFlipX(true).setTint(0x8a8a8a);
     this.add.text(160, 22, GAME_TITLE[0], { fontFamily: '"Arial Black", Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffd23a', resolution: CFG.ZOOM }).setOrigin(0.5).setStroke('#1a3a8a', 5);
     this.add.text(160, 44, 'VOLLEYBALL  ·  ' + GAME_TITLE[1], UI.f(8, '#7ad0ff', true)).setOrigin(0.5).setStroke('#0a1a4a', 3);
     this.cards = [
