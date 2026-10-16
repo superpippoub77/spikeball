@@ -1,0 +1,186 @@
+{
+  "squadre": [
+    {
+      "codice": "VTV",
+      "nome": "Valsesia Team Volley",
+      "tipo": "club",
+      "colori": {
+        "maglia": "#c81e2a",
+        "bordo": "#ffffff",
+        "pantaloncini": "#1a1a1a"
+      },
+      "giocatori": [
+        {
+          "nome": "Filippo",
+          "cognome": "Debernardi",
+          "numero": 1,
+          "ruolo": "Alzatore",
+          "sigla": "P",
+          "eta": 25,
+          "livello": 5
+        },
+        {
+          "nome": "Luca",
+          "cognome": "Dellavedova",
+          "numero": 2,
+          "ruolo": "Alzatore",
+          "sigla": "P",
+          "eta": 24,
+          "livello": 7
+        },
+        {
+          "nome": "Oscar",
+          "cognome": "Barbonaglia",
+          "numero": 3,
+          "ruolo": "Banda",
+          "sigla": "S1",
+          "eta": 19,
+          "livello": 6
+        },
+        {
+          "nome": "Marco",
+          "cognome": "Landrino",
+          "numero": 4,
+          "ruolo": "Opposto",
+          "sigla": "O/C2",
+          "eta": 34,
+          "livello": 7
+        },
+        {
+          "nome": "Giacomo",
+          "cognome": "Preti",
+          "numero": 5,
+          "ruolo": "Centrale",
+          "sigla": "C1",
+          "eta": 25,
+          "livello": 6
+        },
+        {
+          "nome": "Andrea",
+          "cognome": "Fizzotti",
+          "numero": 6,
+          "ruolo": "Libero",
+          "sigla": "L1",
+          "eta": 35,
+          "livello": 5
+        },
+        {
+          "nome": "Matteo",
+          "cognome": "Stuppello",
+          "numero": 7,
+          "ruolo": "Centrale",
+          "sigla": "C2",
+          "eta": 34,
+          "livello": 4
+        },
+        {
+          "nome": "Simone",
+          "cognome": "Gario",
+          "numero": 8,
+          "ruolo": "Libero",
+          "sigla": "L2",
+          "eta": 15,
+          "livello": 5
+        },
+        {
+          "nome": "Loll",
+          "cognome": "Kirtz",
+          "numero": 9,
+          "ruolo": "Opposto",
+          "sigla": "C2/O",
+          "eta": 32,
+          "livello": 6
+        },
+        {
+          "nome": "Lorenzo",
+          "cognome": "Tomiello",
+          "numero": 10,
+          "ruolo": "Alzatore",
+          "sigla": "P",
+          "eta": 29,
+          "livello": 6
+        },
+        {
+          "nome": "Alberto",
+          "cognome": "Cincinelli",
+          "numero": 11,
+          "ruolo": "Opposto",
+          "sigla": "O",
+          "eta": 26,
+          "livello": 4
+        },
+        {
+          "nome": "Enrico",
+          "cognome": "Romolo",
+          "numero": 12,
+          "ruolo": "Banda",
+          "sigla": "S2",
+          "eta": 31,
+          "livello": 7
+        },
+        {
+          "nome": "Matteo",
+          "cognome": "Dellavedova",
+          "numero": 13,
+          "ruolo": "Banda",
+          "sigla": "S2",
+          "eta": 30,
+          "livello": 5
+        },
+        {
+          "nome": "Matteo",
+          "cognome": "Torsetta",
+          "numero": 14,
+          "ruolo": "Opposto",
+          "sigla": "O",
+          "eta": 14,
+          "livello": 5
+        },
+        {
+          "nome": "Yoav",
+          "cognome": "Gross",
+          "numero": 15,
+          "ruolo": "Banda",
+          "sigla": "S2",
+          "eta": 17,
+          "livello": 5
+        },
+        {
+          "nome": "Amedeo",
+          "cognome": "Bertoncini",
+          "numero": 16,
+          "ruolo": "Alzatore",
+          "sigla": "P",
+          "livello": 4
+        },
+        {
+          "nome": "Marco",
+          "cognome": "Facciotti",
+          "numero": 17,
+          "ruolo": "Banda",
+          "sigla": "S1",
+          "eta": 32,
+          "livello": 6
+        },
+        {
+          "nome": "Davide",
+          "cognome": "Merlo",
+          "numero": 18,
+          "ruolo": "Centrale",
+          "sigla": "C2/C1",
+          "eta": 17,
+          "livello": 5
+        },
+        {
+          "nome": "Alessio",
+          "cognome": "Dematteo",
+          "numero": 19,
+          "ruolo": "Centrale",
+          "sigla": "C1",
+          "eta": 17,
+          "livello": 6
+        }
+      ]
+    }
+  ]
+}

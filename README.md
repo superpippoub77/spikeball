@@ -30,7 +30,7 @@
 Club nuovi (quanti vuoi) e nazionali con i propri giocatori. Il gioco legge `squadre.json` dalla cartella del gioco; se non c'è usa `squadre.esempio.json`.
 - **Con un server locale** (`npx serve`) basta salvare il file accanto a `index.html`.
 - **Aprendo `index.html` direttamente** il browser non lascia leggere i file: **trascina il file .json sulla finestra del gioco**. Resta salvato nel browser; nel menu principale **CANC** lo toglie.
-- `squadre.json` è escluso da git (`.gitignore`): i dati della tua squadra restano sul tuo computer.
+- `squadre.json` contiene il **Valsesia Team Volley** (19 giocatori). Il repository e il sito sono pubblici: nel file vanno solo i dati che servono al gioco, niente telefoni, email o date di nascita.
 
 ```json
 {
