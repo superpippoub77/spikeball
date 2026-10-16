@@ -26,7 +26,7 @@ class MatchScene extends Phaser.Scene {
     this.camT = undefined; this.camV = 0;
     this.simT = 0; this.serveMsg = null; this.phantom = null; this.thunder = null; this.aimD = 6;
     // la scena viene riusata: niente oggetti della partita precedente (modalità moderna)
-    this.mSb = null; this.mSbT = null; this.hudCam = null; this.ballRef = null; this.zoom = 0;
+    this.mSb = null; this.mSbT = null; this.hudCam = null; this.ballRef = null; this.zoom = 0; this.camCx = undefined; this.camBot = undefined;
     const d = this.cfg;
     makeCommon(this); makeArena(this); makeBalls(this);
     // regole: arcade 1991 / rally point moderno (impostazioni di Thunder Spikes)
@@ -188,7 +188,7 @@ class MatchScene extends Phaser.Scene {
     HOMES.forEach((hm, i) => {
       const p = { team: t, idx: i, ni: i, name: P.names[i], homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
                   state: 'idle', animT: 0, runT: 0, diveT: 0, downT: 0, diveDir: 0, hitWin: 0, blocked: false, decided: -1, missVer: -1, jumpedVer: -1, decoy: false };
-      p.spr = this.add.sprite(0, 0, `pl_${code}_${i}`, 0).setOrigin(0.5, 1).setFlipX(side === 1);
+      p.spr = this.add.sprite(0, 0, plKey(code, i), 0).setOrigin(0.5, 1).setFlipX(side === 1);
       t.players.push(p);
     });
     return t;
@@ -1049,7 +1049,7 @@ class MatchScene extends Phaser.Scene {
       this.serving.streak = 0;
       this.serving = w; w.streak = 0;
       w.rot = (w.rot + 1) % 4;
-      w.players.forEach((p, i) => { p.ni = (i + w.rot) % 4; p.name = w.pal.names[p.ni]; p.spr.setTexture(`pl_${w.code}_${p.ni}`); });
+      w.players.forEach((p, i) => { p.ni = (i + w.rot) % 4; p.name = w.pal.names[p.ni]; p.spr.setTexture(plKey(w.code, p.ni)); });
       this.serveMsg = `${w.players[3].name} IS NOW SERVING.`;
     }
     this.updateScoreboard();
@@ -1229,20 +1229,30 @@ class MatchScene extends Phaser.Scene {
     if (this.modern) {
       // zoom dinamico (Thunder Spikes): largo in battuta e a fine azione, più stretto durante lo scambio
       const zk = CFG.ZOOM / 3;   // valori pensati per lo zoom 3x della pixel art
-      const zt = (this.state === 'rally' ? 2.75 + clamp(0.25 - b.h / 400, 0, 0.25) : 2.35) * zk;
-      this.zoom = this.zoom || 2.35 * zk;
+      // versione 3D: telecamera vicina, giocatori grandi come in una ripresa televisiva
+      const near = GFX === '3d';
+      const zt = (this.state === 'rally' ? (near ? 4.1 + clamp(0.3 - b.h / 300, 0, 0.3) : 2.75 + clamp(0.25 - b.h / 400, 0, 0.25)) : (near ? 3.7 : 2.35)) * zk;
+      this.zoom = this.zoom || (near ? 3.7 : 2.35) * zk;
       this.zoom += (zt - this.zoom) * Math.min(1, dt * 1.6);
       const cam = this.cameras.main, vw = CFG.W * CFG.ZOOM / this.zoom, vh = CFG.H * CFG.ZOOM / this.zoom;
       cam.setZoom(this.zoom);
-      const cx = this.camX + 160;
+      let cx = this.camX + 160, bot = 232;
+      if (near) {
+        // inquadratura stretta: a metà tra l'azione e il pallone, e in verticale segue le palle alte
+        const k = Math.min(1, dt * 3);
+        this.camCx = this.camCx === undefined ? cx : this.camCx + ((cx + SX(b.x)) / 2 - this.camCx) * k;
+        const want = clamp(FY - b.h - 26 + vh, FY + 12, 232);   // i piedi restano sempre in vista
+        this.camBot = this.camBot === undefined ? 232 : this.camBot + (want - this.camBot) * k;
+        cx = this.camCx; bot = this.camBot;
+      }
       cam.scrollX = clamp(cx - vw / 2, 0, CFG.OX * 2 - vw);
-      cam.scrollY = 232 - vh;
+      cam.scrollY = Math.max(ATOP, bot - vh);
     }
 
     for (const t of this.teams) for (const p of t.players) {
       let st = p.state;
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
-      p.spr.setFrame(PF[st] !== undefined ? PF[st] : 0);
+      p.spr.setFrame(PHOTO.on ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z;
       p.spr.setDepth(FY + p.dep);
       // il ricevitore designato appare schiarito, come nell'originale
