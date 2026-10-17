@@ -14,7 +14,7 @@ const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (mis
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
                'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
                'setload', 'dump',                 // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
-               'passside'];                       // bagher laterale (palla fuori portata, affondo di lato)
+               'passside', 'srvload'];            // bagher laterale (di fronte, affondo di lato); battuta caricata
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -25,7 +25,6 @@ const SKEL = {
   run2:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[16, 31], [17, 38]], fl: [[18, 30], [13, 34]], ba: [[20, 18], [22, 15]], fa: [[15, 19], [13, 22]] },
   // bagher in due tempi: passload = piegati sulle gambe, braccia tese e unite in basso; pass = spinta di gambe e braccia verso l'alto
   passload: { hip: [12, 31], neck: [17, 22], head: [20, 18], bl: [[17, 34], [11, 38]], fl: [[21, 34], [22, 38]], ba: [[22, 29], [27, 32]], fa: [[22, 29], [27, 32]] },
-  passside: { hip: [12, 30], neck: [19, 23], head: [23, 20], bl: [[8, 34], [2, 38]], fl: [[20, 33], [24, 38]], ba: [[24, 28], [30, 31]], fa: [[24, 28], [30, 31]] },
   pass:  { hip: [14, 27], neck: [18, 17], head: [21, 13], bl: [[16, 32], [12, 38]], fl: [[20, 32], [21, 38]], ba: [[23, 21], [28, 19]], fa: [[23, 21], [28, 19]] },
   set:   { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[15, 8], [17, 3]],  fa: [[19, 8], [19, 3]] },
   jump:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 30], [12, 35]], fl: [[19, 30], [16, 36]], ba: [[13, 17], [10, 14]], fa: [[14, 18], [11, 16]] },
@@ -38,6 +37,8 @@ const SKEL = {
   dive:  { hip: [9, 32],  neck: [21, 33], head: [25, 32], bl: [[5, 31], [1, 30]],   fl: [[5, 33], [1, 33]],   ba: [[25, 35], [30, 35]], fa: [[25, 34], [30, 33]] },
   down:  { hip: [10, 36], neck: [22, 36], head: [26, 35], bl: [[6, 37], [2, 38]],   fl: [[6, 38], [2, 37]],   ba: [[26, 38], [30, 38]], fa: [[26, 37], [30, 37]] },
   cheer: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [13, 38]], fl: [[18, 31], [19, 38]], ba: [[13, 8], [10, 3]],  fa: [[20, 8], [23, 3]] },
+  // battuta da fermo: mentre la palla scende il braccio d'attacco si carica dietro la testa, l'altro indica la palla
+  srvload: { hip: [15, 25], neck: [15, 14], head: [17, 10], bl: [[13, 31], [10, 38]], fl: [[18, 31], [20, 38]], ba: [[20, 9], [23, 5]], fa: [[11, 7], [7, 11]] },
   toss:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[14, 18], [12, 21]], fa: [[19, 8], [20, 3]] },
   sad:   { hip: [15, 25], neck: [17, 15], head: [19, 12], bl: [[14, 31], [13, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 20], [15, 25]], fa: [[18, 20], [17, 25]] }
 };
@@ -77,6 +78,7 @@ function limb(ctx, ox, a, b, w0, w1, color) {
 // alzatore in palleggio: come in Power Spikes si gira di fronte. Tre pose frontali (il giocatore "guarda" la rete a destra):
 //  - setload: gambe piegate, gomiti larghi e mani a "finestra" sopra la fronte (aspetta la palla);
 //  - set: spinta, braccia e gambe distese verso l'alto;
+//  - passside: bagher laterale, affondo di lato con le braccia unite verso la palla;
 //  - dump: pallonetto di seconda, colpo con il braccio più lontano dalla rete (i=0; specchiato per la squadra di destra).
 // dy = abbassamento del busto (testa, spalle, pantaloncini); le coordinate di mani e gomiti sono già finali.
 const FRONTS = {
@@ -84,6 +86,9 @@ const FRONTS = {
     hipL: [13, 36], hipR: [19, 36], kneeL: [9.5, 40.5], kneeR: [22.5, 40.5], footL: [11.5, 46], footR: [20.5, 46] },
   set: { dy: -1, hands: [[13.5, 1], [18.5, 1]], elbows: [[10, 8], [22, 8]],
     hipL: [13, 31], hipR: [19, 31], kneeL: [12.5, 38.5], kneeR: [19.5, 38.5], footL: [13, 46], footR: [19, 46] },
+  // bagher laterale: di fronte, affondo verso la palla (a destra = verso la rete; specchiato se la palla è dietro)
+  passside: { dy: 5, hands: [[27, 31], [27.5, 30]], elbows: [[21, 26], [23, 25]],
+    hipL: [13, 36], hipR: [19, 36], kneeL: [8, 40], kneeR: [25, 39], footL: [3, 46], footR: [26, 46] },
   dump: { dy: -1, hands: [[11.5, 0.5], [24, 27]], elbows: [[9.5, 8], [26, 20]],
     hipL: [13, 31], hipR: [19, 31], kneeL: [11, 37.5], kneeR: [21, 38.5], footL: [12, 44], footR: [21, 45.5] },
 };

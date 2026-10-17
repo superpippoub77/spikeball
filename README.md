@@ -173,7 +173,8 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
   - SU-avanti + Z, GIÙ-avanti + Z = **PHANTOM SERVE** (la palla si sdoppia in 3 scendendo)
   - SU-indietro + Z, GIÙ-indietro + Z = **THUNDER SERVE** (lampo bianco, la palla piomba giù)
 - **Ricezione:** solo joystick, porta il giocatore schiarito sul quadratino blu. Il pulsante non si usa, il tuffo è automatico.
-  Mentre la palla è nell'altro campo (o durante la battuta avversaria) muovi già il difensore schiarito, per piazzarti in anticipo. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa.
+  Mentre la palla è nell'altro campo (o durante la battuta avversaria) muovi già il difensore schiarito, per piazzarti in anticipo. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte).
+  Il giocatore che stai comandando ha un **alone rosso leggero** e la scritta **P1** (o **P2**) sopra la testa.
 - **Alzata:** automatica. Se la ricezione è sbagliata ("OH! HE MISHITS THE BALL!") muovi l'alzatore col joystick.
 - **Schiacciata:** rincorsa e salto automatici, premi il pulsante quando la palla arriva alla mano.
   Quando la palla è colpibile diventa rossa e sopra lo schiacciatore compare "HIT! PRESS BUTTON!".
