@@ -873,8 +873,11 @@ class MatchScene extends Phaser.Scene {
           const tl = PHYS.timeToH(b.h, b.vy, 8);
           if (tl !== null && tl < 0.3) {
             // chi gioca muove da sé il ricevitore: il tuffo parte se la palla cade oltre il bagher laterale
-            const dxp = b.x + b.vx * tl - cx, runCover = ai ? CFG.RUN * 0.9 * tl : 0, far = ai ? reach : reach + CFG.LAT_REACH;
-            if (Math.abs(dxp) - runCover > far && Math.abs(dxp) < CFG.DIVE_REACH + (ai ? runCover : CFG.RUN * 0.9 * tl)) {
+            // (se sta già correndo verso la palla conta anche la corsa: niente tuffi inutili sulle schiacciate forti)
+            const dxp = b.x + b.vx * tl - cx, run = CFG.RUN * 0.9 * tl;
+            const toward = ai || Math.sign(this.dirX(t) * -t.side) === Math.sign(dxp);
+            const runCover = toward ? run : 0, far = ai ? reach : reach + CFG.LAT_REACH + 4;
+            if (Math.abs(dxp) - runCover > far && Math.abs(dxp) < CFG.DIVE_REACH + run) {
               p.decided = b.ver;
               if (!ai || Math.random() < 0.3 + t.skill * 0.6) this.startDive(p, Math.sign(dxp), Math.abs(dxp));
             }
@@ -1382,6 +1385,8 @@ class MatchScene extends Phaser.Scene {
     const t = p.team, b = this.ball;
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
     if (st === 'pass' && p.animT > 0.22) return 'passload';
+    // battuta da fermo: palla in discesa = braccio caricato
+    if (st === 'toss' && this.state === 'serve' && this.server === p && this.serveKind !== 'jump' && this.serveKind !== 'tower' && b.vy < 0) return 'srvload';
     // palleggio: mentre la palla scende l'alzatore si piega e porta le mani a finestra sopra la fronte, poi spinge
     if (st !== 'set' && st !== 'dump' && st !== 'dive' && this.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'set' && b.vy < 0) {
       const tl = PHYS.timeToH(b.h, b.vy, t.jumpSet ? CFG.SET_JUMP_H : 40);
@@ -1437,6 +1442,7 @@ class MatchScene extends Phaser.Scene {
       cam.scrollY = Math.max(ATOP, bot - vh);
     }
 
+    for (const t of this.teams) t.tagOn = false;
     for (const t of this.teams) for (const p of t.players) {
       let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
@@ -1448,7 +1454,18 @@ class MatchScene extends Phaser.Scene {
       const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit)))) ||
         (this.state !== 'end' && this.state !== 'dead' && !t.plan && this.humanMoves(p));
       if (hl) p.spr.setTint(0xffd8e8); else p.spr.clearTint();
+      // chi comanda la persona: alone rosso leggero e P1/P2 sopra la testa
+      const mine = hl && !!t.human;
+      if (p.spr.preFX) {
+        if (!p.glow && mine) { p.spr.preFX.setPadding(6); p.glow = p.spr.preFX.addGlow(0xff3030, 3, 0, false, 0.1, 10); }
+        if (p.glow) p.glow.active = mine;
+      }
+      if (mine) {
+        if (!t.tag) t.tag = this.add.text(0, 0, 'P' + t.human, TXT(7, t.human === 1 ? '#ff5050' : '#50a0ff')).setOrigin(0.5, 1).setDepth(1400).setStroke('#000000', 2);
+        t.tag.setPosition(p.spr.x, p.spr.y - 44).setVisible(true); t.tagOn = true;
+      }
     }
+    for (const t of this.teams) if (t.tag && !t.tagOn) t.tag.setVisible(false);
     if (this.ballRef) {
       for (const t of this.teams) for (const p of t.players) {
         p.ref.setTexture(p.spr.texture.key, p.spr.frame.name); p.ref.x = p.spr.x; p.ref.y = FY + p.dep + p.z; p.ref.setFlipX(p.spr.flipX);
