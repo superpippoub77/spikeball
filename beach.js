@@ -216,7 +216,7 @@ MatchScene.prototype.buildBeachArena = function (md) {
 };
 
 // ---------------- impostazioni e partita su più set ----------------
-const BSET = { left: 'SUN', right: 'COC', leftAI: false, rightAI: true, arena: 0, fmt: 0, ball: 0, rebound: 0, target: 0, fx: 0 };
+const BSET = { left: 'SUN', right: 'COC', leftAI: false, rightAI: true, arena: 0, fmt: 0, ball: 0, rebound: 0, target: 0, fx: 0, women: 0 };
 const BEACH_FORMATS = [
   { name: '2 SET SU 3 (21 - 21 - 15)', sets: 3, pts: 21 },
   { name: '1 SET A 21', sets: 1, pts: 21 },
@@ -238,7 +238,7 @@ function startBeachMatch(scene, fresh = true) {
   const humans = [BSET.leftAI ? 0 : 1, BSET.rightAI ? 0 : (BSET.leftAI ? 1 : 2)];
   const pts = decider ? 15 : F.pts;
   scene.scene.start('Match', {
-    mode: 'modern', beach: true, players: 2, left: BSET.left, right: BSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]),
+    mode: 'modern', beach: true, players: 2, women: BSET.women === 1, left: BSET.left, right: BSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]),
     stats: st, start: [0, 0], time: null, firstServe: k % 2,
     setLabel: F.sets > 1 ? `SET ${k + 1}${decider ? '  ·  TIE-BREAK' : ''}   ${BSET.left} ${won[0]}-${won[1]} ${BSET.right}` : 'BEACH VOLLEY',
     setsWon: F.sets > 1 ? won : null, switchEvery: pts <= 15 ? 5 : 7,
@@ -349,8 +349,8 @@ class BeachSettingsScene extends Base {
     this.preview = this.add.image(81, 104, '__DEFAULT');
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [['field', 'SPIAGGIA'], ['fmt', 'PARTITA'], ['ball', 'PALLONE'], ['rebound', 'REBOUND INDICATOR'], ['target', 'ATTACK TARGET'],
-                 ['fx', 'ARCADE FX'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 16.5, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(310, 59 + i * 16.5, '', UI.f(6, '#ffffff', true)).setOrigin(1, 0)]);
+                 ['fx', 'ARCADE FX'], ['women', 'SQUADRE'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 15, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(310, 58.5 + i * 15, '', UI.f(6, '#ffffff', true)).setOrigin(1, 0)]);
     this.ballImg = this.add.image(300, 90, 'ball_beach').setScale(1.4);
     this.add.text(81, 178, 'REGOLE BEACH: 2 contro 2, rally a 21,\ncambio campo ogni 7 punti, muro = 1° tocco,\nniente pallonetto a mano aperta', { ...UI.f(4.4, '#0a2a5a', true), align: 'center' }).setOrigin(0.5, 0);
     this.add.text(240, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(4.6, '#0a2a5a', true)).setOrigin(0.5);
@@ -361,8 +361,8 @@ class BeachSettingsScene extends Base {
     if (k === 'fmt') return BEACH_FORMATS[BSET.fmt].name;
     if (k === 'ball') return '';
     if (k === 'rebound') return OPT.rebound[BSET.rebound];
-    if (k === 'target' || k === 'fx') return OPT[k][BSET[k]];
-    if (k === 'lineL' || k === 'lineR') { const c = k === 'lineL' ? BSET.left : BSET.right; applyLineup(this, c, 2); return TEAMS[c].names.slice(0, 2).join(' + '); }
+    if (k === 'target' || k === 'fx' || k === 'women') return OPT[k][BSET[k]];
+    if (k === 'lineL' || k === 'lineR') { const c = k === 'lineL' ? BSET.left : BSET.right; applyLineup(this, c, 2); return BSET.women ? femName(c, 0) + ' + ' + femName(c, 1) : TEAMS[c].names.slice(0, 2).join(' + '); }
     return '►';
   }
   refresh() {
@@ -378,7 +378,7 @@ class BeachSettingsScene extends Base {
     else if (k === 'fmt') cyc('fmt', BEACH_FORMATS.length);
     else if (k === 'ball') cyc('ball', BEACH_BALLS.length);
     else if (k === 'rebound') cyc('rebound', OPT.rebound.length);
-    else if (k === 'target' || k === 'fx') cyc(k, OPT[k].length);
+    else if (k === 'target' || k === 'fx' || k === 'women') cyc(k, OPT[k].length);
     else return;
     SFX.blip(); this.refresh();
   }

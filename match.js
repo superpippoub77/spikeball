@@ -62,7 +62,9 @@ class MatchScene extends Phaser.Scene {
     };
     // misure del campo: 9 m per metà campo, 8 m sulla sabbia (battuta e stacco della battuta in salto si spostano di conseguenza)
     CFG.HALF = this.beach ? CFG.BEACH_HALF : 180; CFG.SERVE_X = CFG.HALF + 75; CFG.JS_TAKEOFF = CFG.HALF + 16;
-    setLook(this, this.beach);
+    this.women = !!d.women;            // versione femminile (giocatrici, nomi e telecronaca al femminile)
+    this.he = this.women ? 'SHE' : 'HE';
+    setLook(this, this.beach, this.women);
     for (const code of [d.left, d.right]) applyLineup(this, code, this.nPl);   // formazione scelta (lineup.js)
     for (const code of [d.left, d.right]) for (let i = 0; i < this.nPl; i++) { makePlayerTex(this, code, i); makeFaceTex(this, code, i, 'neutral'); makeFaceTex(this, code, i, 'cheer'); }
     ['whistle', 'pointL', 'pointR', 'out', 'touch', 'net', 'win'].forEach(p => makeRefTex(this, p));
@@ -215,6 +217,9 @@ class MatchScene extends Phaser.Scene {
     for (const k of 'abcdefg') { const r = segs[k]; g.fillStyle(S.includes(k) ? col : 0x221010, 1).fillRect(r[0], r[1], r[2], r[3]); }
   }
 
+  // nome del giocatore del posto i (nella versione femminile i nomi delle giocatrici)
+  nameOf(code, i) { return this.women ? femName(code, i) : TEAMS[code].names[i]; }
+
   // crea la squadra e i giocatori in campo secondo la formazione (FORMATIONS in config.js);
   // lo sprite usa plKey, che sceglie la texture giusta per la versione grafica
   makeTeam(id, code, side) {
@@ -224,7 +229,7 @@ class MatchScene extends Phaser.Scene {
     // batte il posto più lontano dalla rete
     t.srvI = F.reduce((best, h, i) => h.d > F[best].d ? i : best, 0);
     F.forEach((hm, i) => {
-      const p = { team: t, idx: i, ni: i, pos: hm.pos, name: P.names[i], homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
+      const p = { team: t, idx: i, ni: i, pos: hm.pos, name: this.nameOf(code, i), homeD: hm.d, dep: hm.dep, x: side * hm.d, z: 0, vz: 0, vx: 0,
                   state: 'idle', animT: 0, runT: 0, diveT: 0, downT: 0, diveDir: 0, hitWin: 0, blocked: false, decided: -1, missVer: -1, jumpedVer: -1, decoy: false };
       p.spr = this.add.sprite(0, 0, plKey(code, i), 0).setOrigin(0.5, 1).setFlipX(side === 1);
       t.players.push(p);
@@ -458,7 +463,7 @@ class MatchScene extends Phaser.Scene {
     if (!this.rules.fx) on = false;
     this.serveFace.setVisible(on); this.serveRef.setVisible(on); this.serveNum.setVisible(false);
     if (on) {
-      this.serveFace.setTexture(`face_${s.team.code}_${s.ni}_neutral`);
+      this.serveFace.setTexture(makeFaceTex(this, s.team.code, s.ni, 'neutral'));
       this.serveRef.setTexture(s.team.side < 0 ? 'ref_pointL' : 'ref_pointR');
       this.serveNum.setText(String(this.count));
     }
@@ -638,7 +643,12 @@ class MatchScene extends Phaser.Scene {
     const t = p.team, side = t.side, b = this.ball;
     if (p.animT > 0) p.animT -= dt;
     if (p.hitWin > 0 && !(this.state === 'serve' && p === this.server)) p.hitWin -= dt;
-    if (p.diveT > 0) { p.diveT -= dt; p.x += p.diveDir * CFG.DIVE_V * dt; p.state = 'dive'; if (p.diveT <= 0) p.downT = 0.55; this.clampX(p); return; }
+    if (p.diveT > 0) {
+      p.diveT -= dt; p.x += p.diveDir * CFG.DIVE_V * dt; p.state = 'dive';
+      if (Math.random() < dt * 30) this.sand(p.x + p.diveDir * 6, p.dep, 2, 55, 0);
+      if (p.diveT <= 0) { p.downT = 0.55; this.sand(p.x, p.dep, 12, 70, 18); }   // solco del tuffo
+      this.clampX(p); return;
+    }
     if (p.downT > 0) { p.downT -= dt; p.state = 'down'; return; }
     // in aria
     if (p.z > 0 || p.vz > 0) {
@@ -647,14 +657,15 @@ class MatchScene extends Phaser.Scene {
         if (t.attacker === p && !p.decoy) p.hitWin = 0.16;
         if (t.plan && t.plan.kind === 'set' && t.plan.p === p && this.dirX(t) > 0) t.surprise = true;
       }
-      if (p.z <= 0) { p.z = 0; p.vz = 0; p.vx = 0; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
+      if (p.z <= 0) { this.sand(p.x, p.dep, 9, clamp(-p.vz * 0.45, 30, 80), 8); p.z = 0; p.vz = 0; p.vx = 0; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
       else if (p.animT <= 0) p.state = t.blockers.includes(p) && b.lastTeam !== t ? 'block' : (p.vz > 40 ? 'jump' : p.state === 'spike' || p.state === 'dump' ? p.state : 'jump');
       this.clampX(p); return;
     }
     if (this.state === 'serve' && p === this.server && this.servePhase !== 'walk') return;
 
     const plan = t.plan;
-    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1), human = false;
+    const sandK = this.beach ? CFG.SAND_K : 1;   // sulla sabbia si corre più piano
+    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1) * sandK, human = false;
     const own = this.state === 'rally' && b.lastTeam === t;
     // il battitore va subito dietro la linea di fondo (anche durante la presentazione), da dove parte la rincorsa della battuta in salto
     if ((this.state === 'serve' || this.state === 'intro') && p === this.server) target = side * CFG.SERVE_X;
@@ -688,7 +699,7 @@ class MatchScene extends Phaser.Scene {
     let mv = 0;
     if (human) {
       const s = this.inp[t.human];
-      mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * dt;   // la SPEED della squadra conta anche per chi gioca
+      mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * sandK * dt;   // la SPEED della squadra conta anche per chi gioca
     } else {
       const reacting = plan && plan.p === p && plan.kind === 'pass' && this.verAge < (t.human ? 0.06 : 0.24 - t.skill * 0.12);
       const dx = (reacting ? p.x : target) - p.x;
@@ -696,7 +707,10 @@ class MatchScene extends Phaser.Scene {
     }
     p.x += mv; this.clampX(p);
     if (p.animT <= 0) {
-      if (Math.abs(mv) > 0.05) { p.state = 'run'; p.runT += dt * Math.max(1, Math.abs(mv) / dt / CFG.RUN); }
+      if (Math.abs(mv) > 0.05) {
+        p.state = 'run'; p.runT += dt * Math.max(1, Math.abs(mv) / dt / CFG.RUN);
+        if (this.beach && Math.random() < dt * 6) this.sand(p.x - Math.sign(mv) * 3, p.dep, 2, 28, 3);   // passi nella sabbia
+      }
       else if ((this.state === 'dead' || this.state === 'end') && this.stateT > 0.4) p.state = this.winner === t ? 'cheer' : 'sad';
       else p.state = 'idle';
     }
@@ -763,7 +777,35 @@ class MatchScene extends Phaser.Scene {
     t.attacker = alt; t.attackType = alt === bk ? 'back' : 'high'; t.planCache = null; alt.jumpedVer = -1;
   }
 
-  jump(p, vx, k = 1) { p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; }
+  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; }
+
+  // ------------------------------------------------ sabbia (beach): spruzzi che si alzano e impronte che restano
+  // x = posizione in campo, dep = profondità, n = granelli, power = forza dello spruzzo, mark = larghezza dell'impronta (0 = nessuna)
+  sand(x, dep, n, power, mark) {
+    if (!this.beach) return;
+    const S = this.sandFx || (this.sandFx = { parts: [], marks: [] }), y = CFG.FLOOR_Y + dep;
+    for (let i = 0; i < n; i++) S.parts.push({ x: SX(x) + rnd(-3, 3), y: y + rnd(-1, 1), z: rnd(0, 2), vx: rnd(-1, 1) * power * 0.7, vz: rnd(0.35, 1) * power,
+      life: rnd(0.35, 0.75), c: Math.random() < 0.5 ? 0xd8b878 : 0xf4e0b0 });
+    if (mark) S.marks.push({ x: SX(x), y, w: mark, t: CFG.SAND_MARK_T });
+    if (S.parts.length > 300) S.parts.splice(0, S.parts.length - 300);
+    if (S.marks.length > 40) S.marks.shift();
+  }
+  // granelli in volo (nel livello degli effetti) e impronte a terra (sotto le ombre), aggiornati a ogni disegno
+  drawSand(dt, g, f) {
+    const S = this.sandFx; if (!S) return;
+    for (const m of S.marks) {
+      m.t -= dt; const a = clamp(m.t / CFG.SAND_MARK_T, 0, 1);
+      g.fillStyle(0x5a3a10, 0.22 * a).fillEllipse(m.x, m.y + 0.5, m.w, Math.max(2, m.w * 0.28));          // conca
+      g.fillStyle(0xfff0c8, 0.25 * a).fillEllipse(m.x, m.y - 0.8, m.w + 2, 1.2);                          // bordo di sabbia smossa
+    }
+    S.marks = S.marks.filter(m => m.t > 0);
+    for (const p of S.parts) {
+      p.vz -= 300 * dt; p.z += p.vz * dt; p.x += p.vx * dt; p.life -= dt;
+      if (p.z < 0) { p.z = 0; p.vz = 0; p.vx *= 0.3; }
+      f.fillStyle(p.c, clamp(p.life * 2, 0, 1)).fillRect(p.x - 0.5, p.y - p.z - 0.5, 1.2, 1.2);
+    }
+    S.parts = S.parts.filter(p => p.life > 0);
+  }
 
   clampX(p) {
     if (p.team.side < 0) p.x = clamp(p.x, -CFG.WORLD_HALF + 10, -5); else p.x = clamp(p.x, 5, CFG.WORLD_HALF - 10);
@@ -936,7 +978,7 @@ class MatchScene extends Phaser.Scene {
     } else if (q < 0.45) {
       v = PHYS.arcTo(b.x, b.h, side * rnd(45, 100), 40, rnd(90, 120));
       t.mishit = true; t.jumpSet = false;
-      this.announce('OH! HE MISHITS THE BALL!');
+      this.announce(`OH! ${this.he} MISHITS THE BALL!`);
     } else {
       let tx = side * CFG.SETTER_D + side * (1 - q) * rnd(-12, 34);
       tx = side < 0 ? Math.min(tx, -14) : Math.max(tx, 14);
@@ -1105,6 +1147,7 @@ class MatchScene extends Phaser.Scene {
   // palla a terra: chi fa il punto (dentro/fuori, ultimo tocco), messaggio della telecronaca, statistiche
   ballLanded() {
     const b = this.ball;
+    this.sand(b.x, 0, Math.round(clamp(Math.abs(b.vy) / 12, 8, 26)), clamp(Math.abs(b.vy) * 0.45, 50, 130), 7);   // la palla affonda nella sabbia
     b.live = false; b.h = 0; b.bouncing = true; b.vy = Math.abs(b.vy) * 0.4; b.vx *= 0.6;
     SFX.floor();
     const land = this.teamAt(b.x);
@@ -1118,7 +1161,7 @@ class MatchScene extends Phaser.Scene {
       if (maker) {
         face = maker;
         const k = b.lastKind;
-        if (k === 'spike') faceMsg = Math.random() < 0.4 ? 'HE SUCCEEDS!' : Math.random() < 0.5 ? `IT'S ${maker.name} WHO MADE THE PLAY!` : `${maker.name}'S GOT IT!`;
+        if (k === 'spike') faceMsg = Math.random() < 0.4 ? `${this.he} SUCCEEDS!` : Math.random() < 0.5 ? `IT'S ${maker.name} WHO MADE THE PLAY!` : `${maker.name}'S GOT IT!`;
         else if (k === 'block') faceMsg = `BLOCKED BY THE ${maker.team.code} TEAM.${maker.name} DID IT!`;
         else faceMsg = Math.random() < 0.5 ? `IT'S ${maker.name} WHO MADE THE PLAY!` : `${maker.name}'S GOT IT!`;
       }
@@ -1162,7 +1205,7 @@ class MatchScene extends Phaser.Scene {
     }
     if (P.stage === 1 && t > 1.7) {
       P.stage = 2; this.refPanel.setVisible(false);
-      if (P.face) { this.facePanel.setTexture(`face_${P.face.team.code}_${P.face.ni}_cheer`).setVisible(true); this.announce(P.faceMsg); }
+      if (P.face) { this.facePanel.setTexture(makeFaceTex(this, P.face.team.code, P.face.ni, 'cheer')).setVisible(true); this.announce(P.faceMsg); }
     }
     if (P.stage === 2 && t > (P.face ? 3.0 : 1.9)) {
       P.stage = 3; this.facePanel.setVisible(false);
@@ -1190,7 +1233,7 @@ class MatchScene extends Phaser.Scene {
       // rotazione: i nomi scorrono di un posto (beach: i due giocatori si alternano al servizio)
       const n = w.players.length;
       w.rot = (w.rot + 1) % n;
-      w.players.forEach((p, i) => { p.ni = (i + w.rot) % n; p.name = w.pal.names[p.ni]; p.spr.setTexture(plKey(w.code, p.ni)); if (p.ref) p.ref.setTexture(p.spr.texture.key); });
+      w.players.forEach((p, i) => { p.ni = (i + w.rot) % n; p.name = this.nameOf(w.code, p.ni); p.spr.setTexture(plKey(w.code, p.ni)); if (p.ref) p.ref.setTexture(p.spr.texture.key); });
       this.serveMsg = `${w.players[w.srvI].name} IS NOW SERVING.`;
     }
     this.updateScoreboard();
@@ -1446,7 +1489,7 @@ class MatchScene extends Phaser.Scene {
     for (const t of this.teams) for (const p of t.players) {
       let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
-      p.spr.setFrame(PHOTO.on ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
+      p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z;
       p.spr.setDepth(FY + p.dep);
@@ -1474,9 +1517,11 @@ class MatchScene extends Phaser.Scene {
     }
     this.routeCameras();
     const g = this.shadowG; g.clear();
+    this.fx.clear();
+    this.drawSand(dt, g, this.fx);
     for (const t of this.teams) for (const p of t.players) g.fillStyle(0x000000, 0.3).fillEllipse(SX(p.x), FY + p.dep, clamp(12 - p.z * 0.2, 6, 12), 3);
     if (b.live || b.held || b.bouncing) g.fillStyle(0x000000, 0.45).fillEllipse(SX(b.x), FY + 2, clamp(7 - b.h * 0.05, 3, 7), 2);
-    const f = this.fx; f.clear();
+    const f = this.fx;
     const md = this.modern;
     if (md) {
       // REBOUND INDICATOR (Thunder Spikes): arco bianco sopra il punto di caduta
