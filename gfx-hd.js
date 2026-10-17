@@ -90,16 +90,20 @@ function drawPlayerFrontHD(P, hair, R, pose) {
     const sx = W ? 0.8 : 0;
     hdCel(g, g2 => { g2.beginPath(); g2.moveTo(9.5 + sx, 16); g2.quadraticCurveTo(16, 14.8, 22.5 - sx, 16); g2.lineTo(20.6 - sx * 0.6, 28.5); g2.quadraticCurveTo(16, 29.3, 11.4 + sx * 0.6, 28.5); g2.closePath(); }, BK ? P.sk : P.sh, 1.4, 0.7);
     if (BK) {   // top del costume
-      hdCel(g, g2 => { g2.beginPath(); g2.moveTo(10.6, 18); g2.lineTo(21.4, 18); g2.quadraticCurveTo(21.6, 21.6, 19, 22.2); g2.quadraticCurveTo(16, 22.4, 16, 21.2); g2.quadraticCurveTo(16, 22.4, 13, 22.2); g2.quadraticCurveTo(10.4, 21.6, 10.6, 18); g2.closePath(); }, P.sh, 1, 0.6);
+      hdCel(g, g2 => { g2.beginPath(); g2.moveTo(10.6, 18); g2.lineTo(21.4, 18); g2.quadraticCurveTo(21.6, 21.6, 19, 22.2); g2.quadraticCurveTo(16, 22.4, 16, 21.2); g2.quadraticCurveTo(16, 22.4, 13, 22.2); g2.quadraticCurveTo(10.4, 21.6, 10.6, 18); g2.closePath(); }, P.pat === 2 ? P.tr : P.sh, 1, 0.6);
+      if (P.pat === 1) { g.strokeStyle = P.tr; g.lineWidth = 0.6; g.beginPath(); g.moveTo(11, 21.8); g.quadraticCurveTo(16, 23, 21, 21.8); g.moveTo(11.6, 28); g.lineTo(20.4, 28); g.stroke(); }   // bordi
       g.strokeStyle = shade(P.sh, 0.6); g.lineWidth = 0.4; g.beginPath(); g.moveTo(13, 16.2); g.lineTo(13.4, 18); g.moveTo(19, 16.2); g.lineTo(18.6, 18); g.stroke();   // spalline
     } else {   // scollo
       g.strokeStyle = P.tr; g.lineWidth = 0.8; g.beginPath(); g.moveTo(13.5, 16); g.quadraticCurveTo(16, 18.5, 18.5, 16); g.stroke();
     }
+    if (W && !BK && P.pat) { g.fillStyle = P.tr; if (P.pat === 1) g.fillRect(11.2, 22.6, 9.6, 1.1); else g.fillRect(10.4, 15.8, 11.2, 2.6); }   // fascia o spalle
     if (W) { g.strokeStyle = shade(P.sh, 0.62); g.lineWidth = 0.4; g.beginPath(); g.moveTo(12.6, 21.6); g.quadraticCurveTo(14.2, 22.6, 15.6, 21.6); g.moveTo(16.4, 21.6); g.quadraticCurveTo(17.8, 22.6, 19.4, 21.6); g.stroke(); }   // seno
     if (P.num && !BK) { g.font = 'bold 5px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 16, 22.5); g.fillStyle = P.tr; g.fillText(P.num, 16, 22.5); }
     const hx = F.head[0], hy = F.head[1] - d;
     hdCel(g, hdCapsule([16, 16], [16, 13], 1.9, 1.8), P.sk, 0.6, 0.4);
-    if (W) hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 4.4, hy - 1); g2.quadraticCurveTo(hx - 5.6, hy + 4, hx - 4.6, hy + 6.5); g2.lineTo(hx + 4.6, hy + 6.5); g2.quadraticCurveTo(hx + 5.6, hy + 4, hx + 4.4, hy - 1); g2.closePath(); }, hair, 1, 0.7);   // capelli lunghi dietro
+    const hl = P.hs === 3 ? 3.6 : 6.5;   // caschetto più corto; il chignon non ha capelli sulle spalle
+    if (W && P.hs !== 2) hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 4.4, hy - 1); g2.quadraticCurveTo(hx - 5.6, hy + 4, hx - 4.6, hy + hl); g2.lineTo(hx + 4.6, hy + hl); g2.quadraticCurveTo(hx + 5.6, hy + 4, hx + 4.4, hy - 1); g2.closePath(); }, hair, 1, 0.7);   // capelli lunghi dietro
+    if (W && P.hs === 2) hdCel(g, hdEllipse([hx, hy - 5.6], 2.3, 1.9), hair, 0.8, 0.5);   // chignon
     hdCel(g, hdEllipse([hx, hy], 3.9, 4.4), P.sk, 0.9, 0.45);
     hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx, hy - 1.2, 4.3, 3.6, 0, Math.PI * 1.02, Math.PI * 1.98); g2.lineTo(hx + 4.2, hy + 0.5); g2.quadraticCurveTo(hx, hy - 2.6, hx - 4.2, hy + 0.5); g2.closePath(); }, hair, 1, 0.7);
     if (W && !B) { g.fillStyle = '#c03848'; g.beginPath(); g.ellipse(hx, hy + 2.6, 0.9, 0.4, 0, 0, 7); g.fill(); }   // labbra
@@ -201,11 +205,16 @@ function drawPlayerHD(pose, P, hair, R) {
       g2.closePath();
     };
     hdCel(g, torso, BK ? P.sk : P.sh, 1.6, 0.8);
-    if (BK) {   // top del costume: fascia sul petto
+    const topC = W && P.pat === 2 ? P.tr : P.sh;   // fantasia "due colori": top nel colore del bordo
+    if (BK) {   // top del costume: fascia sul petto (con bordo nella fantasia 1)
       const t0 = lerpP(c1, c2, 0.14), t1 = lerpP(c1, c2, 0.42);
-      hdCel(g, hdPoly([Q(t0, 4.6), Q(t1, 4.4), Q(t1, -5.2), Q(t0, -4.8)]), P.sh, 0.9, 0.5);
+      hdCel(g, hdPoly([Q(t0, 4.6), Q(t1, 4.4), Q(t1, -5.2), Q(t0, -4.8)]), topC, 0.9, 0.5);
+      if (P.pat === 1) { g.strokeStyle = P.tr; g.lineWidth = 0.7; g.beginPath(); const e0 = Q(t1, 4.4), e1 = Q(t1, -5.2); g.moveTo(e0[0], e0[1]); g.lineTo(e1[0], e1[1]); g.stroke(); }
+    } else if (W && P.pat) {   // maglia: fascia sul petto o spalle nel secondo colore
+      const a = lerpP(c1, c2, P.pat === 1 ? 0.5 : 0.02), b2 = lerpP(c1, c2, P.pat === 1 ? 0.58 : 0.24);
+      hdCel(g, hdPoly([Q(a, 4.7), Q(b2, 4.5), Q(b2, -5.3), Q(a, -4.9)]), P.tr, 0.5, 0.35);
     }
-    if (W) hdCel(g, hdEllipse(Q(lerpP(c1, c2, 0.32), -4.6), 1.8, 1.9), P.sh, 0.7, 0.45);   // seno
+    if (W) hdCel(g, hdEllipse(Q(lerpP(c1, c2, 0.32), -4.6), 1.8, 1.9), BK ? topC : P.sh, 0.7, 0.45);   // seno
     // piega della maglia
     g.strokeStyle = shade(P.sh, 0.6); g.lineWidth = 0.35;
     const f0 = Q(lerpP(c1, c2, 0.55), -1), f1 = Q(lerpP(c1, c2, 0.9), -3);
@@ -248,7 +257,15 @@ function drawPlayerHD(pose, P, hair, R) {
       g2.quadraticCurveTo(hx + 2.8, hy - 2.4, hx + 3.6, hy - 1.2);
       g2.closePath();
     };
-    if (W) {   // coda di cavallo con elastico del colore della squadra
+    if (W && P.hs === 1) {   // treccia
+      for (let k = 0; k < 4; k++) hdCel(g, hdEllipse([hx - 4.6 - k * 0.5, hy + 0.6 + k * 2.4], 1.5, 1.4), k % 2 ? shade(hair, 1.2) : hair, 0.6, 0.4);
+      hdCel(g, hdEllipse([hx - 6.6, hy + 9.6], 0.9, 0.7), P.tr, 0.4, 0.3);
+    } else if (W && P.hs === 2) {   // chignon
+      hdCel(g, hdEllipse([hx - 3.8, hy - 3.8], 2.5, 2.3), hair, 0.8, 0.5);
+      hdCel(g, hdEllipse([hx - 2.6, hy - 2.6], 0.8, 0.9), P.tr, 0.4, 0.3);
+    } else if (W && P.hs === 3) {   // caschetto
+      hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 4.4, hy - 2); g2.quadraticCurveTo(hx - 5.6, hy + 3.4, hx - 3.4, hy + 4.6); g2.lineTo(hx - 0.8, hy + 4.4); g2.lineTo(hx - 1.6, hy - 1); g2.closePath(); }, hair, 0.9, 0.6);
+    } else if (W) {   // coda di cavallo con elastico del colore della squadra
       hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 3.6, hy - 3); g2.quadraticCurveTo(hx - 8.4, hy - 1.6, hx - 7, hy + 5.6); g2.quadraticCurveTo(hx - 5.2, hy + 2, hx - 3.4, hy - 0.6); g2.closePath(); }, hair, 0.9, 0.6);
       hdCel(g, hdEllipse([hx - 4.2, hy - 2], 0.9, 1.1), P.tr, 0.4, 0.3);
     }
@@ -337,7 +354,7 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
   const hair = P.ha[idx % P.ha.length];
   let style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
   let jaw = 1 + Math.floor(R() * 2);
-  if (P.fem) { style = 2; jaw = -1; }   // giocatrici: capelli lunghi e viso più morbido
+  if (P.fem) { style = P.hs === 2 ? 0 : 2; jaw = -1; }   // giocatrici: capelli lunghi (o chignon) e viso più morbido
   const cheer = expr === 'cheer';
   c.save(); c.translate(ox, oy);
   const bg = c.createRadialGradient(20, 16, 4, 20, 20, 30);
@@ -358,7 +375,10 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
   hdStrokeFill(c, g => { g.beginPath(); g.moveTo(15.5, 22); g.lineTo(15, 31); g.quadraticCurveTo(20, 34, 25, 31); g.lineTo(24.5, 22); g.closePath(); }, dk);
   hdStrokeFill(c, g => { g.beginPath(); g.moveTo(14, 29.6); g.quadraticCurveTo(20, 35, 26, 29.6); g.lineTo(24.5, 29.4); g.quadraticCurveTo(20, 32.5, 15.5, 29.4); g.closePath(); }, P.tr, HD_INK, 0.45);
   // capelli dietro (lunghi)
-  if (style === 2) hdStrokeFill(c, g => { g.beginPath(); g.moveTo(9, 10); g.quadraticCurveTo(6, 22, P.fem ? 8 : 9.5, P.fem ? 33 : 27); g.lineTo(P.fem ? 32 : 30.5, P.fem ? 33 : 27); g.quadraticCurveTo(34, 22, 31, 10); g.closePath(); }, shade(hair, 0.85));
+  const hb = P.fem ? (P.hs === 3 ? 25 : 33) : 27;   // lunghezza dei capelli dietro (caschetto più corto)
+  if (style === 2) hdStrokeFill(c, g => { g.beginPath(); g.moveTo(9, 10); g.quadraticCurveTo(6, 22, P.fem ? 8 : 9.5, hb); g.lineTo(P.fem ? 32 : 30.5, hb); g.quadraticCurveTo(34, 22, 31, 10); g.closePath(); }, shade(hair, 0.85));
+  if (P.fem && P.hs === 2) hdStrokeFill(c, hdEllipse([20, 2.6], 5, 3), hair);   // chignon
+  if (P.fem && P.hs === 1) for (let k = 0; k < 4; k++) hdStrokeFill(c, hdEllipse([31.5, 24 + k * 3.6], 2, 1.9), k % 2 ? shade(hair, 1.2) : hair, HD_INK, 0.45);   // treccia
   // orecchie
   hdStrokeFill(c, hdEllipse([10.6, 17.5], 1.8, 2.8), dk);
   hdStrokeFill(c, hdEllipse([29.4, 17.5], 1.8, 2.8), dk);
@@ -399,6 +419,10 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
     c.fillStyle = '#4a3020'; c.beginPath(); c.arc(ex + 0.5, 15.6, 1.05, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#100a08'; c.beginPath(); c.arc(ex + 0.5, 15.6, 0.5, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ex + 0.1, 15.2, 0.3, 0, Math.PI * 2); c.fill();
+  }
+  if (P.fem) {   // fard e orecchini
+    c.fillStyle = 'rgba(230,80,90,0.22)'; c.beginPath(); c.ellipse(14, 20, 2.4, 1.3, 0, 0, 7); c.ellipse(26, 20, 2.4, 1.3, 0, 0, 7); c.fill();
+    hdStrokeFill(c, hdEllipse([10.4, 21.6], 0.9, 0.9), P.tr, HD_INK, 0.35); hdStrokeFill(c, hdEllipse([29.6, 21.6], 0.9, 0.9), P.tr, HD_INK, 0.35);
   }
   // naso
   c.strokeStyle = shade(skin, 0.6); c.lineWidth = 0.6;

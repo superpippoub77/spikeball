@@ -126,7 +126,8 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Regolare il **bagher laterale** (palla un po' fuori portata) | `config.js` → `LAT_REACH`; `match.js` → `checkContacts` |
 | Cambiare chi si comanda **in attesa** della palla avversaria | `match.js` → `humanMoves`, `ctrlOf` |
 | **Sabbia** del beach: spruzzi e impronte | `match.js` → `sand`, `drawSand`; velocità sulla sabbia `CFG.SAND_K`, durata delle impronte `CFG.SAND_MARK_T` |
-| **Versione femminile**: disegno delle giocatrici, nomi | `gfx.js`/`gfx-hd.js` (`P.fem`, `LOOK.fem`, texture con `_w`); nomi in `config.js` → `FEM_NAMES`; opzione `MSET.women` / `BSET.women` |
+| **Versione femminile**: disegno delle giocatrici, nomi | `gfx.js`/`gfx-hd.js` (`P.fem`, `LOOK.fem`, texture con `_w`; acconciature `P.hs` e `femHairSide`, fantasie `P.pat`); nomi in `config.js` → `FEM_NAMES`; opzione `MSET.women` / `BSET.women` |
+| Cambiare le **esultanze** | `gfx.js` → `SKEL.cheer`, `cheer2`, `cheer3`; `match.js` → `motion` |
 | Cambiare l'**alone rosso e la scritta P1/P2** del giocatore comandato | `match.js` → `render` (`p.glow`, `t.tag`) |
 | Cambiare dove guarda la **telecamera** | `match.js` → inizio di `render` |
 | Cambiare le **posizioni in campo** o aggiungere un numero di giocatori | `config.js` → `FORMATIONS` (posti: d, dep, pos) e `PLAYER_COUNTS` |

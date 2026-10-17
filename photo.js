@@ -80,7 +80,7 @@ function photoBeach(d, R, W, H, sk, ref) {
 // pose statiche (menu, schermate) prese dalle animazioni
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 4], pass: ['bagher', 3], set: ['block', 2], jump: ['jump', 5],
   spkload: ['spike', 3], spkfol: ['spike', 8], passload: ['bagher', 1], setload: ['block', 1], dump: ['spike', 6], passside: ['bagher', 3], srvload: ['serve', 4],
-  spike: ['spike', 5], block: ['block', 4], dive: ['dive', 0], down: ['down', 0], cheer: ['block', 5], toss: ['serve', 3], sad: ['idle', 0] };
+  spike: ['spike', 5], block: ['block', 4], dive: ['dive', 0], down: ['down', 0], cheer: ['block', 5], cheer2: ['block', 4], cheer3: ['block', 5], toss: ['serve', 3], sad: ['idle', 0] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {
@@ -124,7 +124,7 @@ function photoFrame(m, p) {
     if (t.attacker === p && !p.decoy) return pick('spike', p.vz > 90 ? 2 : 3 + (p.vz < 0 ? 1 : 0));   // braccio caricato
     return pick('jump', p.vz > 80 ? 3 : p.vz > -40 ? 5 : p.z > 6 ? 7 : 8);
   }
-  if (st === 'cheer') return pick('block', 4 + Math.floor(now * 4 + p.idx) % 2);
+  if (st === 'cheer' || st === 'cheer2' || st === 'cheer3') return pick('block', 4 + Math.floor(now * 4 + p.idx) % 2);
   if (st === 'sad') return pick('idle', 0);
   // fermo: in azione posizione di attesa (bagher pronto), altrimenti respiro
   if (m.state === 'rally' || (m.state === 'serve' && m.server !== p)) return pick('bagher', Math.floor(now * 3 + p.idx) % 2);
