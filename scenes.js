@@ -225,11 +225,15 @@ class SelectTeamScene extends Base {
     this.big = this.add.image(230, 72, makeFlagTex(this, 'ITA', 88, 58));
     this.bigName = this.add.text(230, 112, '', TXT(12)).setOrigin(0.5);
     if (this.m2) { this.big2 = this.add.image(230, 150, makeFlagTex(this, 'FRA', 60, 40)); this.bigName2 = this.add.text(230, 178, '', TXT(10)).setOrigin(0.5); }
+    // squadre maschili o femminili: ← → (giocatore 1)
+    this.gender = this.add.text(230, this.m2 ? 194 : 134, '', TXT(8)).setOrigin(0.5);
+    this.add.text(230, this.m2 ? 203 : 144, '← → MEN / WOMEN', TXT(5, '#c0c0c0')).setOrigin(0.5);
     this.refresh();
     this.timeCounter(9, 160, 206, () => { this.ok = [true, true]; this.go(); });
   }
   refresh() {
     const c1 = SELECTABLE[this.c[0]];
+    this.gender.setText(GS.women ? '◄ WOMEN ►' : '◄ MEN ►').setColor(GS.women ? '#ff9ad0' : '#9ad0ff');
     this.m1.y = 36 + this.c[0] * 17;
     this.big.setTexture(makeFlagTex(this, c1, 88, 58)); this.bigName.setText(TEAMS[c1].name.split('').join(' '));
     if (this.m2) { const c2 = SELECTABLE[this.c[1]]; this.m2.y = 40 + this.c[1] * 17; this.m2.x = 44; this.big2.setTexture(makeFlagTex(this, c2, 60, 40)); this.bigName2.setText(TEAMS[c2].name); }
@@ -245,6 +249,7 @@ class SelectTeamScene extends Base {
     if (!this.ok[0]) {
       if (this.jd('up')) { this.c[0] = (this.c[0] + 8) % 9; SFX.blip(); this.refresh(); }
       if (this.jd('down')) { this.c[0] = (this.c[0] + 1) % 9; SFX.blip(); this.refresh(); }
+      if (this.jd('left') || this.jd('right')) { GS.women = !GS.women; SFX.blip(); this.refresh(); }
       if (this.btn() || this.startPressed()) { this.ok[0] = true; SFX.select(); this.m1.setTint(0x808080); }
     }
     if (this.m2 && !this.ok[1]) {
@@ -374,7 +379,7 @@ class LineupScene extends Base {
   init(d) { this.d = d; }
   create() {
     camSetup(this);
-    makeCommon(this);
+    makeCommon(this); setLook(this, false, !!GS.women);   // volti delle giocatrici nella versione femminile
     this.add.image(0, 0, makeLineupCourt(this, this.d.team)).setOrigin(0);
     if (this.d.scoreLine) this.add.text(8, 6, `SCORE: ${GS.score}`, TXT(8, '#000000'));
     const code = this.d.team, pos = [[42, 34], [86, 34], [30, 86], [76, 86], [18, 140], [64, 140]];
@@ -393,7 +398,7 @@ function startStage(scene) {
   scene.scene.start('MatchIntro', { left: GS.p1, right: st.team, label: st.label, scoreLine: true,
     next: s1 => s1.scene.start('Lineup', { team: GS.p1, scoreLine: true,
       next: s2 => s2.scene.start('Match', {
-        mode: '1p', left: GS.p1, right: st.team, humans: [1, 0], skillL: 0.85, skillR: st.skill + (CFG.HARD ? 0.08 : 0),
+        mode: '1p', left: GS.p1, right: st.team, humans: [1, 0], women: !!GS.women, skillL: 0.85, skillR: st.skill + (CFG.HARD ? 0.08 : 0),
         start: st.start.map(v => CFG.SIDE_OUT ? v : Math.max(0, v - CFG.RALLY_START_SHIFT)), time: CFG.MATCH_TIME, setLabel: 'FINAL SET', firstServe: 0, onDone: m => after1P(m), onContinue: m => startStage(m)
       }) }) });
 }
@@ -525,7 +530,7 @@ function start2P(scene) {
   const n = GS.setNo;
   scene.scene.start('MatchIntro', { left: GS.p1, right: GS.p2, label: GS.sets === 1 ? '1 SET MATCH' : `${ORD[n]} SET`, scoreLine: false,
     next: s1 => s1.scene.start('Match', {
-      mode: '2p', left: GS.p1, right: GS.p2, humans: [1, 2], skillL: 0.85, skillR: 0.85, start: CFG.START_2P.slice(), time: CFG.MATCH_TIME,
+      mode: '2p', left: GS.p1, right: GS.p2, humans: [1, 2], women: !!GS.women, skillL: 0.85, skillR: 0.85, start: CFG.START_2P.slice(), time: CFG.MATCH_TIME,
       timeUpEnds: true, floor: GS.p2, setLabel: GS.sets === 1 ? 'FINAL SET' : `${ORD[n]} SET`, firstServe: n % 2, onDone: m => after2P(m)
     }) });
 }

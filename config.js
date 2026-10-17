@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.6.0';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.6.1';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -40,6 +40,8 @@ const CFG = {
   WORLD_HALF: 280,
   FLOOR_Y: 206,
   REACH: 12, DIVE_REACH: 38,
+  APPR_T: 0.4, PLANT_T: 0.13,   // rincorsa: secondi prima dello stacco per il passo lungo con il balzo e per l'arrivo a piedi pari
+  FRONT_ZONE: 0.36,       // ricezione: oltre questa frazione della metà campo la palla tocca ai difensori arretrati
   SAND_K: 0.86,           // beach: velocità di corsa sulla sabbia (più faticosa del parquet)
   SAND_MARK_T: 6,         // beach: secondi prima che un'impronta nella sabbia sparisca
   LAT_REACH: 9,           // bagher laterale: px in più oltre REACH (ricezione allungata, qualità più bassa)
@@ -163,7 +165,7 @@ const DEFAULT_RANKING = [
 
 // ---------------- stato globale della partita arcade ----------------
 const GS = {
-  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1,
+  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1, women: false,   // women: versione femminile (scelta in SELECT YOUR TEAM)
   ranking: null, attract: 0,
   loadRanking() {
     if (this.ranking) return this.ranking;
