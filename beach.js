@@ -323,7 +323,7 @@ class BeachSelectScene extends Base {
     if (ch) { SFX.blip(); if (s) BSET.right = this.code(1); else BSET.left = this.code(0); this.draw(); }
     if (Phaser.Input.Keyboard.JustDown(this.kf)) {
       this.gone = true; SFX.select(); BSET._side = s;
-      this.scene.start('Formazione', { code: this.code(s), n: 2, beach: true, back: 'BeachSelect' }); return;
+      this.scene.start('Formazione', { code: this.code(s), n: 2, beach: true, women: BSET.women === 1, back: 'BeachSelect' }); return;
     }
     if (this.jd('esc')) { if (s === 1) { this.side = 0; this.draw(); } else { this.gone = true; this.scene.start('MainMenu'); } return; }
     if (this.btn() || this.startPressed()) {
@@ -348,10 +348,10 @@ class BeachSettingsScene extends Base {
     const p = this.add.graphics(); p.fillStyle(0x0a2a5a, 0.78).fillRoundedRect(6, 48, 150, 122, 4).fillRoundedRect(162, 48, 152, 156, 4);
     this.preview = this.add.image(81, 104, '__DEFAULT');
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
-    this.rows = [['field', 'SPIAGGIA'], ['fmt', 'PARTITA'], ['ball', 'PALLONE'], ['rebound', 'REBOUND INDICATOR'], ['target', 'ATTACK TARGET'],
-                 ['fx', 'ARCADE FX'], ['women', 'SQUADRE'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
+    this.rows = [['women', 'SQUADRE (maschili / femminili)'], ['field', 'SPIAGGIA'], ['fmt', 'PARTITA'], ['ball', 'PALLONE'], ['rebound', 'REBOUND INDICATOR'], ['target', 'ATTACK TARGET'],
+                 ['fx', 'ARCADE FX'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
     this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 15, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(310, 58.5 + i * 15, '', UI.f(6, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(300, 90, 'ball_beach').setScale(1.4);
+    this.ballImg = this.add.image(300, 101, 'ball_beach').setScale(1.4);
     this.add.text(81, 178, 'REGOLE BEACH: 2 contro 2, rally a 21,\ncambio campo ogni 7 punti, muro = 1° tocco,\nniente pallonetto a mano aperta', { ...UI.f(4.4, '#0a2a5a', true), align: 'center' }).setOrigin(0.5, 0);
     this.add.text(240, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(4.6, '#0a2a5a', true)).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
@@ -362,7 +362,7 @@ class BeachSettingsScene extends Base {
     if (k === 'ball') return '';
     if (k === 'rebound') return OPT.rebound[BSET.rebound];
     if (k === 'target' || k === 'fx' || k === 'women') return OPT[k][BSET[k]];
-    if (k === 'lineL' || k === 'lineR') { const c = k === 'lineL' ? BSET.left : BSET.right; applyLineup(this, c, 2); return BSET.women ? femName(c, 0) + ' + ' + femName(c, 1) : TEAMS[c].names.slice(0, 2).join(' + '); }
+    if (k === 'lineL' || k === 'lineR') { const c = k === 'lineL' ? BSET.left : BSET.right; applyLineup(this, c, 2); return BSET.women ? femLabel(c, TEAMS[c].names[0]) + ' + ' + femLabel(c, TEAMS[c].names[1]) : TEAMS[c].names.slice(0, 2).join(' + '); }
     return '►';
   }
   refresh() {
@@ -393,7 +393,7 @@ class BeachSettingsScene extends Base {
     if (this.btn() || this.startPressed()) {
       const k = this.rows[this.sel][0];
       this.gone = true; SFX.select();
-      if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? BSET.left : BSET.right, n: 2, beach: true, back: 'BeachSettings' });
+      if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? BSET.left : BSET.right, n: 2, beach: true, women: BSET.women === 1, back: 'BeachSettings' });
       else startBeachMatch(this, true);
     }
   }

@@ -73,6 +73,9 @@ function lineupOf(code, n) {
 }
 
 // riscrive le liste della squadra: i primi n sono i titolari nell'ordine dei posti, poi la panchina
+// nome femminile di un giocatore della rosa (versione femminile): legato al suo posto nella rosa, non al posto in campo
+function femLabel(code, label) { const k = teamPool(code).findIndex(p => p.label === label); return femName(code, Math.max(0, k)); }
+
 function applyLineup(scene, code, n) {
   const P = TEAMS[code], pool = teamPool(code), on = lineupOf(code, n);
   const order = on.concat(pool.map((_, i) => i).filter(i => !on.includes(i)));
@@ -107,6 +110,7 @@ class FormazioneScene extends Base {
     this.dyn = []; this.sel = 0; this.draw();
   }
   draw() {
+    const code = this.d.code;
     this.dyn.forEach(o => o.destroy()); this.dyn = [];
     const D = o => (this.dyn.push(o), o), rh = Math.min(26, 152 / this.F.length);
     this.F.forEach((f, s) => {
@@ -115,13 +119,15 @@ class FormazioneScene extends Base {
       g.fillStyle(cur ? 0x1a5ad8 : 0x0e2a6a, 1).fillRect(10, y - 2, 164, rh - 3);
       if (cur) g.lineStyle(1, 0xffd23a).strokeRect(10.5, y - 1.5, 163, rh - 4);
       D(this.add.text(14, y, this.d.beach ? `GIOCATORE ${s + 1}` : POS_NAMES[f.pos], UI.f(4.5, '#7ad0ff', true)));
-      D(this.add.text(14, y + 7, `${cur ? '◄ ' : ''}${p.num ? '#' + p.num + ' ' : ''}${p.label}${cur ? ' ►' : ''}`, UI.f(rh > 20 ? 7 : 6, '#ffffff', true)));
-      D(this.add.text(170, y + 1, [p.role, p.lv ? 'LV ' + p.lv : '', p.age ? p.age + 'a' : ''].filter(Boolean).join('  '), UI.f(4.5, '#ffd23a', true)).setOrigin(1, 0));
+      D(this.add.text(14, y + 7, `${cur ? '◄ ' : ''}${p.num ? '#' + p.num + ' ' : ''}${this.d.women ? femLabel(code, p.label) : p.label}${cur ? ' ►' : ''}`, UI.f(rh > 20 ? 7 : 6, '#ffffff', true)));
+      const tr = playerTraits(code, p.label, this.d.women);   // altezza e specialità
+      D(this.add.text(170, y + 1, [p.role, p.lv ? 'LV ' + p.lv : '', p.age ? p.age + 'a' : '', tr.cm + 'cm'].filter(Boolean).join('  '), UI.f(4.5, '#ffd23a', true)).setOrigin(1, 0));
+      D(this.add.text(170, y + 8, tr.tag, UI.f(4.2, '#7ad0ff', true)).setOrigin(1, 0));
     });
     const max = 26, first = Math.max(0, Math.min(this.on[this.sel] - 12, this.pool.length - max));
     this.pool.slice(first, first + max).forEach((p, k) => {
       const i = first + k, slot = this.on.indexOf(i);
-      D(this.add.text(188, 47 + k * 5.6, `${slot >= 0 ? '●' : '○'} ${p.num ? '#' + p.num + ' ' : ''}${p.label}  ${p.role || ''}`,
+      D(this.add.text(188, 47 + k * 5.6, `${slot >= 0 ? '●' : '○'} ${p.num ? '#' + p.num + ' ' : ''}${this.d.women ? femLabel(this.d.code, p.label) : p.label}  ${p.role || ''}`,
         UI.f(4.2, i === this.on[this.sel] ? '#ffd23a' : slot >= 0 ? '#ffffff' : '#8aa0c8', slot >= 0)));
     });
   }
