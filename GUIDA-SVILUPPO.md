@@ -123,6 +123,8 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Cambiare le **fasi dei movimenti** (caricamento della schiacciata, piegamento del bagher, mani alla fronte nel palleggio) | `match.js` → `motion` (sceglie la posa secondo il momento del gesto) |
 | Rifare i **giocatori 3D** da un nuovo foglio sprite | `tools/photo/README.md` |
 | Cambiare le **schede del menu principale** | `modern.js` → `MainMenuScene` (`this.cards`) |
+| Regolare il **bagher laterale** (palla un po' fuori portata) | `config.js` → `LAT_REACH`; `match.js` → `checkContacts` |
+| Cambiare chi si comanda **in attesa** della palla avversaria | `match.js` → `humanMoves`, `ctrlOf` |
 | Cambiare dove guarda la **telecamera** | `match.js` → inizio di `render` |
 | Cambiare le **posizioni in campo** o aggiungere un numero di giocatori | `config.js` → `FORMATIONS` (posti: d, dep, pos) e `PLAYER_COUNTS` |
 | Regole del **beach volley** (punti, cambio campo, misure) | `beach.js` → `BEACH_FORMATS`, `startBeachMatch`; `CFG.BEACH_HALF`; in `match.js` cerca `this.beach` |

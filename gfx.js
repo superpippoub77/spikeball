@@ -13,7 +13,8 @@
 const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (misurati sul video HD)
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
                'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
-               'setload', 'dump'];                // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
+               'setload', 'dump',                 // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
+               'passside'];                       // bagher laterale (palla fuori portata, affondo di lato)
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -24,6 +25,7 @@ const SKEL = {
   run2:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[16, 31], [17, 38]], fl: [[18, 30], [13, 34]], ba: [[20, 18], [22, 15]], fa: [[15, 19], [13, 22]] },
   // bagher in due tempi: passload = piegati sulle gambe, braccia tese e unite in basso; pass = spinta di gambe e braccia verso l'alto
   passload: { hip: [12, 31], neck: [17, 22], head: [20, 18], bl: [[17, 34], [11, 38]], fl: [[21, 34], [22, 38]], ba: [[22, 29], [27, 32]], fa: [[22, 29], [27, 32]] },
+  passside: { hip: [12, 30], neck: [19, 23], head: [23, 20], bl: [[8, 34], [2, 38]], fl: [[20, 33], [24, 38]], ba: [[24, 28], [30, 31]], fa: [[24, 28], [30, 31]] },
   pass:  { hip: [14, 27], neck: [18, 17], head: [21, 13], bl: [[16, 32], [12, 38]], fl: [[20, 32], [21, 38]], ba: [[23, 21], [28, 19]], fa: [[23, 21], [28, 19]] },
   set:   { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[15, 8], [17, 3]],  fa: [[19, 8], [19, 3]] },
   jump:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 30], [12, 35]], fl: [[19, 30], [16, 36]], ba: [[13, 17], [10, 14]], fa: [[14, 18], [11, 16]] },
