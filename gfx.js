@@ -14,7 +14,8 @@ const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (mis
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
                'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
                'setload', 'dump',                 // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
-               'passside', 'srvload'];            // bagher laterale (di fronte, affondo di lato); battuta caricata
+               'passside', 'srvload',             // bagher laterale (di fronte, affondo di lato); battuta caricata
+               'cheer2', 'cheer3'];               // esultanze: pugno al cielo, salto a braccia larghe
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -36,6 +37,8 @@ const SKEL = {
   block: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [15, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 6], [17, 1]],  fa: [[18, 6], [19, 1]] },
   dive:  { hip: [9, 32],  neck: [21, 33], head: [25, 32], bl: [[5, 31], [1, 30]],   fl: [[5, 33], [1, 33]],   ba: [[25, 35], [30, 35]], fa: [[25, 34], [30, 33]] },
   down:  { hip: [10, 36], neck: [22, 36], head: [26, 35], bl: [[6, 37], [2, 38]],   fl: [[6, 38], [2, 37]],   ba: [[26, 38], [30, 38]], fa: [[26, 37], [30, 37]] },
+  cheer2: { hip: [16, 24], neck: [16, 13], head: [17, 9], bl: [[14, 31], [12, 38]], fl: [[18, 31], [20, 38]], ba: [[13, 19], [16, 15]], fa: [[20, 8], [22, 2]] },
+  cheer3: { hip: [16, 23], neck: [16, 12], head: [17, 8], bl: [[13, 29], [10, 34]], fl: [[19, 29], [22, 34]], ba: [[11, 11], [6, 7]], fa: [[21, 11], [26, 7]] },
   cheer: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [13, 38]], fl: [[18, 31], [19, 38]], ba: [[13, 8], [10, 3]],  fa: [[20, 8], [23, 3]] },
   // battuta da fermo: mentre la palla scende il braccio d'attacco si carica dietro la testa, l'altro indica la palla
   srvload: { hip: [15, 25], neck: [15, 14], head: [17, 10], bl: [[13, 31], [10, 38]], fl: [[18, 31], [20, 38]], ba: [[20, 9], [23, 5]], fa: [[11, 7], [7, 11]] },
@@ -113,7 +116,10 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   const tw = W ? [10.3, 21.7, 20, 12] : [9.5, 22.5, 20.5, 11.5];
   poly(ctx, ox, U([[tw[0], 16], [tw[1], 16], [tw[2], 28], [tw[3], 28]]), BK ? skin : shirt);
   poly(ctx, ox, U([[tw[0], 16], [12, 16], [13, 28], [tw[3], 28]]), BK ? skinD : shirtD);
-  if (BK) poly(ctx, ox, U([[10.5, 18], [21.5, 18], [21, 22.2], [16.5, 21.5], [15.5, 21.5], [11, 22.2]]), shirt);   // top del costume
+  const topC = W && P.pat === 2 ? P.tr : shirt;
+  if (BK) poly(ctx, ox, U([[10.5, 18], [21.5, 18], [21, 22.2], [16.5, 21.5], [15.5, 21.5], [11, 22.2]]), topC);   // top del costume
+  if (W && P.pat === 1) { ctx.fillStyle = P.tr; if (BK) { ctx.fillRect(ox + 11, 21.6 + d, 10, 0.8); ctx.fillRect(ox + 11.5, 27.6 + d, 9, 0.8); } else { ctx.fillRect(ox + 11, 23 + d, 10, 1.2); } }   // bordi
+  if (W && P.pat === 2 && !BK) { ctx.fillStyle = P.tr; ctx.fillRect(ox + 10.5, 16 + d, 11, 3); }   // spalle nel secondo colore
   if (W) { ctx.fillStyle = shade(P.sh, 0.78); ctx.fillRect(ox + 12.5, 22 + d, 3, 0.8); ctx.fillRect(ox + 16.5, 22 + d, 3, 0.8); }   // seno
   if (P.num && !BK) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25 + d); ctx.textAlign = 'left'; }
   // braccia verso il pallone
@@ -127,11 +133,28 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   limb(ctx, ox, [16, 16 + d], [16, 13 + d], 3.4, 3.4, skinD);
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx, hy - 3, 4.6, 2.6, 0, 0, 7); ctx.fill();
-  ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, W ? 8 : 4); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, W ? 8 : 4);   // giocatrici: capelli lunghi
+  const hl = !W ? 4 : P.hs === 2 ? 4 : P.hs === 3 ? 6 : 8;   // giocatrici: capelli lunghi, caschetto o raccolti
+  ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, hl); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, hl);
+  if (W && P.hs === 2) { ctx.beginPath(); ctx.ellipse(ox + hx, hy - 6.2, 2.2, 1.8, 0, 0, 7); ctx.fill(); }   // chignon
   if (W && !B) { ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1); }
   if (B) { ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx - 3.5, hy - 1, 7, 2); }
   else { ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx - 2.5, hy - 1, 1, 1.4); ctx.fillRect(ox + hx + 1.5, hy - 1, 1, 1.4); }
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1);
+}
+
+// acconciature delle giocatrici di profilo (dietro la testa): coda di cavallo, treccia, chignon, caschetto
+function femHairSide(ctx, ox, hx, hy, P, hair) {
+  const dot = (x, y, rx, ry, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(ox + x, y, rx, ry, 0.3, 0, 7); ctx.fill(); };
+  if (P.hs === 1) {   // treccia
+    for (let k = 0; k < 4; k++) dot(hx - 5.4 - k * 0.4, hy + 0.5 + k * 2.6, 1.6, 1.5, k % 2 ? shade(hair, 1.25) : hair);
+    ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 7.4, hy + 9.6, 1.8, 1.2);
+  } else if (P.hs === 2) {   // chignon
+    dot(hx - 4.6, hy - 4.2, 2.6, 2.4, hair); ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 3.6, hy - 3.4, 1.2, 1.6);
+  } else if (P.hs === 3) {   // caschetto
+    ctx.fillStyle = hair; ctx.fillRect(ox + hx - 5.6, hy - 2, 4, 6.5); dot(hx - 3.6, hy + 4.2, 2.2, 1.2, hair);
+  } else {   // coda di cavallo
+    dot(hx - 6.2, hy + 1.5, 1.8, 3.8, hair); ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 5.6, hy - 2.4, 1.6, 1.4);
+  }
 }
 
 function drawPlayer(ctx, ox, pose, P, hair) {
@@ -182,8 +205,12 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? skin : shirt);
   poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], BK ? skinD : shirtD);
   poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? shade(skin, 1.08) : shirtL);
-  if (BK) { const t0 = lerpP(s.neck, s.hip, 0.12), t1 = lerpP(s.neck, s.hip, 0.4); poly(ctx, ox, [Q(t0, 4.4), Q(t1, 4), Q(t1, -4.4), Q(t0, -4.6)], shirt); }   // top
-  if (W) { const bp = Q(lerpP(s.neck, s.hip, 0.3), -4.2); ctx.fillStyle = BK ? shirt : shirtL; ctx.beginPath(); ctx.ellipse(ox + bp[0], bp[1], 1.7, 1.9, 0, 0, 7); ctx.fill(); }   // seno
+  const topC = W && P.pat === 2 ? P.tr : shirt;   // fantasia "due colori": top nel colore del bordo
+  if (BK) { const t0 = lerpP(s.neck, s.hip, 0.12), t1 = lerpP(s.neck, s.hip, 0.4); poly(ctx, ox, [Q(t0, 4.4), Q(t1, 4), Q(t1, -4.4), Q(t0, -4.6)], topC);
+    if (P.pat === 1) poly(ctx, ox, [Q(t1, 4), Q(lerpP(t1, s.hip, 0.06), 4), Q(lerpP(t1, s.hip, 0.06), -4.4), Q(t1, -4.4)], P.tr); }   // top (e bordo)
+  else if (W && P.pat) { const a = lerpP(s.neck, s.hip, P.pat === 1 ? 0.5 : 0.02), b2 = lerpP(s.neck, s.hip, P.pat === 1 ? 0.58 : 0.26);
+    poly(ctx, ox, [Q(a, 4.6), Q(b2, 4.4), Q(b2, -4.4), Q(a, -4.6)], P.tr); }   // maglia: fascia o spalle nel secondo colore
+  if (W) { const bp = Q(lerpP(s.neck, s.hip, 0.3), -4.2); ctx.fillStyle = BK ? topC : shirtL; ctx.beginPath(); ctx.ellipse(ox + bp[0], bp[1], 1.7, 1.9, 0, 0, 7); ctx.fill(); }   // seno
   limb(ctx, ox, lerpP(s.neck, s.hip, BK ? 0.94 : 0.9), s.hip, W ? 6 : 5.6, W ? 5.8 : 5.2, shorts);
   ctx.fillStyle = shortsD; const hp = Q(s.hip, 2.5); ctx.fillRect(ox + Math.round(hp[0]) - 1, Math.round(hp[1]) - 2, 2, 4);
   leg(s.fl, false);
@@ -193,10 +220,7 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = skin; ctx.fillRect(ox + hx + 3.5, hy, 2, 2);                       // naso
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 3, 4, 1);                    // mascella
-  if (W) {   // coda di cavallo
-    ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx - 6.2, hy + 1.5, 1.8, 3.8, 0.35, 0, 7); ctx.fill();
-    ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 5.6, hy - 2.4, 1.6, 1.4);
-  }
+  if (W) femHairSide(ctx, ox, hx, hy, P, hair);
   ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx - 0.8, hy - 2.8, 4.8, 3.2, 0, 0, 7); ctx.fill();
   ctx.fillRect(ox + hx - 5.5, hy - 2, 3.5, 6);
   ctx.fillStyle = shade(hair, 1.55); ctx.fillRect(ox + hx - 2, hy - 5, 4, 1);
@@ -248,7 +272,11 @@ function playerPal(code, i) {
   const out = Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
     sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
   if (LOOK.beach) { out.beach = true; out.cap = i % 2 === 1; out.num = P.beachNums ? P.beachNums[i] : (i + 1) + ''; }
-  if (LOOK.fem) out.fem = true;
+  if (LOOK.fem) {
+    out.fem = true;
+    out.hs = hashStr(code + ':h' + i) % 4;   // acconciatura: 0 coda di cavallo, 1 treccia, 2 chignon, 3 caschetto
+    out.pat = hashStr(code + ':p') % 3;      // fantasia della divisa della squadra: 0 tinta unita, 1 bordi, 2 due colori
+  }
   return out;
 }
 
@@ -290,7 +318,7 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
   const hair = P.ha[idx % P.ha.length];
   let style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
   let jaw = 1 + Math.floor(R() * 2);
-  if (P.fem) { style = 2; jaw = 0; }   // giocatrici: capelli lunghi, viso più morbido
+  if (P.fem) { style = P.hs === 2 ? 0 : 2; jaw = 0; }   // giocatrici: capelli lunghi (o raccolti nel chignon), viso più morbido
   const bg = ctx.createLinearGradient(0, oy, 0, oy + 40);
   bg.addColorStop(0, '#1c3478'); bg.addColorStop(1, '#0c1840');
   ctx.fillStyle = bg; ctx.fillRect(ox, oy, 40, 40);
@@ -319,7 +347,15 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
   px(19, 16, 2, 5, dk); px(18, 20, 4, 1, dk);
   if (cheer) { px(16, 22, 8, 4, '#5a1010'); px(17, 22, 6, 1, '#ffffff'); px(17, 25, 6, 1, '#c04040'); }
   else { px(16, 23, 8, 1, P.fem ? '#c03848' : '#a05048'); px(17, 24, 6, 1, P.fem ? '#d06070' : shade(skin, 0.85)); }
-  if (P.fem) { px(13, eyeY - 1, 1, 1, '#2a1a10'); px(26, eyeY - 1, 1, 1, '#2a1a10'); px(8, 22, 3, 8, hair); px(29, 20, 3, 9, hair); }   // ciglia, capelli sulle spalle
+  if (P.fem) {
+    px(13, eyeY - 1, 1, 1, '#2a1a10'); px(26, eyeY - 1, 1, 1, '#2a1a10');                          // ciglia
+    if (P.hs === 2) { px(15, 1, 10, 4, hair); px(17, 0, 6, 1, shade(hair, 1.3)); }                  // chignon
+    else if (P.hs === 3) { px(8, 20, 3, 4, hair); px(29, 20, 3, 4, hair); }                         // caschetto
+    else { px(8, 22, 3, 8, hair); px(29, 20, 3, 9, hair); }                                         // capelli sulle spalle
+    if (P.hs === 1) for (let k = 0; k < 3; k++) px(30, 28 + k * 3, 3, 2, k % 2 ? shade(hair, 1.3) : hair);   // treccia
+    px(12, 19, 3, 2, 'rgba(230,80,90,0.3)'); px(25, 19, 3, 2, 'rgba(230,80,90,0.3)');               // fard
+    px(10, 22, 1, 2, P.tr); px(29, 22, 1, 2, P.tr);                                                 // orecchini
+  }
   px(13, 9, 4, 1, lt);
 }
 

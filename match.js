@@ -1427,6 +1427,8 @@ class MatchScene extends Phaser.Scene {
   motion(p, st) {
     const t = p.team, b = this.ball;
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
+    // esultanze diverse per ogni giocatore, che cambiano ogni tanto: braccia al cielo, pugno, salto a braccia larghe
+    if (st === 'cheer') return ['cheer', 'cheer2', 'cheer3'][(p.ni + Math.floor(this.stateT / 0.7)) % 3];
     if (st === 'pass' && p.animT > 0.22) return 'passload';
     // battuta da fermo: palla in discesa = braccio caricato
     if (st === 'toss' && this.state === 'serve' && this.server === p && this.serveKind !== 'jump' && this.serveKind !== 'tower' && b.vy < 0) return 'srvload';
@@ -1491,7 +1493,7 @@ class MatchScene extends Phaser.Scene {
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
       p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
-      p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z;
+      p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - (st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0);   // saltello
       p.spr.setDepth(FY + p.dep);
       // il ricevitore designato appare schiarito, come nell'originale
       const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit)))) ||
