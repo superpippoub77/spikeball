@@ -218,7 +218,7 @@ class MatchScene extends Phaser.Scene {
   }
 
   // nome del giocatore del posto i (nella versione femminile i nomi delle giocatrici)
-  nameOf(code, i) { return this.women ? femName(code, i) : TEAMS[code].names[i]; }
+  nameOf(code, i) { return this.women ? femLabel(code, TEAMS[code].names[i]) : TEAMS[code].names[i]; }
 
   // crea la squadra e i giocatori in campo secondo la formazione (FORMATIONS in config.js);
   // lo sprite usa plKey, che sceglie la texture giusta per la versione grafica
@@ -665,7 +665,8 @@ class MatchScene extends Phaser.Scene {
 
     const plan = t.plan;
     const sandK = this.beach ? CFG.SAND_K : 1;   // sulla sabbia si corre più piano
-    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1) * sandK, human = false;
+    const pSpd = this.trOf(p).spd;   // c'è chi è più rapido e chi meno
+    let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1) * sandK * pSpd, human = false;
     const own = this.state === 'rally' && b.lastTeam === t;
     // il battitore va subito dietro la linea di fondo (anche durante la presentazione), da dove parte la rincorsa della battuta in salto
     if ((this.state === 'serve' || this.state === 'intro') && p === this.server) target = side * CFG.SERVE_X;
@@ -699,7 +700,7 @@ class MatchScene extends Phaser.Scene {
     let mv = 0;
     if (human) {
       const s = this.inp[t.human];
-      mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * sandK * dt;   // la SPEED della squadra conta anche per chi gioca
+      mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * sandK * pSpd * dt;   // la SPEED della squadra (e del giocatore) conta anche per chi gioca
       if (mv && !plan) t.ctrlMoved = true;   // spostato in attesa: resta lui il ricevitore preferito
     } else {
       const reacting = plan && plan.p === p && plan.kind === 'pass' && this.verAge < (t.human ? 0.06 : 0.24 - t.skill * 0.12);
@@ -877,7 +878,8 @@ class MatchScene extends Phaser.Scene {
       if (b.lastTeam !== t && b.vx * side > 0 && t.blockedVer !== b.ver) {
         for (const bl of t.blockers) {
           const dh = b.h - bl.z;
-          if (bl.z > 4 && Math.abs(b.x - this.handX(bl, 3)) < 8 && dh > 36 && dh < 58) { t.blockedVer = b.ver; this.doBlock(t, bl); return; }
+          const blk = this.trOf(bl).blk;   // i più alti arrivano più in alto e più larghi
+          if (bl.z > 4 && Math.abs(b.x - this.handX(bl, 3)) < 8 + blk * 0.4 && dh > 36 && dh < 58 + blk) { t.blockedVer = b.ver; this.doBlock(t, bl); return; }
         }
       }
       const pl = t.plan; if (!pl) continue;
@@ -891,7 +893,7 @@ class MatchScene extends Phaser.Scene {
           const sp = b.lastKind === 'serve' && ((this.phantom && this.phantom.on) || (this.thunder && !this.thunder.armed)) ? 0.35 : 0;
           // in ricezione la velocità della battuta pesa meno che in difesa sulla schiacciata (troppi ace)
           const kSpd = b.lastKind === 'serve' ? 0.3 : 1.1;
-          p.miss = ai && Math.random() < clamp(0.02 + sp + this.speedPen() * kSpd - (t.skill - 0.5) * 0.35 - (t.defK || 0) - this.plK(p), 0.02, 0.8);
+          p.miss = ai && Math.random() < clamp(0.02 + sp + this.speedPen() * kSpd - (t.skill - 0.5) * 0.35 - (t.defK || 0) - this.plK(p) - this.trOf(p).rcv, 0.02, 0.8);
         }
         if (p.diveT > 0 || p.state === 'dive') {
           const cx = p.x + p.diveDir * 9;
@@ -906,8 +908,9 @@ class MatchScene extends Phaser.Scene {
           if (lat) { b.h = clamp(b.h, 8, 16); } else this.snap(p, 6, clamp(b.h, 11, 20));
           if (pl.kind === 'over') { this.doOver(t, p); return; }
           let q;
-          if (ai) q = clamp(t.skill * 0.95 + rnd(-0.3, 0.25) - this.speedPen() - (lat ? 0.15 : 0), 0, 1);
-          else { q = clamp(1 - Math.min(Math.abs(dx), reach) / reach * 0.55 - (lat ? 0.2 : 0) - this.speedPen() * 0.7 + this.plK(p) + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
+          const rcv = this.trOf(p).rcv;   // c'è chi riceve meglio
+          if (ai) q = clamp(t.skill * 0.95 + rnd(-0.3, 0.25) - this.speedPen() - (lat ? 0.15 : 0) + rcv, 0, 1);
+          else { q = clamp(1 - Math.min(Math.abs(dx), reach) / reach * 0.55 - (lat ? 0.2 : 0) - this.speedPen() * 0.7 + this.plK(p) + rcv + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
           this.doPass(t, p, q, false);
           if (lat) { p.state = 'passside'; p.latBack = dx * -t.side < 0; }   // all'indietro: lo sprite si gira
           return;
@@ -1075,7 +1078,7 @@ class MatchScene extends Phaser.Scene {
     const K = this.courtK();
     let d = t.human ? (t.aimD || 6) : this.modern ? this.aiSpikeTarget(t) : rnd(3, 8.4) * K;
     if (type === 'back') d = Math.max(d, 5);
-    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p)) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
+    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p) + this.trOf(p).atk) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
     let v;
     const aiErr = !t.human && Math.random() < 0.05 + (1 - t.skill) * 0.16;
     const errQ = style === 'power' ? 0.3 : 0.18;
@@ -1088,6 +1091,9 @@ class MatchScene extends Phaser.Scene {
     b.vx = v.vx; b.vy = v.vy;
     SFX.spike(); this.shake(90, style === 'power' ? 0.004 : 0.0025);
   }
+
+  // caratteristiche del giocatore che ha ora quel posto (altezza, muro, ricezione, velocità, potenza: playerTraits in gfx.js)
+  trOf(p) { return playerTraits(p.team.code, TEAMS[p.team.code].names[p.ni] || String(p.ni), this.women); }
 
   // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
   plK(p) {

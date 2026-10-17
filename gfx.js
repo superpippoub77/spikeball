@@ -159,10 +159,11 @@ function femHairSide(ctx, ox, hx, hy, P, hair) {
 
 function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.imageSmoothingEnabled = false;
+  LIMB_K = 1.12 * (P.bd || 1);   // corporatura: braccia e gambe più o meno muscolose
   if (FRONTS[pose]) return drawPlayerFront(ctx, ox, P, hair, pose);
   const s0 = SKEL[pose];
   // corporatura "arcade": figura di ~30 px, testa grande, busto largo (misure dal video HD)
-  const K = 1.17;   // scala del corpo: da ~34 a ~40 px
+  const K = 1.17 * (P.ht || 1);   // scala del corpo: da ~34 a ~40 px (più o meno secondo l'altezza del giocatore)
   const sc = p => [16 + (p[0] - 16) * 1.06, 47 - (39 - p[1]) * K];
   const s = { hip: sc(s0.hip), neck: sc(s0.neck), head: sc(s0.head), bl: s0.bl.map(sc), fl: s0.fl.map(sc), ba: s0.ba.map(sc), fa: s0.fa.map(sc) };
   const skin = P.sk, skinD = shade(P.sk, 0.74), skinB = shade(P.sk, 0.6);
@@ -201,7 +202,7 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const dir = [s.hip[0] - s.neck[0], s.hip[1] - s.neck[1]], L = Math.hypot(dir[0], dir[1]), nx = -dir[1] / L, ny = dir[0] / L;
   const c1 = lerpP(s.neck, s.hip, 0.02), c2 = lerpP(s.neck, s.hip, 0.92);
   const Q = (p, k) => [p[0] + nx * k, p[1] + ny * k];
-  const ws = W ? 0.9 : 1;   // giocatrici: spalle più strette
+  const ws = (W ? 0.9 : 1) * Math.sqrt(P.bd || 1);   // giocatrici: spalle più strette; corporatura
   poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? skin : shirt);
   poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], BK ? skinD : shirtD);
   poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? shade(skin, 1.08) : shirtL);
@@ -221,8 +222,10 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.fillStyle = skin; ctx.fillRect(ox + hx + 3.5, hy, 2, 2);                       // naso
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 3, 4, 1);                    // mascella
   if (W) femHairSide(ctx, ox, hx, hy, P, hair);
-  ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx - 0.8, hy - 2.8, 4.8, 3.2, 0, 0, 7); ctx.fill();
-  ctx.fillRect(ox + hx - 5.5, hy - 2, 3.5, 6);
+  const buzz = !W && P.ms === 1;   // rasati: capelli corti e radi
+  ctx.fillStyle = buzz ? shade(hair, 1.25) : hair; ctx.beginPath(); ctx.ellipse(ox + hx - 0.8, hy - (buzz ? 3.4 : 2.8), buzz ? 4.4 : 4.8, buzz ? 2.4 : 3.2, 0, 0, 7); ctx.fill();
+  ctx.fillRect(ox + hx - 5.5, hy - 2, 3.5, buzz ? 3 : !W && P.ms === 2 ? 9 : 6);   // (lunghi: capelli sulla nuca)
+  if (!W && P.ms === 3) for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(ox + hx - 4 + k * 2.2, hy - 5 + (k % 2), 1.4, 0, 7); ctx.fill(); }   // ricci
   ctx.fillStyle = shade(hair, 1.55); ctx.fillRect(ox + hx - 2, hy - 5, 4, 1);
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy - 1, 1, 2);                    // orecchio
   ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx + 2, hy - 1, 1, 1);                // occhio
@@ -267,11 +270,31 @@ function setLook(scene, beach, fem) { LOOK.beach = !!beach; LOOK.fem = !!fem; }
 // giocatori "foto" (versione 3D) solo per le squadre maschili: le giocatrici sono sempre disegnate
 const usePhoto = () => typeof PHOTO !== 'undefined' && PHOTO.on && !LOOK.fem;
 
+// caratteristiche di un giocatore, sempre le stesse per lo stesso nome: altezza (h, cm), corporatura (bd) e specialità.
+// Più alti = più portata a muro ma un po' meno rapidi e meno bravi in ricezione; più robusti = schiacciate più forti.
+//   blk: px di portata in più a muro   rcv: qualità della ricezione   spd: velocità di corsa   atk: potenza della schiacciata
+const TRAITS = new Map();
+function playerTraits(code, name, fem) {
+  const key = code + ':' + name + (fem ? ':w' : '');
+  if (TRAITS.has(key)) return TRAITS.get(key);
+  const R = seeded(hashStr('tr:' + key)); R();
+  const h = 0.955 + R() * 0.085, t = (h - 0.9975) / 0.0425, bd = 0.9 + R() * 0.22;   // t: -1 basso ... +1 alto
+  const tr = { h, bd, cm: Math.round((fem ? 168 : 182) + (t + 1) * (fem ? 12 : 13)),
+    blk: t * 3.5 + (R() - 0.5) * 2, rcv: -t * 0.05 + (R() - 0.5) * 0.05, spd: 1 - t * 0.04 + (R() - 0.5) * 0.05, atk: (bd - 1) * 0.45 + (R() - 0.5) * 0.04 };
+  // specialità mostrata nella formazione: il punto di forza più marcato
+  const sc = [['MURO', tr.blk / 3.5], ['RICEZIONE', tr.rcv / 0.05], ['VELOCE', (tr.spd - 1) / 0.04], ['POTENZA', tr.atk / 0.045]].sort((a, b) => b[1] - a[1]);
+  tr.tag = sc[0][1] > 0.5 ? sc[0][0] : 'COMPLETO';
+  TRAITS.set(key, tr); return tr;
+}
+
 function playerPal(code, i) {
   const P = TEAMS[code];
   const out = Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
     sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
   if (LOOK.beach) { out.beach = true; out.cap = i % 2 === 1; out.num = P.beachNums ? P.beachNums[i] : (i + 1) + ''; }
+  const nm = P.names ? P.names[i] : String(i), tr = playerTraits(code, nm, LOOK.fem);
+  out.ht = tr.h; out.bd = tr.bd;   // altezza e corporatura nel disegno
+  { const r = seeded(hashStr(code + ':' + (nm || i))); r(); r(); out.ms = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(r() * 8)]; }   // capelli come nel volto
   if (LOOK.fem) {
     out.fem = true;
     out.hs = hashStr(code + ':h' + i) % 4;   // acconciatura: 0 coda di cavallo, 1 treccia, 2 chignon, 3 caschetto

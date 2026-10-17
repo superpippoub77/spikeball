@@ -34,9 +34,18 @@
   - la battuta si alterna tra i due giocatori.
 - **Sabbia:** la sabbia si alza e schizza negli stacchi, negli atterraggi, nei tuffi e quando la palla cade. Restano le impronte, che spariscono dopo qualche secondo (il solco del tuffo, la conca della palla). Sulla sabbia si corre più piano che sul parquet.
 
+### Giocatori tutti diversi
+- Ogni giocatore (e giocatrice) ha **altezza**, **corporatura** e **capelli** suoi, sempre gli stessi per lo stesso nome.
+- Ha anche una **specialità**, scritta nella schermata FORMAZIONE insieme all'altezza in cm:
+  - **MURO**: i più alti arrivano più in alto e più larghi a muro, ma sono un po' meno rapidi;
+  - **RICEZIONE**: ricevono meglio (di solito i più bassi);
+  - **VELOCE**: corrono di più;
+  - **POTENZA**: schiacciano più forte (i più robusti);
+  - **COMPLETO**: nessun punto debole e nessuna specialità.
+
 ### Versione femminile
 - A fine partita ogni giocatore e giocatrice esulta a modo suo, alternando braccia al cielo, pugno alzato e saltelli a braccia larghe.
-- Nelle impostazioni della partita (**SQUADRE**: MASCHILE / FEMMINILE), sia nel palazzetto sia nel beach.
+- **Come si sceglie:** SINGLE MATCH → scegli le due squadre → nelle impostazioni della partita la prima voce è **SQUADRE (maschili / femminili)**: ← → per cambiare. Nel BEACH è la prima voce delle impostazioni dopo la scelta delle coppie.
 - **Giocatrici:** acconciature diverse (coda di cavallo, treccia, chignon, caschetto), orecchini nel colore della squadra, viso e nomi femminili (per le nazionali nomi del paese), telecronaca al femminile ("SHE MISHITS THE BALL!").
 - **Divise:** nel palazzetto maglia e pantaloncini corti; nel beach il costume a due pezzi come nel beach volley vero, con occhiali da sole e visiera. Ogni squadra ha la sua fantasia: tinta unita, bordi colorati o due colori.
 - Nella versione 3D le giocatrici sono disegnate come in HD (le foto dei giocatori sono maschili).

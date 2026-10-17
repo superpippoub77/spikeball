@@ -402,12 +402,12 @@ class MatchSettingsScene extends Base {
     this.preview = this.add.image(81, 108, '__DEFAULT').setDisplaySize(140, 76);
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [
-      ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
+      ['women', 'SQUADRE (maschili / femminili)'], ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
       ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'],
-      ['players', 'GIOCATORI IN CAMPO'], ['women', 'SQUADRE'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
+      ['players', 'GIOCATORI IN CAMPO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
     ];
     this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 12.5, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 12.5, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(305, 71, 'ball').setScale(1.3);
+    this.ballImg = this.add.image(305, 83, 'ball').setScale(1.3);
     this.add.text(160, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(5, '#9ab8f0')).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
   }
@@ -449,7 +449,7 @@ class MatchSettingsScene extends Base {
       const k = this.rows[this.sel][0];
       this.gone = true; SFX.select();
       // formazione: scelta dei giocatori in campo per il numero di giocatori impostato
-      if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? MSET.left : MSET.right, n: PLAYER_COUNTS[MSET.players], back: 'MatchSettings' });
+      if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? MSET.left : MSET.right, n: PLAYER_COUNTS[MSET.players], women: MSET.women === 1, back: 'MatchSettings' });
       else startModernMatch(this);
     }
   }

@@ -130,7 +130,8 @@ function drawPlayerFrontHD(P, hair, R, pose) {
 function drawPlayerHD(pose, P, hair, R) {
   if (FRONTS[pose]) return drawPlayerFrontHD(P, hair, R, pose);
   const s0 = SKEL[pose];
-  const K = 1.17;
+  const K = 1.17 * (P.ht || 1), bw = P.bd || 1;   // altezza e corporatura del giocatore
+  const M = (a, b, r0, rL, rR, r1) => hdMuscle(a, b, r0 * bw, rL * bw, rR * bw, r1 * bw);
   const sc = p => [16 + (p[0] - 16) * 1.06, 47 - (39 - p[1]) * K];
   const s = { hip: sc(s0.hip), neck: sc(s0.neck), head: sc(s0.head), bl: s0.bl.map(sc), fl: s0.fl.map(sc), ba: s0.ba.map(sc), fa: s0.fa.map(sc) };
   // proporzioni da atleta: gambe più lunghe, busto compatto, stessi piedi a terra
@@ -154,11 +155,11 @@ function drawPlayerHD(pose, P, hair, R) {
     const knee = j[0], foot = j[1], dim = back ? 0.72 : 1;
     const skin = shade(P.sk, dim), shorts = shade(P.so, dim), white = shade(WHITE, back ? 0.78 : 1);
     const ankle = lerpP(knee, foot, 0.62);
-    hdCel(g, hdMuscle(knee, ankle, 2.2, 2.7, 2.1, 1.4), skin, 0.9, 0.5);                 // polpaccio
+    hdCel(g, M(knee, ankle, 2.2, 2.7, 2.1, 1.4), skin, 0.9, 0.5);                 // polpaccio
     if (P.beach) {   // sabbia: caviglia e piede nudi, pantaloncino lungo
       hdCel(g, hdCapsule(ankle, foot, 1.5, 1.3), skin, 0.6, 0.4);
       hdCel(g, hdPoly([[foot[0] - 1.8, foot[1] - 1.6], [foot[0] + 1.6, foot[1] - 1.4], [foot[0] + 4, foot[1] - 0.2], [foot[0] + 4, foot[1] + 0.5], [foot[0] - 2, foot[1] + 0.5]]), skin, 0.5, 0.35);
-      hdCel(g, hdMuscle(s.hip, knee, 3.3, 3.2, 3.7, 2.4), skin, 1, 0.6);
+      hdCel(g, M(s.hip, knee, 3.3, 3.2, 3.7, 2.4), skin, 1, 0.6);
       hdCel(g, hdCapsule(s.hip, lerpP(s.hip, knee, BK ? 0.12 : 0.62), 3.8, 3.4), shorts, 1, 0.5, false);
       return;
     }
@@ -167,16 +168,16 @@ function drawPlayerHD(pose, P, hair, R) {
     hdCel(g, hdPoly([[fx - 2.2, fy - 2.6], [fx + 2.2, fy - 2.4], [fx + 4.6, fy - 1], [fx + 4.6, fy + 0.5], [fx - 2.4, fy + 0.5]]), white, 0.6, 0.4);
     g.fillStyle = shade('#8a8a9c', dim); g.fillRect(fx - 2.4, fy - 0.2, 7, 0.8);
     g.fillStyle = shade(P.tr, dim); g.fillRect(fx - 0.6, fy - 1.9, 2.6, 0.7);
-    hdCel(g, hdMuscle(s.hip, knee, 3.3, 3.2, 3.7, 2.4), skin, 1, 0.6);                    // coscia
+    hdCel(g, M(s.hip, knee, 3.3, 3.2, 3.7, 2.4), skin, 1, 0.6);                    // coscia
     hdCel(g, hdEllipse([knee[0] + 0.3, knee[1] + 0.3], 2.9, 2.6), white, 0.8, 0.5);      // ginocchiera
     hdCel(g, hdCapsule(s.hip, lerpP(s.hip, knee, W ? 0.16 : 0.24), 3.6, 3.4), shorts, 1, 0.5, false);       // pantaloncino
   };
   const arm = (g, j, back) => {
     const elbow = j[0], hand = j[1], dim = back ? 0.72 : 1;
     const skin = shade(P.sk, dim), shirt = shade(P.sh, dim), trim = shade(P.tr, dim);
-    hdCel(g, hdMuscle(elbow, hand, 1.8, 2.1, 1.9, 1.3), skin, 0.7, 0.45);                // avambraccio
+    hdCel(g, M(elbow, hand, 1.8, 2.1, 1.9, 1.3), skin, 0.7, 0.45);                // avambraccio
     hdCel(g, hdEllipse(hand, 1.7, 1.5), skin, 0.6, 0.4);                                  // mano
-    hdCel(g, hdMuscle(shoulder, elbow, 2.6, 2.9, 2.5, 1.8), skin, 0.8, 0.5);             // bicipite
+    hdCel(g, M(shoulder, elbow, 2.6, 2.9, 2.5, 1.8), skin, 0.8, 0.5);             // bicipite
     if (P.beach) return;   // canotta: niente maniche
     const hem = lerpP(shoulder, elbow, 0.38);
     hdCel(g, hdCapsule(shoulder, hem, 2.8, 2.3), shirt, 0.9, 0.5);                       // manica
@@ -195,7 +196,7 @@ function drawPlayerHD(pose, P, hair, R) {
     // busto da atleta, snello: spalle appena più larghe, vita stretta
     const c1 = lerpP(s.neck, s.hip, -0.04), c2 = lerpP(s.neck, s.hip, 0.88), cm = lerpP(c1, c2, 0.4);
     const torso = g2 => {
-      const k = W ? 0.9 : 1;   // giocatrici: spalle più strette
+      const k = (W ? 0.9 : 1) * Math.sqrt(bw);   // giocatrici: spalle più strette; corporatura
       const p = [Q(c1, 4.8 * k), Q(c1, -4.5 * k), Q(cm, -5.4 * k), Q(c2, -3.6), Q(c2, 3.6), Q(cm, 5 * k)];
       g2.beginPath(); g2.moveTo(p[0][0], p[0][1]);
       g2.quadraticCurveTo(lerpP(p[0], p[1], 0.5)[0], lerpP(p[0], p[1], 0.5)[1] - 1.2, p[1][0], p[1][1]);
@@ -257,6 +258,8 @@ function drawPlayerHD(pose, P, hair, R) {
       g2.quadraticCurveTo(hx + 2.8, hy - 2.4, hx + 3.6, hy - 1.2);
       g2.closePath();
     };
+    if (!W && P.ms === 2) hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 4.4, hy - 1); g2.quadraticCurveTo(hx - 6, hy + 4, hx - 4.4, hy + 6); g2.lineTo(hx - 2, hy + 5); g2.lineTo(hx - 2.4, hy); g2.closePath(); }, hair, 0.9, 0.6);   // capelli lunghi sulla nuca
+    if (!W && P.ms === 3) for (let k = 0; k < 4; k++) hdCel(g, hdEllipse([hx - 3.6 + k * 2.2, hy - 4.8 + (k % 2) * 0.6], 1.5, 1.4), shade(hair, 1.1), 0.5, 0.35);   // ricci
     if (W && P.hs === 1) {   // treccia
       for (let k = 0; k < 4; k++) hdCel(g, hdEllipse([hx - 4.6 - k * 0.5, hy + 0.6 + k * 2.4], 1.5, 1.4), k % 2 ? shade(hair, 1.2) : hair, 0.6, 0.4);
       hdCel(g, hdEllipse([hx - 6.6, hy + 9.6], 0.9, 0.7), P.tr, 0.4, 0.3);
