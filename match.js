@@ -1383,12 +1383,7 @@ class MatchScene extends Phaser.Scene {
   // fotogramma e posizione degli sprite, riflessi, ombre, indicatori (punto di caduta, bersaglio d'attacco), HIT!/MOVE.
   render(dt) {
     const b = this.ball, FY = CFG.FLOOR_Y;
-    let fx = b.held ? b.x : b.x + b.vx * 0.12;
-    // battuta: appena la palla è lanciata la telecamera si sposta verso la squadra che riceve (come in TV),
-    // così la palla si vede arrivare in tempo per piazzare il ricevitore
-    const rs = this.serving ? -this.serving.side : 0;
-    if (this.state === 'serve' && this.servePhase === 'toss') fx = rs * 30;
-    else if (this.state === 'rally' && b.lastKind === 'serve' && b.live) fx = rs * 95;
+    const fx = b.held ? b.x : b.x + b.vx * 0.12;
     // telecamera morbida: obiettivo filtrato + "smooth damp" (niente scatti ai colpi)
     const target = clamp(SX(fx) - 160, 0, CFG.OX * 2 - CFG.W);
     if (this.camT === undefined) { this.camT = target; this.camV = 0; }
