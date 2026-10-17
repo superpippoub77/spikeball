@@ -15,7 +15,8 @@ const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 
                'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
                'setload', 'dump',                 // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
                'passside', 'srvload',             // bagher laterale (di fronte, affondo di lato); battuta caricata
-               'cheer2', 'cheer3'];               // esultanze: pugno al cielo, salto a braccia larghe
+               'cheer2', 'cheer3',                // esultanze: pugno al cielo, salto a braccia larghe
+               'appr', 'plant'];                  // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -37,6 +38,10 @@ const SKEL = {
   block: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [15, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 6], [17, 1]],  fa: [[18, 6], [19, 1]] },
   dive:  { hip: [9, 32],  neck: [21, 33], head: [25, 32], bl: [[5, 31], [1, 30]],   fl: [[5, 33], [1, 33]],   ba: [[25, 35], [30, 35]], fa: [[25, 34], [30, 33]] },
   down:  { hip: [10, 36], neck: [22, 36], head: [26, 35], bl: [[6, 37], [2, 38]],   fl: [[6, 38], [2, 37]],   ba: [[26, 38], [30, 38]], fa: [[26, 37], [30, 37]] },
+  // rincorsa d'attacco: appr = penultimo passo lungo e balzo, busto avanti e braccia slanciate indietro;
+  // plant = arrivo a piedi pari con le ginocchia piegate, braccia tutte indietro, un attimo prima dello stacco
+  appr:  { hip: [15, 26], neck: [19, 16], head: [22, 12], bl: [[11, 31], [6, 37]],  fl: [[20, 31], [23, 38]], ba: [[12, 20], [7, 22]],  fa: [[13, 21], [8, 24]] },
+  plant: { hip: [13, 29], neck: [18, 20], head: [21, 16], bl: [[16, 33], [13, 38]], fl: [[19, 33], [20, 38]], ba: [[13, 23], [6, 22]],  fa: [[14, 24], [7, 24]] },
   cheer2: { hip: [16, 24], neck: [16, 13], head: [17, 9], bl: [[14, 31], [12, 38]], fl: [[18, 31], [20, 38]], ba: [[13, 19], [16, 15]], fa: [[20, 8], [22, 2]] },
   cheer3: { hip: [16, 23], neck: [16, 12], head: [17, 8], bl: [[13, 29], [10, 34]], fl: [[19, 29], [22, 34]], ba: [[11, 11], [6, 7]], fa: [[21, 11], [26, 7]] },
   cheer: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [13, 38]], fl: [[18, 31], [19, 38]], ba: [[13, 8], [10, 3]],  fa: [[20, 8], [23, 3]] },

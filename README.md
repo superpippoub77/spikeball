@@ -45,7 +45,7 @@
 
 ### Versione femminile
 - A fine partita ogni giocatore e giocatrice esulta a modo suo, alternando braccia al cielo, pugno alzato e saltelli a braccia larghe.
-- **Come si sceglie:** SINGLE MATCH → scegli le due squadre → nelle impostazioni della partita la prima voce è **SQUADRE (maschili / femminili)**: ← → per cambiare. Nel BEACH è la prima voce delle impostazioni dopo la scelta delle coppie.
+- **Come si sceglie:** SINGLE MATCH → scegli le due squadre → nelle impostazioni della partita la prima voce è **SQUADRE (maschili / femminili)**: ← → per cambiare. Nel BEACH è la prima voce delle impostazioni dopo la scelta delle coppie. Nell'**ARCADE** (1 o 2 giocatori) si sceglie in SELECT YOUR TEAM con ← →: **MEN / WOMEN**.
 - **Giocatrici:** acconciature diverse (coda di cavallo, treccia, chignon, caschetto), orecchini nel colore della squadra, viso e nomi femminili (per le nazionali nomi del paese), telecronaca al femminile ("SHE MISHITS THE BALL!").
 - **Divise:** nel palazzetto maglia e pantaloncini corti; nel beach il costume a due pezzi come nel beach volley vero, con occhiali da sole e visiera. Ogni squadra ha la sua fantasia: tinta unita, bordi colorati o due colori.
 - Nella versione 3D le giocatrici sono disegnate come in HD (le foto dei giocatori sono maschili).
@@ -190,10 +190,11 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
   - SU-avanti + Z, GIÙ-avanti + Z = **PHANTOM SERVE** (la palla si sdoppia in 3 scendendo)
   - SU-indietro + Z, GIÙ-indietro + Z = **THUNDER SERVE** (lampo bianco, la palla piomba giù)
 - **Ricezione:** solo joystick, porta il giocatore schiarito sul quadratino blu. Il pulsante non si usa, il tuffo è automatico.
+  Le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea.
   Mentre la palla è nell'altro campo (o durante la battuta avversaria) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte).
   Il giocatore che stai comandando ha un **alone rosso leggero** e la scritta **P1** (o **P2**) sopra la testa.
 - **Alzata:** automatica. Se la ricezione è sbagliata ("OH! HE MISHITS THE BALL!") muovi l'alzatore col joystick.
-- **Schiacciata:** rincorsa e salto automatici, premi il pulsante quando la palla arriva alla mano.
+- **Schiacciata:** rincorsa e salto automatici, premi il pulsante quando la palla arriva alla mano. La rincorsa è come nella pallavolo vera: passi di corsa, l'ultimo passo lungo con un piccolo balzo e le braccia slanciate indietro, l'arrivo a piedi pari e lo stacco (anche nella battuta in salto).
   Quando la palla è colpibile diventa rossa e sopra lo schiacciatore compare "HIT! PRESS BUTTON!".
   La freccia blu nel campo avversario è il punto di arrivo: la sposti con sinistra/destra ("MOVE ←→").
   Primo tempo: premi il pulsante prima dell'alzata e il centrale salta insieme all'alzatore (alzata corta).

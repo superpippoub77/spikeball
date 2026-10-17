@@ -611,7 +611,10 @@ class MatchScene extends Phaser.Scene {
     const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.z > 2) continue; const v = arrive(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
     // in ricezione l'alzatore si tiene fuori se può, gli attaccanti di prima linea un po'; il libero si offre per primo
     // chi il giocatore umano ha già spostato in attesa della palla ha la precedenza
-    if (kind === 'pass') pick(p => (t.human && t.ctrlMoved && p === t.ctrl ? -0.15 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
+    // zone: le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea
+    const zone = Math.abs(xc) / CFG.HALF, frontRow = p => p.pos === 'mb' || p.pos === 'set' || p.pos === 'oh';
+    const zonePen = p => this.nPl <= 2 ? 0 : frontRow(p) ? (zone > CFG.FRONT_ZONE ? 0.45 : 0) : (zone < CFG.FRONT_ZONE * 0.6 ? 0.25 : 0);
+    if (kind === 'pass') pick(p => zonePen(p) + (t.human && t.ctrlMoved && p === t.ctrl ? -0.15 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
     else if (kind === 'set') { const st = this.byPos(t, 'set'); if (st && st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
     else if (kind === 'spike') return t.attacker !== last ? t.attacker : null;
     else pick();
@@ -1432,8 +1435,23 @@ class MatchScene extends Phaser.Scene {
   // movimenti in più tempi, come nella pallavolo vera (versioni ARCADE e HD):
   //  - schiacciata: in salto il braccio si carica dietro la testa, al colpo si distende in alto, poi accompagna verso il basso;
   //  - bagher: mentre la palla arriva il ricevitore si piega sulle gambe con le braccia tese in basso, al contatto spinge.
+  // secondi allo stacco di chi sta prendendo la rincorsa (schiacciatore o battitore in salto), altrimenti null
+  takeoffIn(p) {
+    const t = p.team, b = this.ball, pl = t.plan;
+    if (this.state === 'serve' && this.server === p && this.serveKind === 'jump' && this.servePhase === 'toss' && !p.jsJumped) return this.jsHitT - this.jsT - CFG.TPEAK;
+    if (this.state === 'rally' && pl && pl.kind === 'spike' && pl.p === p && p.jumpedVer !== b.ver) {
+      const th = PHYS.timeToH(b.h, b.vy, CFG.HIT_H); return th === null ? null : th - CFG.TPEAK;
+    }
+    return null;
+  }
+
   motion(p, st) {
     const t = p.team, b = this.ball;
+    // rincorsa "a 4 appoggi": passi di corsa, poi il passo lungo con il piccolo balzo e le braccia indietro, poi lo stacco a piedi pari
+    if (p.z <= 0 && (st === 'run' || st === 'idle')) {
+      const tj = this.takeoffIn(p);
+      if (tj !== null && tj < CFG.APPR_T) return tj < CFG.PLANT_T ? 'plant' : 'appr';
+    }
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
     // esultanze diverse per ogni giocatore, che cambiano ogni tanto: braccia al cielo, pugno, salto a braccia larghe
     if (st === 'cheer') return ['cheer', 'cheer2', 'cheer3'][(p.ni + Math.floor(this.stateT / 0.7)) % 3];
@@ -1501,7 +1519,9 @@ class MatchScene extends Phaser.Scene {
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
       p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
-      p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - (st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0);   // saltello
+      let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza
+      if (st === 'appr') lift = 3 * Math.sin(Math.PI * clamp((CFG.APPR_T - this.takeoffIn(p)) / (CFG.APPR_T - CFG.PLANT_T), 0, 1));   // piccolo balzo della rincorsa
+      p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - lift;
       p.spr.setDepth(FY + p.dep);
       // il ricevitore designato appare schiarito, come nell'originale
       const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit)))) ||
