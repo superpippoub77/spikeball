@@ -362,7 +362,7 @@ class MatchScene extends Phaser.Scene {
   // rimette tutti in posizione e dà la palla al battitore (posto t.srvI, il più lontano dalla rete)
   prepareServe() {
     const t = this.serving, b = this.ball;
-    for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; }
+    for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; tt.ctrlMoved = false; }
     for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
     const s = t.players[t.srvI];
     this.server = s;
@@ -575,7 +575,6 @@ class MatchScene extends Phaser.Scene {
           if (p) {
             t.plan = { kind, xc, tc, hc, p };
             t.planCache = { ver: b.ver, kind, p };
-            if (kind === 'pass' && t.human) t.ctrl = p;   // il ricevitore resta quello comandato dal giocatore
             if (kind === 'pass' && b.lastTeam !== t && !t.recvAnn && b.x * side > 0 && b.lastKind !== 'barely') {
               t.recvAnn = true; this.announce(`${p.name} IS NOW RECEIVING.`);
             }
@@ -612,7 +611,7 @@ class MatchScene extends Phaser.Scene {
     const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.z > 2) continue; const v = arrive(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
     // in ricezione l'alzatore si tiene fuori se può, gli attaccanti di prima linea un po'; il libero si offre per primo
     // chi il giocatore umano ha già spostato in attesa della palla ha la precedenza
-    if (kind === 'pass') pick(p => (t.human && p === t.ctrl ? -0.3 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
+    if (kind === 'pass') pick(p => (t.human && t.ctrlMoved && p === t.ctrl ? -0.15 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
     else if (kind === 'set') { const st = this.byPos(t, 'set'); if (st && st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
     else if (kind === 'spike') return t.attacker !== last ? t.attacker : null;
     else pick();
@@ -627,10 +626,11 @@ class MatchScene extends Phaser.Scene {
     const waiting = (this.state === 'rally' && this.ball.lastTeam !== t) || (this.state === 'serve' && this.serving !== t);
     return waiting && p === this.ctrlOf(t);
   }
-  // giocatore comandato in attesa: l'ultimo ricevitore o il più arretrato che non va a muro
+  // giocatore comandato in attesa: il difensore più arretrato che non va a muro,
+  // oppure quello che il giocatore ha già spostato in questa attesa
   ctrlOf(t) {
     let c = t.ctrl;
-    if (!c || t.blockers.includes(c) || c.z > 0) {
+    if (!t.ctrlMoved || !c || t.blockers.includes(c) || c.z > 0) {
       c = t.players.filter(q => !t.blockers.includes(q) && q.z <= 0).sort((a, b) => Math.abs(b.x) - Math.abs(a.x))[0] || null;
       t.ctrl = c;
     }
@@ -700,6 +700,7 @@ class MatchScene extends Phaser.Scene {
     if (human) {
       const s = this.inp[t.human];
       mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * sandK * dt;   // la SPEED della squadra conta anche per chi gioca
+      if (mv && !plan) t.ctrlMoved = true;   // spostato in attesa: resta lui il ricevitore preferito
     } else {
       const reacting = plan && plan.p === p && plan.kind === 'pass' && this.verAge < (t.human ? 0.06 : 0.24 - t.skill * 0.12);
       const dx = (reacting ? p.x : target) - p.x;
@@ -957,6 +958,7 @@ class MatchScene extends Phaser.Scene {
   touch(t, p, kind) {
     const b = this.ball;
     if (b.lastTeam === t) t.touches++; else t.touches = 1;
+    t.ctrlMoved = false;   // nuova azione: in attesa si torna a comandare il difensore arretrato
     b.lastTeam = t; b.lastPlayer = p; b.lastKind = kind; b.ver++;
     if (p && this.mode !== 'practice') this.stat(p, 't_' + kind);   // tocchi per giocatore (crescita del "mio giocatore")
   }
