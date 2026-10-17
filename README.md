@@ -60,7 +60,7 @@
   - ARCADE FX: telecronaca, arbitro, volti, battute speciali di Power Spikes e leggera scossa dello schermo su schiacciate e muri sì/no.
 - **In partita:**
   - pavimento lucido con i riflessi;
-  - telecamera che allarga in battuta e stringe durante lo scambio; appena la palla è lanciata in battuta si sposta sul campo di chi riceve;
+  - telecamera che allarga in battuta e stringe durante lo scambio;
   - tabellone LED in alto;
   - arco bianco sopra il punto di caduta e triangolo nero sul bersaglio d'attacco;
   - a fine partita la fascia WIN! e le MATCH STATS per giocatore (Points, Spike, Lob, Block, Aces) con QUIT / MATCH SETTINGS / RESTART.
