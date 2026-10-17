@@ -95,7 +95,7 @@ const FRONTS = {
 const frontOf = pose => { const f = FRONTS[pose], d = f.dy;
   return { ...f, head: [16, 10 + d], sh: [[10, 17 + d], [22, 17 + d]] }; };
 function drawPlayerFront(ctx, ox, P, hair, pose) {
-  const F = frontOf(pose), d = F.dy, U = pts => pts.map(p => [p[0], p[1] + d]), B = P.beach, skin = P.sk, skinD = shade(P.sk, 0.74), shirt = P.sh, shirtD = shade(P.sh, 0.7);
+  const F = frontOf(pose), d = F.dy, U = pts => pts.map(p => [p[0], p[1] + d]), B = P.beach, W = P.fem, BK = B && W, skin = P.sk, skinD = shade(P.sk, 0.74), shirt = P.sh, shirtD = shade(P.sh, 0.7);
   // gambe (ginocchiere, calzettoni e scarpe; in spiaggia piedi nudi)
   for (const [h, k, f] of [[F.hipL, F.kneeL, F.footL], [F.hipR, F.kneeR, F.footR]]) {
     limb(ctx, ox, h, k, 5, 4.2, skin); limb(ctx, ox, k, f, 4, 3, skinD);
@@ -106,10 +106,16 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
     } else { ctx.fillStyle = skin; ctx.fillRect(ox + f[0] - 2, f[1] - 1, 4, 2); }
   }
   // pantaloncini e busto di fronte
-  poly(ctx, ox, U([[11, 27], [21, 27], [21.5, B ? 36 : 33], [17, B ? 36 : 33], [16, 30], [15, B ? 36 : 33], [10.5, B ? 36 : 33]]), P.so);
-  poly(ctx, ox, U([[9.5, 16], [22.5, 16], [20.5, 28], [11.5, 28]]), shirt);
-  poly(ctx, ox, U([[9.5, 16], [12, 16], [13, 28], [11.5, 28]]), shirtD);
-  if (P.num) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25 + d); ctx.textAlign = 'left'; }
+  // giocatrici: pantaloncini corti (in spiaggia slip del costume), spalle più strette e fianchi un po' più larghi
+  const so = BK ? 30.5 : W ? 31 : B ? 36 : 33;
+  if (BK) poly(ctx, ox, U([[11, 27.5], [21, 27.5], [20.5, 30], [17, so + 1], [15, so + 1], [11.5, 30]]), P.so);
+  else poly(ctx, ox, U([[W ? 10.5 : 11, 27], [W ? 21.5 : 21, 27], [21.5, so], [17, so], [16, 30], [15, so], [10.5, so]]), P.so);
+  const tw = W ? [10.3, 21.7, 20, 12] : [9.5, 22.5, 20.5, 11.5];
+  poly(ctx, ox, U([[tw[0], 16], [tw[1], 16], [tw[2], 28], [tw[3], 28]]), BK ? skin : shirt);
+  poly(ctx, ox, U([[tw[0], 16], [12, 16], [13, 28], [tw[3], 28]]), BK ? skinD : shirtD);
+  if (BK) poly(ctx, ox, U([[10.5, 18], [21.5, 18], [21, 22.2], [16.5, 21.5], [15.5, 21.5], [11, 22.2]]), shirt);   // top del costume
+  if (W) { ctx.fillStyle = shade(P.sh, 0.78); ctx.fillRect(ox + 12.5, 22 + d, 3, 0.8); ctx.fillRect(ox + 16.5, 22 + d, 3, 0.8); }   // seno
+  if (P.num && !BK) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25 + d); ctx.textAlign = 'left'; }
   // braccia verso il pallone
   for (let i = 0; i < 2; i++) {
     limb(ctx, ox, F.sh[i], F.elbows[i], 4, 3.4, skin); limb(ctx, ox, F.elbows[i], F.hands[i], 3.4, 2.8, skin);
@@ -121,7 +127,8 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   limb(ctx, ox, [16, 16 + d], [16, 13 + d], 3.4, 3.4, skinD);
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx, hy - 3, 4.6, 2.6, 0, 0, 7); ctx.fill();
-  ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, 4); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, 4);
+  ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, W ? 8 : 4); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, W ? 8 : 4);   // giocatrici: capelli lunghi
+  if (W && !B) { ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1); }
   if (B) { ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx - 3.5, hy - 1, 7, 2); }
   else { ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx - 2.5, hy - 1, 1, 1.4); ctx.fillRect(ox + hx + 1.5, hy - 1, 1, 1.4); }
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1);
@@ -138,10 +145,11 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const skin = P.sk, skinD = shade(P.sk, 0.74), skinB = shade(P.sk, 0.6);
   const shirt = P.sh, shirtD = shade(P.sh, 0.62), shirtL = shade(P.sh, 1.18), shorts = P.so, shortsD = shade(P.so, 0.68);
   const B = P.beach;   // look da spiaggia: canotta, pantaloncini lunghi, piedi nudi, occhiali da sole
+  const W = P.fem, BK = B && W;   // giocatrici (in spiaggia: costume a due pezzi)
   const leg = (j, back) => {
     const knee = j[0], foot = j[1];
     limb(ctx, ox, s.hip, knee, 6, 5, back ? skinB : skin);                                   // coscia
-    limb(ctx, ox, s.hip, lerpP(s.hip, knee, B ? 0.62 : 0.28), 5.6, 5.2, back ? shortsD : shorts);   // pantaloncino (beach: lungo)
+    limb(ctx, ox, s.hip, lerpP(s.hip, knee, BK ? 0.12 : W ? 0.2 : B ? 0.62 : 0.28), 5.6, 5.2, back ? shortsD : shorts);   // pantaloncino (beach: lungo)
     if (B) {   // gamba e piede nudi
       limb(ctx, ox, knee, foot, 4, 3, back ? skinB : skinD);
       ctx.fillStyle = back ? skinB : skin; ctx.fillRect(ox + Math.round(foot[0]) - 1, Math.round(foot[1]) - 1, 5, 2);
@@ -170,10 +178,13 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const dir = [s.hip[0] - s.neck[0], s.hip[1] - s.neck[1]], L = Math.hypot(dir[0], dir[1]), nx = -dir[1] / L, ny = dir[0] / L;
   const c1 = lerpP(s.neck, s.hip, 0.02), c2 = lerpP(s.neck, s.hip, 0.92);
   const Q = (p, k) => [p[0] + nx * k, p[1] + ny * k];
-  poly(ctx, ox, [Q(c1, 5), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8)], shirt);
-  poly(ctx, ox, [Q(c1, 5), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], shirtD);
-  poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8)], shirtL);
-  limb(ctx, ox, lerpP(s.neck, s.hip, 0.9), s.hip, 5.6, 5.2, shorts);
+  const ws = W ? 0.9 : 1;   // giocatrici: spalle più strette
+  poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? skin : shirt);
+  poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], BK ? skinD : shirtD);
+  poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? shade(skin, 1.08) : shirtL);
+  if (BK) { const t0 = lerpP(s.neck, s.hip, 0.12), t1 = lerpP(s.neck, s.hip, 0.4); poly(ctx, ox, [Q(t0, 4.4), Q(t1, 4), Q(t1, -4.4), Q(t0, -4.6)], shirt); }   // top
+  if (W) { const bp = Q(lerpP(s.neck, s.hip, 0.3), -4.2); ctx.fillStyle = BK ? shirt : shirtL; ctx.beginPath(); ctx.ellipse(ox + bp[0], bp[1], 1.7, 1.9, 0, 0, 7); ctx.fill(); }   // seno
+  limb(ctx, ox, lerpP(s.neck, s.hip, BK ? 0.94 : 0.9), s.hip, W ? 6 : 5.6, W ? 5.8 : 5.2, shorts);
   ctx.fillStyle = shortsD; const hp = Q(s.hip, 2.5); ctx.fillRect(ox + Math.round(hp[0]) - 1, Math.round(hp[1]) - 2, 2, 4);
   leg(s.fl, false);
   // testa grande di profilo
@@ -182,6 +193,10 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = skin; ctx.fillRect(ox + hx + 3.5, hy, 2, 2);                       // naso
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 3, 4, 1);                    // mascella
+  if (W) {   // coda di cavallo
+    ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx - 6.2, hy + 1.5, 1.8, 3.8, 0.35, 0, 7); ctx.fill();
+    ctx.fillStyle = P.tr; ctx.fillRect(ox + hx - 5.6, hy - 2.4, 1.6, 1.4);
+  }
   ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx - 0.8, hy - 2.8, 4.8, 3.2, 0, 0, 7); ctx.fill();
   ctx.fillRect(ox + hx - 5.5, hy - 2, 3.5, 6);
   ctx.fillStyle = shade(hair, 1.55); ctx.fillRect(ox + hx - 2, hy - 5, 4, 1);
@@ -222,19 +237,23 @@ function texDone(t, frames = [], R = GR) {
 // colori della squadra con i dati del giocatore i (pelle e numero di maglia dalle squadre JSON)
 // look dei giocatori: divisa da palestra oppure da spiaggia (beach volley). Le texture hanno chiavi diverse
 // ('_b' finale), così le due versioni convivono; setLook si chiama prima di creare o mostrare i giocatori.
-const LOOK = { beach: false };
-function setLook(scene, beach) { LOOK.beach = !!beach; }
+// fem = versione femminile (texture con '_w' finale): giocatrici con coda di cavallo; in spiaggia costume a due pezzi
+const LOOK = { beach: false, fem: false };
+function setLook(scene, beach, fem) { LOOK.beach = !!beach; LOOK.fem = !!fem; }
+// giocatori "foto" (versione 3D) solo per le squadre maschili: le giocatrici sono sempre disegnate
+const usePhoto = () => typeof PHOTO !== 'undefined' && PHOTO.on && !LOOK.fem;
 
 function playerPal(code, i) {
   const P = TEAMS[code];
   const out = Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
     sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
   if (LOOK.beach) { out.beach = true; out.cap = i % 2 === 1; out.num = P.beachNums ? P.beachNums[i] : (i + 1) + ''; }
+  if (LOOK.fem) out.fem = true;
   return out;
 }
 
 // chiave della texture di un giocatore: con i giocatori "foto" una sola texture per squadra
-function plKey(code, i) { const b = LOOK.beach ? '_b' : ''; return typeof PHOTO !== 'undefined' && PHOTO.on ? 'ph_' + code + b : `pl_${code}_${i}${b}`; }
+function plKey(code, i) { const b = (LOOK.beach ? '_b' : '') + (LOOK.fem ? '_w' : ''); return usePhoto() ? 'ph_' + code + b : `pl_${code}_${i}${b}`; }
 
 // toglie le texture già create di una squadra (giocatori e volti): servono quando cambia la formazione
 function dropTeamTex(scene, code) {
@@ -243,7 +262,7 @@ function dropTeamTex(scene, code) {
 }
 
 function makePlayerTex(scene, code, i) {
-  if (typeof PHOTO !== 'undefined' && PHOTO.on) return makePhotoTex(scene, code);
+  if (usePhoto()) return makePhotoTex(scene, code);
   const key = plKey(code, i);
   if (scene.textures.exists(key)) return key;
   const P = playerPal(code, i), hair = P.ha[i % P.ha.length];
@@ -269,8 +288,9 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
   const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + (TEAMS[code].names[idx] || idx))); R(); R();   // volto legato al nome
   const skin = P.sk, dk = shade(skin, 0.72), lt = shade(skin, 1.12);
   const hair = P.ha[idx % P.ha.length];
-  const style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
-  const jaw = 1 + Math.floor(R() * 2);
+  let style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
+  let jaw = 1 + Math.floor(R() * 2);
+  if (P.fem) { style = 2; jaw = 0; }   // giocatrici: capelli lunghi, viso più morbido
   const bg = ctx.createLinearGradient(0, oy, 0, oy + 40);
   bg.addColorStop(0, '#1c3478'); bg.addColorStop(1, '#0c1840');
   ctx.fillStyle = bg; ctx.fillRect(ox, oy, 40, 40);
@@ -298,13 +318,14 @@ function drawFace(ctx, ox, oy, code, idx, expr) {
   px(15 + (cheer ? 0 : 1), eyeY, 2, 2, '#2a1a10'); px(23 + (cheer ? 0 : 1), eyeY, 2, 2, '#2a1a10');
   px(19, 16, 2, 5, dk); px(18, 20, 4, 1, dk);
   if (cheer) { px(16, 22, 8, 4, '#5a1010'); px(17, 22, 6, 1, '#ffffff'); px(17, 25, 6, 1, '#c04040'); }
-  else { px(16, 23, 8, 1, '#a05048'); px(17, 24, 6, 1, shade(skin, 0.85)); }
+  else { px(16, 23, 8, 1, P.fem ? '#c03848' : '#a05048'); px(17, 24, 6, 1, P.fem ? '#d06070' : shade(skin, 0.85)); }
+  if (P.fem) { px(13, eyeY - 1, 1, 1, '#2a1a10'); px(26, eyeY - 1, 1, 1, '#2a1a10'); px(8, 22, 3, 8, hair); px(29, 20, 3, 9, hair); }   // ciglia, capelli sulle spalle
   px(13, 9, 4, 1, lt);
 }
 
 // texture del volto (40x40) del giocatore idx; expr = 'neutral' o 'cheer'
 function makeFaceTex(scene, code, idx, expr) {
-  const key = `face_${code}_${idx}_${expr}`;
+  const key = `face_${code}_${idx}_${expr}` + (LOOK.fem ? '_w' : '');
   if (scene.textures.exists(key)) return key;
   const { t, c } = canvasTex(scene, key, 40, 40);
   (GR > 1 ? drawFaceHD : drawFace)(c, 0, 0, code, idx, expr); texDone(t);

@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.4.6';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.5.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -40,6 +40,8 @@ const CFG = {
   WORLD_HALF: 280,
   FLOOR_Y: 206,
   REACH: 12, DIVE_REACH: 38,
+  SAND_K: 0.86,           // beach: velocità di corsa sulla sabbia (più faticosa del parquet)
+  SAND_MARK_T: 6,         // beach: secondi prima che un'impronta nella sabbia sparisca
   LAT_REACH: 9,           // bagher laterale: px in più oltre REACH (ricezione allungata, qualità più bassa)
   PASS_LO: 3, PASS_HI: 27,
   SET_LO: 18, SET_HI: 56,
@@ -99,6 +101,23 @@ const TEAMS = {
   CUB: { name: 'CUBA',    sh: '#1a1a1a', tr: '#1e9a40', so: '#1e8a3a', ha: ['#0e0806', '#1a0e06', '#0e0806'], sk: '#8a5a38', names: ['CHIKO', 'PAURO', 'DIEGO', 'TANOS', 'MIGER', 'RAUL'], fl: 0x2f6fe0 },
   URS: { name: 'USSR',    sh: '#d42020', tr: '#f2d22a', so: '#d42020', ha: ['#d8b060', '#8a5a20', '#c09050'], sk: '#f2c4a4', names: ['VASIL', 'IGOR', 'YURI', 'OLEG', 'BORIS', 'IVAN'], fl: 0xe07a3a }
 };
+
+// versione femminile: nomi delle giocatrici per nazionale (le altre squadre usano FEM_ANY)
+const FEM_NAMES = {
+  ITA: ['GIULIA', 'SARA', 'MARTA', 'ELENA', 'LUCIA', 'ANNA'], FRA: ['CLAIRE', 'JULIE', 'MARIE', 'LEA', 'EMMA', 'CHLOE'],
+  GER: ['ANNA', 'LENA', 'JULIA', 'KATJA', 'HEIKE', 'SVENJA'], GBR: ['EMMA', 'KATE', 'LUCY', 'AMY', 'JANE', 'SARAH'],
+  ESP: ['LAURA', 'MARTA', 'ELENA', 'CARMEN', 'PAULA', 'LUCIA'], SWE: ['ANNA', 'KARIN', 'ELSA', 'MAJA', 'LINN', 'SARA'],
+  NOR: ['INGRID', 'KARI', 'NORA', 'SIRI', 'LIV', 'EMMA'], DEN: ['METTE', 'SOFIE', 'IDA', 'LAURA', 'EMMA', 'ANNE'],
+  BRA: ['ANA', 'PAULA', 'BIA', 'LIA', 'RAFA', 'DUDA'], CHN: ['LI', 'WANG', 'ZHANG', 'LIU', 'CHEN', 'ZHU'],
+  JPN: ['YUKI', 'AYA', 'MAI', 'SAKI', 'MIKA', 'RINA'], USA: ['KELLY', 'APRIL', 'JORDAN', 'ALIX', 'JEN', 'KIM'],
+  CUB: ['MIREYA', 'REGLA', 'ANA', 'YUMILKA', 'MARLENIS', 'IDALMIS'], URS: ['IRINA', 'OLGA', 'NATASHA', 'ELENA', 'TANYA', 'VERA']
+};
+const FEM_ANY = ['ANNA', 'SARA', 'LAURA', 'EVA', 'MIA', 'NINA', 'ELSA', 'RITA'];
+function femName(code, i) {
+  const L = FEM_NAMES[code]; if (L) return L[i % L.length];
+  const h = [...code].reduce((a, ch) => a * 7 + ch.charCodeAt(0), 0);   // squadre diverse, nomi diversi
+  return FEM_ANY[(h + i) % FEM_ANY.length];
+}
 
 // Formazione a 4 (3 a rete + 1 in fondo)
 // 0 = centrale (primo tempo, muro), 1 = alzatore, 2 = schiacciatore "asso", 3 = difensore/battitore

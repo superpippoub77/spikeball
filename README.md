@@ -32,6 +32,13 @@
   - niente palleggio di seconda di là;
   - nessun ruolo fisso: alza chi non ha ricevuto, attacca l'altro;
   - la battuta si alterna tra i due giocatori.
+- **Sabbia:** la sabbia si alza e schizza negli stacchi, negli atterraggi, nei tuffi e quando la palla cade. Restano le impronte, che spariscono dopo qualche secondo (il solco del tuffo, la conca della palla). Sulla sabbia si corre più piano che sul parquet.
+
+### Versione femminile
+- Nelle impostazioni della partita (**SQUADRE**: MASCHILE / FEMMINILE), sia nel palazzetto sia nel beach.
+- **Giocatrici:** coda di cavallo, viso e nomi femminili (per le nazionali nomi del paese), telecronaca al femminile ("SHE MISHITS THE BALL!").
+- **Divise:** nel palazzetto maglia e pantaloncini corti; nel beach il costume a due pezzi come nel beach volley vero, con occhiali da sole e visiera.
+- Nella versione 3D le giocatrici sono disegnate come in HD (le foto dei giocatori sono maschili).
 
 ### MY PLAYER (il mio giocatore)
 - **Scheda:** nome e cognome (scritti con la tastiera), numero, ruolo, età, pelle, capelli e squadra.

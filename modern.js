@@ -166,13 +166,14 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0 };
+const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: 0 };
 const OPT = {
   start: [0, 5, 10, 15],
   rebound: ['EASY', 'HARD', 'OFF'],
   target: ['ON', 'OFF'],
   rules: ['RALLY 25', 'RALLY 15', 'SIDE-OUT 15 (1991)'],
   fx: ['ON', 'OFF'],
+  women: ['MASCHILE', 'FEMMINILE'],   // versione del gioco: squadre maschili o femminili
   players: PLAYER_COUNTS.map(n => n + ' CONTRO ' + n)   // giocatori in campo (FORMATIONS in config.js)
 };
 
@@ -403,9 +404,9 @@ class MatchSettingsScene extends Base {
     this.rows = [
       ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
       ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'],
-      ['players', 'GIOCATORI IN CAMPO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
+      ['players', 'GIOCATORI IN CAMPO'], ['women', 'SQUADRE'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
     ];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 13, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 13, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 12.5, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 12.5, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
     this.ballImg = this.add.image(305, 71, 'ball').setScale(1.3);
     this.add.text(160, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(5, '#9ab8f0')).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
@@ -463,7 +464,7 @@ function startModernMatch(scene) {
   const humans = [MSET.leftAI ? 0 : 1, MSET.rightAI ? 0 : (MSET.leftAI ? 1 : 2)];
   scene.scene.start('Match', {
     mode: 'modern', left: MSET.left, right: MSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]), players: PLAYER_COUNTS[MSET.players],
-    stats: st, start: [sp, sp], time: null, setLabel: MSET.left + ' vs ' + MSET.right,
+    stats: st, start: [sp, sp], time: null, women: MSET.women === 1, setLabel: MSET.left + ' vs ' + MSET.right,
     firstServe: 0,
     modern: { arena: a.id, floor: a.floor, ball: BALLS[MSET.ball].key, rebound: OPT.rebound[MSET.rebound], target: MSET.target === 0,
               targetPts: rules.target, sideOut: rules.sideOut, fx: MSET.fx === 0 },
