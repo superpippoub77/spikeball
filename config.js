@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.4.4';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.4.5';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -40,6 +40,7 @@ const CFG = {
   WORLD_HALF: 280,
   FLOOR_Y: 206,
   REACH: 12, DIVE_REACH: 38,
+  LAT_REACH: 9,           // bagher laterale: px in più oltre REACH (ricezione allungata, qualità più bassa)
   PASS_LO: 3, PASS_HI: 27,
   SET_LO: 18, SET_HI: 56,
   REACH_UP: 46,          // altezza della mano a braccia alzate sopra i piedi

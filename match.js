@@ -357,7 +357,7 @@ class MatchScene extends Phaser.Scene {
   // rimette tutti in posizione e dà la palla al battitore (posto t.srvI, il più lontano dalla rete)
   prepareServe() {
     const t = this.serving, b = this.ball;
-    for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; }
+    for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; }
     for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
     const s = t.players[t.srvI];
     this.server = s;
@@ -570,6 +570,7 @@ class MatchScene extends Phaser.Scene {
           if (p) {
             t.plan = { kind, xc, tc, hc, p };
             t.planCache = { ver: b.ver, kind, p };
+            if (kind === 'pass' && t.human) t.ctrl = p;   // il ricevitore resta quello comandato dal giocatore
             if (kind === 'pass' && b.lastTeam !== t && !t.recvAnn && b.x * side > 0 && b.lastKind !== 'barely') {
               t.recvAnn = true; this.announce(`${p.name} IS NOW RECEIVING.`);
             }
@@ -605,7 +606,8 @@ class MatchScene extends Phaser.Scene {
     let best = null, bt = 1e9;
     const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.z > 2) continue; const v = arrive(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
     // in ricezione l'alzatore si tiene fuori se può, gli attaccanti di prima linea un po'; il libero si offre per primo
-    if (kind === 'pass') pick(p => (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
+    // chi il giocatore umano ha già spostato in attesa della palla ha la precedenza
+    if (kind === 'pass') pick(p => (t.human && p === t.ctrl ? -0.3 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
     else if (kind === 'set') { const st = this.byPos(t, 'set'); if (st && st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
     else if (kind === 'spike') return t.attacker !== last ? t.attacker : null;
     else pick();
@@ -614,8 +616,20 @@ class MatchScene extends Phaser.Scene {
 
   humanMoves(p) {
     const t = p.team;
-    if (!t.human || this.state !== 'rally' || !t.plan || t.plan.p !== p) return false;
-    return t.plan.kind === 'pass' || (t.plan.kind === 'set' && t.mishit);
+    if (!t.human) return false;
+    if (this.state === 'rally' && t.plan) return t.plan.p === p && (t.plan.kind === 'pass' || (t.plan.kind === 'set' && t.mishit));
+    // palla nell'altro campo (o battuta avversaria): come in Power Spikes ci si piazza in anticipo con il difensore
+    const waiting = (this.state === 'rally' && this.ball.lastTeam !== t) || (this.state === 'serve' && this.serving !== t);
+    return waiting && p === this.ctrlOf(t);
+  }
+  // giocatore comandato in attesa: l'ultimo ricevitore o il più arretrato che non va a muro
+  ctrlOf(t) {
+    let c = t.ctrl;
+    if (!c || t.blockers.includes(c) || c.z > 0) {
+      c = t.players.filter(q => !t.blockers.includes(q) && q.z <= 0).sort((a, b) => Math.abs(b.x) - Math.abs(a.x))[0] || null;
+      t.ctrl = c;
+    }
+    return c;
   }
 
   // movimento di un giocatore: in aria segue la fisica del salto; a terra va verso il suo obiettivo
@@ -658,6 +672,8 @@ class MatchScene extends Phaser.Scene {
     } else if (plan && plan.p === p) {
       target = plan.xc + side * (plan.kind === 'set' ? 2 : 6);
       human = this.humanMoves(p);
+    } else if (!plan && this.humanMoves(p)) {
+      human = true;
     } else if (t.blockers.includes(p) && !own) {
       target = side * (8 + t.blockers.indexOf(p) * 7);
     } else if (own && t.quickPlan && p.pos === 'mb' && t.touches === 1 && plan && plan.kind === 'set') {
@@ -841,19 +857,24 @@ class MatchScene extends Phaser.Scene {
         }
         if (p.z > 0 || p.downT > 0) continue;
         const cx = this.handX(p, 6), dx = b.x - cx;
-        if (b.h >= CFG.PASS_LO && b.h <= CFG.PASS_HI && b.vy < 0 && Math.abs(dx) <= reach && !p.miss) {
-          this.snap(p, 6, clamp(b.h, 11, 20));
+        // bagher laterale (come nell'originale): palla un po' fuori portata, il ricevitore allunga le braccia di lato
+        const lat = Math.abs(dx) > reach && Math.abs(dx) <= reach + CFG.LAT_REACH;
+        if (b.h >= CFG.PASS_LO && b.h <= CFG.PASS_HI && b.vy < 0 && (Math.abs(dx) <= reach || lat) && !p.miss) {
+          if (lat) { b.h = clamp(b.h, 8, 16); } else this.snap(p, 6, clamp(b.h, 11, 20));
           if (pl.kind === 'over') { this.doOver(t, p); return; }
           let q;
-          if (ai) q = clamp(t.skill * 0.95 + rnd(-0.3, 0.25) - this.speedPen(), 0, 1);
-          else { q = clamp(1 - Math.abs(dx) / reach * 0.55 - this.speedPen() * 0.7 + this.plK(p) + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
-          this.doPass(t, p, q, false); return;
+          if (ai) q = clamp(t.skill * 0.95 + rnd(-0.3, 0.25) - this.speedPen() - (lat ? 0.15 : 0), 0, 1);
+          else { q = clamp(1 - Math.min(Math.abs(dx), reach) / reach * 0.55 - (lat ? 0.2 : 0) - this.speedPen() * 0.7 + this.plK(p) + rnd(-0.12, 0.1), 0, 1); t.open = this.up(t); }
+          this.doPass(t, p, q, false);
+          if (lat) { p.state = 'passside'; p.latBack = dx * -t.side < 0; }   // all'indietro: lo sprite si gira
+          return;
         }
         if (b.vy < 0 && b.h < 40 && p.decided !== b.ver) {
           const tl = PHYS.timeToH(b.h, b.vy, 8);
           if (tl !== null && tl < 0.3) {
-            const dxp = b.x + b.vx * tl - cx, runCover = CFG.RUN * 0.9 * tl;
-            if (Math.abs(dxp) - runCover > reach && Math.abs(dxp) < CFG.DIVE_REACH + runCover) {
+            // chi gioca muove da sé il ricevitore: il tuffo parte se la palla cade oltre il bagher laterale
+            const dxp = b.x + b.vx * tl - cx, runCover = ai ? CFG.RUN * 0.9 * tl : 0, far = ai ? reach : reach + CFG.LAT_REACH;
+            if (Math.abs(dxp) - runCover > far && Math.abs(dxp) < CFG.DIVE_REACH + (ai ? runCover : CFG.RUN * 0.9 * tl)) {
               p.decided = b.ver;
               if (!ai || Math.random() < 0.3 + t.skill * 0.6) this.startDive(p, Math.sign(dxp), Math.abs(dxp));
             }
@@ -1420,10 +1441,12 @@ class MatchScene extends Phaser.Scene {
       let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
       p.spr.setFrame(PHOTO.on ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
+      p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z;
       p.spr.setDepth(FY + p.dep);
       // il ricevitore designato appare schiarito, come nell'originale
-      const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit))));
+      const hl = this.state === 'rally' && t.plan && t.plan.p === p && (t.plan.kind === 'pass' || (t.human && (t.plan.kind === 'spike' || (t.plan.kind === 'set' && t.mishit)))) ||
+        (this.state !== 'end' && this.state !== 'dead' && !t.plan && this.humanMoves(p));
       if (hl) p.spr.setTint(0xffd8e8); else p.spr.clearTint();
     }
     if (this.ballRef) {
