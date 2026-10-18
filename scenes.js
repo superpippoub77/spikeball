@@ -370,18 +370,58 @@ class MatchIntroScene extends Base {
       this.add.text(220, 128, TEAMS[d.right].name.split('').join(' '), TXT(9)).setOrigin(0.5).setStroke('#000', 2);
       SFX.jingle();
     });
-    this.time.delayedCall(4200, () => { this.cameras.main.fadeOut(300); this.time.delayedCall(320, () => d.next(this)); });
+    this.keysInit(); this.gone = false;
+    const go = () => { if (this.gone) return; this.gone = true; clearTimeout(this._wall); d.next(this); };
+    this.go = go;
+    this.time.delayedCall(4200, () => { this.cameras.main.fadeOut(300); this.time.delayedCall(320, go); });
+    this._wall = setTimeout(go, 6500);   // anche se i fotogrammi sono lenti (HD su computer meno potenti)
+    this.events.once('shutdown', () => clearTimeout(this._wall));
   }
+  update() { if (!this.gone && this.time.now > 600 && (this.btn() || this.startPressed())) this.go(); }
 }
 
 class LineupScene extends Base {
   constructor() { super('Lineup'); }
-  init(d) { this.d = d; }
-  // presentazione della formazione: campo in prospettiva e una scheda per giocatore (volto, ruolo, nome, numero,
-  // altezza e specialità) nel posto che occupa in campo; le schede entrano una alla volta
+  init(d) { this.d = d; this.gone = false; }
+  // presentazione della formazione. ARCADE: il modello originale (campo verde e figurine dei giocatori con volto,
+  // numero e nome); HD e 3D: campo in prospettiva con le schede (ruolo, altezza, specialità).
+  // Va avanti da sola dopo qualche secondo (anche se il computer è lento) oppure con il pulsante.
   create() {
-    camSetup(this);
+    camSetup(this); this.keysInit();
     makeCommon(this); setLook(this, false, !!GS.women);   // volti delle giocatrici nella versione femminile
+    if (GR > 1) this.modernLineup(); else this.classicLineup();
+    this.time.delayedCall(4200, () => this.go());
+    this._wall = setTimeout(() => this.go(), 6500);   // il tempo del gioco rallenta se i fotogrammi sono lenti
+    this.events.once('shutdown', () => clearTimeout(this._wall));
+  }
+  go() { if (this.gone) return; this.gone = true; clearTimeout(this._wall); this.d.next(this); }
+  update() { if (!this.gone && this.time.now > 600 && (this.btn() || this.startPressed())) this.go(); }
+  member(i) {
+    const code = this.d.team, P = TEAMS[code], nm = P.names[i];
+    return { nm, name: GS.women ? femLabel(code, nm) : nm, num: P.nums && P.nums[i] ? P.nums[i] : String(i + 1), tr: playerTraits(code, nm, !!GS.women) };
+  }
+  classicLineup() {
+    const code = this.d.team, P = TEAMS[code];
+    this.add.image(0, 0, makeLineupClassic(this, code)).setOrigin(0);
+    if (this.d.scoreLine) this.add.text(8, 6, `SCORE: ${GS.score}`, TXT(8, '#000000'));
+    this.add.text(312, 8, 'MEMBER', TXT(10, '#ffffff')).setOrigin(1, 0).setStroke('#000', 3);
+    // figurine: volto incorniciato, numero e nome sulla fascia del colore della squadra (prima linea in alto, difensore sotto)
+    const pos = [[34, 26], [90, 26], [146, 26], [62, 120]];
+    pos.forEach(([x, y], i) => {
+      const m = this.member(i), card = this.add.container(x - 260, y);
+      const g = this.add.graphics();
+      g.fillStyle(0x000000, 0.45).fillRect(3, 3, 48, 66);
+      g.fillStyle(0xffffff, 1).fillRect(0, 0, 48, 66);
+      g.fillStyle(Phaser.Display.Color.HexStringToColor(P.sh).color, 1).fillRect(2, 50, 44, 14);
+      g.fillStyle(Phaser.Display.Color.HexStringToColor(P.tr).color, 1).fillRect(2, 49, 44, 1);
+      const face = this.add.image(4, 4, makeFaceTex(this, code, i, 'neutral')).setOrigin(0).setScale(1.0);
+      const num = this.add.text(42, 6, m.num, TXT(7, '#ffffff')).setOrigin(1, 0).setStroke('#000', 2);
+      const nmT = this.add.text(24, 57, m.name, TXT(m.name.length > 6 ? 5 : 6, '#ffffff')).setOrigin(0.5).setStroke('#000', 2);
+      card.add([g, face, num, nmT]);
+      this.tweens.add({ targets: card, x, duration: 300, delay: i * 160, ease: 'Cubic.out' });
+    });
+  }
+  modernLineup() {
     const code = this.d.team, P = TEAMS[code], F = FORMATIONS[4];
     this.add.image(0, 0, makeLineupCourt(this, code)).setOrigin(0);
     if (this.d.scoreLine) this.add.text(8, 4, `SCORE: ${GS.score}`, TXT(7)).setStroke('#000', 2);
@@ -391,8 +431,7 @@ class LineupScene extends Base {
     // posti: la prima linea vicino alla rete (da sinistra a destra), il difensore dietro al centro
     const at = [[8, 70], [114, 70], [220, 70], [114, 150]];
     F.forEach((f, i) => {
-      const [x, y] = at[i], nm = P.names[i], tr = playerTraits(code, nm, !!GS.women);
-      const name = GS.women ? femLabel(code, nm) : nm, num = P.nums && P.nums[i] ? '#' + P.nums[i] + ' ' : '';
+      const [x, y] = at[i], m = this.member(i);
       const card = this.add.container(x - 340, y);
       const g = this.add.graphics();
       g.fillStyle(0x000000, 0.35).fillRoundedRect(2, 2, 94, 40, 4);
@@ -400,13 +439,12 @@ class LineupScene extends Base {
       g.lineStyle(1.5, Phaser.Display.Color.HexStringToColor(P.sh).color, 1).strokeRoundedRect(0, 0, 94, 40, 4);
       const face = this.add.image(3, 4, makeFaceTex(this, code, i, 'neutral')).setOrigin(0).setScale(0.8);
       const role = this.add.text(38, 3, f.pos === 'def' ? 'DIFESA' : POS_NAMES[f.pos] || '', TXT(5, '#7ad0ff'));
-      const nmT = this.add.text(38, 12, num + name, TXT(name.length > 7 ? 6 : 7));
-      const info = this.add.text(38, 23, `${tr.cm}cm`, TXT(5, '#ffffff'));
-      const tag = this.add.text(38, 30, tr.tag, TXT(5, '#ffd23a'));
+      const nmT = this.add.text(38, 12, '#' + m.num + ' ' + m.name, TXT(m.name.length > 7 ? 6 : 7));
+      const info = this.add.text(38, 23, `${m.tr.cm}cm`, TXT(5, '#ffffff'));
+      const tag = this.add.text(38, 30, m.tr.tag, TXT(5, '#ffd23a'));
       card.add([g, face, role, nmT, info, tag]);
       this.tweens.add({ targets: card, x, duration: 380, delay: 200 + i * 260, ease: 'Back.out' });
     });
-    this.time.delayedCall(4200, () => this.d.next(this));
   }
 }
 

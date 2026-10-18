@@ -330,31 +330,6 @@ function drawBallHD(c, cx, cy, r, pal = HD_BALL.classic) {
 
 // ---------------- pubblico ----------------
 // spettatore singolo (arene moderne): (x, y) = angolo in alto a sinistra di una cella 4x7
-function crowdPersonHD(c, x, y, pal, R) {
-  const sh = pal[Math.floor(R() * pal.length)], sk = R() < 0.7 ? '#e0b090' : '#8a5a3a', hr = R() < 0.6 ? '#2a1a10' : '#6a4a2a';
-  const bx = x + 2, up = R() < 0.07;
-  c.fillStyle = shade(sh, 0.78); c.beginPath(); c.ellipse(bx, y + 7, 2.1, 3.6, 0, Math.PI, 0); c.fill();
-  c.fillStyle = sh; c.beginPath(); c.ellipse(bx - 0.3, y + 7, 1.6, 3.2, 0, Math.PI, 0); c.fill();
-  if (up) { c.strokeStyle = sk; c.lineWidth = 0.6; c.beginPath(); c.moveTo(bx - 1.5, y + 4.4); c.lineTo(bx - 2.2, y + 0.6); c.moveTo(bx + 1.5, y + 4.4); c.lineTo(bx + 2.2, y + 0.6); c.stroke(); }
-  c.fillStyle = sk; c.beginPath(); c.arc(bx, y + 2.2, 1.25, 0, Math.PI * 2); c.fill();
-  c.fillStyle = hr; c.beginPath(); c.arc(bx, y + 1.9, 1.25, Math.PI * 1.05, Math.PI * 1.95); c.fill();
-}
-function crowdHD(c, x0, y0, w, h, seed, dens = 1) {
-  const R = seeded(seed);
-  const shirts = ['#c8c8c8', '#e0e0e0', '#a04040', '#4050a0', '#808090', '#c09060', '#606070', '#904070', '#d0d0d0', '#2a7a4a', '#d8b030'];
-  const skins = ['#e8b898', '#d8a888', '#b07a58', '#8a5a3a'], hairs = ['#2a1a10', '#5a4030', '#1a1a1a', '#a07a40', '#d0c0a0'];
-  for (let y = y0; y < y0 + h; y += 6) for (let x = x0 + ((y / 6) % 2) * 2; x < x0 + w; x += 4) {
-    if (R() > 0.92 * dens) continue;
-    const sh = shirts[Math.floor(R() * shirts.length)], sk = skins[Math.floor(R() * skins.length)], hr = hairs[Math.floor(R() * hairs.length)];
-    const bx = x + 1.5 + (R() - 0.5) * 0.8, up = R() < 0.08;     // qualcuno alza le braccia
-    c.fillStyle = shade(sh, 0.8); c.beginPath(); c.ellipse(bx, y + 5.6, 1.9, 2.2, 0, Math.PI, 0); c.fill();
-    c.fillStyle = sh; c.beginPath(); c.ellipse(bx - 0.3, y + 5.6, 1.4, 1.9, 0, Math.PI, 0); c.fill();
-    if (up) { c.strokeStyle = sk; c.lineWidth = 0.6; c.beginPath(); c.moveTo(bx - 1.4, y + 4.4); c.lineTo(bx - 2, y + 1); c.moveTo(bx + 1.4, y + 4.4); c.lineTo(bx + 2, y + 1); c.stroke(); }
-    c.fillStyle = sk; c.beginPath(); c.arc(bx, y + 2.1, 1.15, 0, Math.PI * 2); c.fill();
-    c.fillStyle = hr; c.beginPath(); c.arc(bx, y + 1.8, 1.15, Math.PI * 1.05, Math.PI * 1.95); c.fill();
-  }
-}
-
 // ---------------- ritratti ----------------
 function hdStrokeFill(c, path, fill, ink = HD_INK, lw = 0.7) { path(c); c.fillStyle = fill; c.fill(); c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); }
 // ritratto 40x40 in versione HD (stessi tratti casuali della versione pixel: seme = squadra + giocatore)

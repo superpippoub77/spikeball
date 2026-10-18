@@ -267,7 +267,7 @@ class MatchScene extends Phaser.Scene {
     this.k1 = kb.addKeys({ l: K.LEFT, r: K.RIGHT, u: K.UP, d: K.DOWN, a: K.Z });
     this.k1b = kb.addKeys({ a: K.SPACE });
     this.k2 = kb.addKeys({ l: K.A, r: K.D, u: K.W, d: K.S, a: K.G });
-    this.kp = kb.addKeys({ p: K.P, m: K.M, t: K.T, en: K.ENTER, one: K.ONE });
+    this.kp = kb.addKeys({ p: K.P, m: K.M, t: K.T, v: K.V, en: K.ENTER, one: K.ONE });
     this.kesc = kb.addKey(K.ESC);
     this.inp = { 1: {}, 2: {} }; this._born = this.time.now;
     this.paused = false;
@@ -284,6 +284,7 @@ class MatchScene extends Phaser.Scene {
     }
     if (J(this.kp.p)) { this.paused = !this.paused; this.pauseText.setVisible(this.paused); }
     if (J(this.kp.m)) SFX.muted = !SFX.muted;
+    if (J(this.kp.v)) { GS.shake = !GS.shake; GS.saveOpts(); this.announce(GS.shake ? 'SCREEN SHAKE ON' : 'SCREEN SHAKE OFF'); }
     if (J(this.kp.t)) { this.testOn = !this.testOn; this.testBox.setVisible(this.testOn); this.testTxt.setVisible(this.testOn); }
     if (this.mode === 'practice' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('Practice'); }
     if (this.mode === 'modern' && J(this.kesc) && !this.leaving) { this.leaving = true; this.scene.start('MainMenu'); }
@@ -309,7 +310,8 @@ class MatchScene extends Phaser.Scene {
   courtK() { return CFG.HALF / 180; }
   announce(m) { this.annText.setText(m); }
   // scossa dello schermo su schiacciate, battute in salto e muri: leggera, e solo con ARCADE FX attivo
-  shake(ms, k) { if (this.rules.fx) this.cameras.main.shake(ms, k); }
+  // scossa dello schermo (schiacciate, battute forti, muri): si può spegnere nelle impostazioni o in partita con il tasto V
+  shake(ms, k) { if (this.rules.fx && GS.shake) this.cameras.main.shake(ms, k); }
 
   // ------------------------------------------------ ciclo principale
   update(time, delta) {
@@ -1531,6 +1533,8 @@ class MatchScene extends Phaser.Scene {
       p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza
+      // in attesa i giocatori "molleggiano" sulle gambe, ognuno col suo ritmo (stile arcade)
+      if (st === 'idle' && p.z <= 0 && (this.state === 'rally' || this.state === 'serve')) lift = 0.8 + 0.8 * Math.sin(this.simT / 1000 * 9 + p.idx * 1.7);
       if (st === 'appr') lift = 3 * Math.sin(Math.PI * clamp((CFG.APPR_T - this.takeoffIn(p)) / (CFG.APPR_T - CFG.PLANT_T), 0, 1));   // piccolo balzo della rincorsa
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - lift;
       p.spr.setDepth(FY + p.dep);

@@ -88,11 +88,7 @@ function makeBeachArena(scene, id) {
   const { t, c } = canvasTex(scene, key, W, H);
   const R = seeded(hashStr('beach:' + id)), dusk = id === 'sunset';
   const swim = ['#ff4f7a', '#ffd23a', '#2ad0c0', '#ff8a2a', '#ffffff', '#3a8af0', '#e83a3a', '#9a4ae0', '#3ac04a'];
-  const person = GR > 1 ? (x, y) => crowdPersonHD(c, x, y, swim, R) : (x, y) => {
-    c.fillStyle = swim[Math.floor(R() * swim.length)]; c.fillRect(x, y + 3, 4, 4);
-    c.fillStyle = R() < 0.6 ? '#e8b088' : '#9a6038'; c.fillRect(x + 1, y, 2, 3);
-    c.fillStyle = R() < 0.5 ? '#2a1a10' : '#d8b060'; c.fillRect(x + 1, y, 2, 1);
-  };
+  const person = (x, y) => fanPerson(c, x, y, R, swim);   // spettatori con il volto (gfx.js)
   // cielo
   const sky = c.createLinearGradient(0, 0, 0, Y(120));
   A.sky.forEach((col, i) => sky.addColorStop(i / (A.sky.length - 1), col));
@@ -136,10 +132,12 @@ function makeBeachArena(scene, id) {
   // tribune: grande tribuna dello stadio oppure gradinate basse ai lati
   const stand = (x0, x1, y0, y1, frame) => {
     c.fillStyle = frame; c.fillRect(x0, Y(y0), x1 - x0, Y(y1) - Y(y0));
-    for (let y = y0 + 2; y < y1 - 4; y += 7) {
-      c.fillStyle = shade(frame, 1.25); c.fillRect(x0, Y(y) + 5, x1 - x0, 2);
-      for (let x = x0 + 2 + ((y / 7) % 2) * 3; x < x1 - 4; x += 5) if (R() < 0.85) person(x, Y(y));
+    c.save(); c.beginPath(); c.rect(x0, Y(y0), x1 - x0, Y(y1) - Y(y0)); c.clip();
+    for (let y = y0 - 2, r = 0; y < y1 - 4; y += 11, r++) {
+      c.fillStyle = shade(frame, 1.25); c.fillRect(x0, Y(y) + 12, x1 - x0, 2);
+      for (let x = x0 + (r % 2) * 4; x < x1 - 4; x += 8) if (R() < 0.85) person(x, Y(y));
     }
+    c.restore();
     c.fillStyle = shade(frame, 0.6); for (let x = x0; x < x1; x += 24) c.fillRect(x, Y(y1 - 4), 2, 6);
   };
   if (id === 'tour') {
@@ -349,9 +347,9 @@ class BeachSettingsScene extends Base {
     this.preview = this.add.image(81, 104, '__DEFAULT');
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [['women', 'SQUADRE (maschili / femminili)'], ['field', 'SPIAGGIA'], ['fmt', 'PARTITA'], ['ball', 'PALLONE'], ['rebound', 'REBOUND INDICATOR'], ['target', 'ATTACK TARGET'],
-                 ['fx', 'ARCADE FX'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 15, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(310, 58.5 + i * 15, '', UI.f(6, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(300, 101, 'ball_beach').setScale(1.4);
+                 ['fx', 'ARCADE FX'], ['shake', 'SCOSSA SCHERMO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']];
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 13.6, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(310, 58 + i * 13.6, '', UI.f(6, '#ffffff', true)).setOrigin(1, 0)]);
+    this.ballImg = this.add.image(300, 96, 'ball_beach').setScale(1.4);
     this.add.text(81, 178, 'REGOLE BEACH: 2 contro 2, rally a 21,\ncambio campo ogni 7 punti, muro = 1° tocco,\nniente pallonetto a mano aperta', { ...UI.f(4.4, '#0a2a5a', true), align: 'center' }).setOrigin(0.5, 0);
     this.add.text(240, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(4.6, '#0a2a5a', true)).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
@@ -362,6 +360,7 @@ class BeachSettingsScene extends Base {
     if (k === 'ball') return '';
     if (k === 'rebound') return OPT.rebound[BSET.rebound];
     if (k === 'target' || k === 'fx' || k === 'women') return OPT[k][BSET[k]];
+    if (k === 'shake') return GS.shake ? 'ON' : 'OFF';
     if (k === 'lineL' || k === 'lineR') { const c = k === 'lineL' ? BSET.left : BSET.right; applyLineup(this, c, 2); return BSET.women ? femLabel(c, TEAMS[c].names[0]) + ' + ' + femLabel(c, TEAMS[c].names[1]) : TEAMS[c].names.slice(0, 2).join(' + '); }
     return '►';
   }
@@ -379,6 +378,7 @@ class BeachSettingsScene extends Base {
     else if (k === 'ball') cyc('ball', BEACH_BALLS.length);
     else if (k === 'rebound') cyc('rebound', OPT.rebound.length);
     else if (k === 'target' || k === 'fx' || k === 'women') cyc(k, OPT[k].length);
+    else if (k === 'shake') { GS.shake = !GS.shake; GS.saveOpts(); }
     else return;
     SFX.blip(); this.refresh();
   }
