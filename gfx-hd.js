@@ -197,12 +197,15 @@ function drawPlayerHD(pose, P, hair, R) {
     const c1 = lerpP(s.neck, s.hip, -0.04), c2 = lerpP(s.neck, s.hip, 0.88), cm = lerpP(c1, c2, 0.4);
     const torso = g2 => {
       const k = (W ? 0.9 : 1) * Math.sqrt(bw);   // giocatrici: spalle più strette; corporatura
-      const p = [Q(c1, 4.8 * k), Q(c1, -4.5 * k), Q(cm, -5.4 * k), Q(c2, -3.6), Q(c2, 3.6), Q(cm, 5 * k)];
-      g2.beginPath(); g2.moveTo(p[0][0], p[0][1]);
-      g2.quadraticCurveTo(lerpP(p[0], p[1], 0.5)[0], lerpP(p[0], p[1], 0.5)[1] - 1.2, p[1][0], p[1][1]);
-      g2.quadraticCurveTo(p[2][0], p[2][1], p[3][0], p[3][1]);
-      g2.lineTo(p[4][0], p[4][1]);
-      g2.quadraticCurveTo(p[5][0], p[5][1], p[0][0], p[0][1]);
+      // spalle arrotondate: il dorso sale morbido (trapezio) fino alla base del collo, poi il petto scende
+      const bU = Q(lerpP(c1, c2, 0.16), 4.9 * k), nB = Q(c1, 1.9), nF = Q(c1, -2.1), fU = Q(lerpP(c1, c2, 0.14), -4.7 * k);
+      const cB = Q(lerpP(c1, c2, -0.03), 4.7 * k), cF = Q(lerpP(c1, c2, -0.03), -4.4 * k);
+      g2.beginPath(); g2.moveTo(nB[0], nB[1]); g2.lineTo(nF[0], nF[1]);
+      g2.quadraticCurveTo(cF[0], cF[1], fU[0], fU[1]);
+      g2.quadraticCurveTo(Q(cm, -5.4 * k)[0], Q(cm, -5.4 * k)[1], Q(c2, -3.6)[0], Q(c2, -3.6)[1]);
+      g2.lineTo(Q(c2, 3.6)[0], Q(c2, 3.6)[1]);
+      g2.quadraticCurveTo(Q(cm, 5 * k)[0], Q(cm, 5 * k)[1], bU[0], bU[1]);
+      g2.quadraticCurveTo(cB[0], cB[1], nB[0], nB[1]);
       g2.closePath();
     };
     hdCel(g, torso, BK ? P.sk : P.sh, 1.6, 0.8);
@@ -229,7 +232,7 @@ function drawPlayerHD(pose, P, hair, R) {
     }
     // collo e testa
     const [hx, hy] = s.head;
-    hdCel(g, hdCapsule(s.neck, lerpP(s.neck, s.head, 0.55), 1.9, 1.8), P.sk, 0.6, 0.4);
+    hdCel(g, hdCapsule(lerpP(s.neck, s.hip, 0.04), lerpP(s.neck, s.head, 0.55), 2.3, 1.75), P.sk, 0.6, 0.4);   // collo, più largo alla base
     const cl = lerpP(s.neck, s.hip, 0.02);
     g.strokeStyle = BK ? 'rgba(0,0,0,0)' : P.tr;   // colletto (non nel costume)
     g.lineWidth = 0.8; g.beginPath(); const k0 = Q(cl, 2.6), k1 = Q(cl, -2.4); g.moveTo(k0[0], k0[1]); g.quadraticCurveTo((k0[0] + k1[0]) / 2 + 0.6, (k0[1] + k1[1]) / 2 + 1.4, k1[0], k1[1]); g.stroke();
@@ -363,6 +366,7 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
   let jaw = 1 + Math.floor(R() * 2);
   if (P.fem) { style = P.hs === 2 ? 0 : 2; jaw = -1; }   // giocatrici: capelli lunghi (o chignon) e viso più morbido
   const cheer = expr === 'cheer';
+  const irisC = ['#6a3e1c', '#4a2c14', '#3a72aa', '#4a8a3e', '#7a5424'][Math.floor(R() * 5)];   // colore degli occhi
   c.save(); c.translate(ox, oy);
   const bg = c.createRadialGradient(20, 16, 4, 20, 20, 30);
   bg.addColorStop(0, '#2e52a8'); bg.addColorStop(1, '#0c1840');
@@ -422,10 +426,14 @@ function drawFaceHD(c, ox, oy, code, idx, expr) {
   // occhi (in esultanza socchiusi e sorridenti)
   for (const ex of [15.8, 24.2]) {
     if (cheer) { c.strokeStyle = HD_INK; c.lineWidth = 0.8; c.beginPath(); c.arc(ex, 16.2, 1.7, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); continue; }
-    hdStrokeFill(c, hdEllipse([ex, 15.6], 2.1, 1.35), '#ffffff', HD_INK, P.fem ? 0.8 : 0.5);   // (giocatrici: ciglia più marcate)
-    c.fillStyle = '#4a3020'; c.beginPath(); c.arc(ex + 0.5, 15.6, 1.05, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#100a08'; c.beginPath(); c.arc(ex + 0.5, 15.6, 0.5, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ex + 0.1, 15.2, 0.3, 0, Math.PI * 2); c.fill();
+    // occhi grandi in stile Power Spikes: iride colorata, pupilla, due riflessi, palpebra superiore marcata
+    hdStrokeFill(c, hdEllipse([ex, 15.6], 2.5, 1.75), '#ffffff', HD_INK, 0.45);
+    const ir = c.createRadialGradient(ex + 0.3, 15.3, 0.2, ex + 0.4, 15.7, 1.5); ir.addColorStop(0, shade(irisC, 1.5)); ir.addColorStop(1, irisC);
+    c.fillStyle = ir; c.beginPath(); c.arc(ex + 0.4, 15.7, 1.45, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#0c0606'; c.beginPath(); c.arc(ex + 0.4, 15.7, 0.65, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ex - 0.1, 15.1, 0.42, 0, Math.PI * 2); c.arc(ex + 0.9, 16.3, 0.2, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#1c1210'; c.lineWidth = P.fem ? 0.9 : 0.7; c.beginPath(); c.moveTo(ex - 2.5, 15.4); c.quadraticCurveTo(ex, 13.4, ex + 2.5, 15.2); c.stroke();
+    if (P.fem) { c.lineWidth = 0.5; c.beginPath(); const o = ex < 20 ? -1 : 1; c.moveTo(ex + o * 2.4, 15.1); c.lineTo(ex + o * 3.2, 14.4); c.stroke(); }
   }
   if (P.fem) {   // fard e orecchini
     c.fillStyle = 'rgba(230,80,90,0.22)'; c.beginPath(); c.ellipse(14, 20, 2.4, 1.3, 0, 0, 7); c.ellipse(26, 20, 2.4, 1.3, 0, 0, 7); c.fill();

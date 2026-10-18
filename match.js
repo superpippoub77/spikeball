@@ -669,6 +669,7 @@ class MatchScene extends Phaser.Scene {
     const plan = t.plan;
     const sandK = this.beach ? CFG.SAND_K : 1;   // sulla sabbia si corre più piano
     const pSpd = this.trOf(p).spd;   // c'è chi è più rapido e chi meno
+    let chase = 1;                  // scatto verso una palla lontana
     let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1) * sandK * pSpd, human = false;
     const own = this.state === 'rally' && b.lastTeam === t;
     // il battitore va subito dietro la linea di fondo (anche durante la presentazione), da dove parte la rincorsa della battuta in salto
@@ -687,6 +688,13 @@ class MatchScene extends Phaser.Scene {
     } else if (plan && plan.p === p) {
       target = plan.xc + side * (plan.kind === 'set' ? 2 : 6);
       human = this.humanMoves(p);
+      // palla lontana (deviata dal muro, che vola fuori): scatto all'indietro, molto più veloce della corsa normale
+      if (plan.kind === 'pass' && plan.tc > 0.05) {
+        const need = Math.abs(target - p.x) / plan.tc / (CFG.RUN * sandK * pSpd);
+        // (sulle altre palle lo scatto aiuta solo chi gioca: l'IA resta com'è per non cambiare l'equilibrio)
+        chase = clamp(need, 1, b.lastKind === 'blocktouch' ? CFG.CHASE_MAX : t.human ? 1.3 : 1);
+        speed *= chase;
+      }
     } else if (!plan && this.humanMoves(p)) {
       human = true;
     } else if (t.blockers.includes(p) && !own) {
@@ -704,6 +712,7 @@ class MatchScene extends Phaser.Scene {
     if (human) {
       const s = this.inp[t.human];
       mv = ((s.r ? 1 : 0) - (s.l ? 1 : 0)) * CFG.RUN * 1.05 * (t.spdK || 1) * sandK * pSpd * dt;   // la SPEED della squadra (e del giocatore) conta anche per chi gioca
+      if (chase > 1 && Math.sign(mv) === Math.sign(target - p.x)) mv *= chase;   // scatto solo verso la palla
       if (mv && !plan) t.ctrlMoved = true;   // spostato in attesa: resta lui il ricevitore preferito
     } else {
       const reacting = plan && plan.p === p && plan.kind === 'pass' && this.verAge < (t.human ? 0.06 : 0.24 - t.skill * 0.12);

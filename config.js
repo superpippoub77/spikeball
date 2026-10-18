@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.6.2';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.6.3';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -40,6 +40,7 @@ const CFG = {
   WORLD_HALF: 280,
   FLOOR_Y: 206,
   REACH: 12, DIVE_REACH: 38,
+  CHASE_MAX: 1.75,        // scatto verso una palla lontana (es. deviata dal muro): fino a 1,75 volte la corsa normale
   APPR_T: 0.4, PLANT_T: 0.13,   // rincorsa: secondi prima dello stacco per il passo lungo con il balzo e per l'arrivo a piedi pari
   FRONT_ZONE: 0.36,       // ricezione: oltre questa frazione della metà campo la palla tocca ai difensori arretrati
   SAND_K: 0.86,           // beach: velocità di corsa sulla sabbia (più faticosa del parquet)
