@@ -377,17 +377,36 @@ class MatchIntroScene extends Base {
 class LineupScene extends Base {
   constructor() { super('Lineup'); }
   init(d) { this.d = d; }
+  // presentazione della formazione: campo in prospettiva e una scheda per giocatore (volto, ruolo, nome, numero,
+  // altezza e specialità) nel posto che occupa in campo; le schede entrano una alla volta
   create() {
     camSetup(this);
     makeCommon(this); setLook(this, false, !!GS.women);   // volti delle giocatrici nella versione femminile
-    this.add.image(0, 0, makeLineupCourt(this, this.d.team)).setOrigin(0);
-    if (this.d.scoreLine) this.add.text(8, 6, `SCORE: ${GS.score}`, TXT(8, '#000000'));
-    const code = this.d.team, pos = [[42, 34], [86, 34], [30, 86], [76, 86], [18, 140], [64, 140]];
-    pos.forEach(([x, y], i) => {
-      const im = this.add.image(x - 200, y, makeFaceTex(this, code, i % 4, 'neutral')).setOrigin(0).setScale(1.1);
-      this.tweens.add({ targets: im, x, duration: 300, delay: i * 120, ease: 'Cubic.out' });
+    const code = this.d.team, P = TEAMS[code], F = FORMATIONS[4];
+    this.add.image(0, 0, makeLineupCourt(this, code)).setOrigin(0);
+    if (this.d.scoreLine) this.add.text(8, 4, `SCORE: ${GS.score}`, TXT(7)).setStroke('#000', 2);
+    this.add.image(300, 10, makeFlagTex(this, code, 24, 16)).setOrigin(1, 0);
+    this.add.text(272, 18, P.name, TXT(8)).setOrigin(1, 0.5).setStroke('#000', 2);
+    this.add.text(160, 214, 'STARTING LINEUP', TXT(9, '#ffd23a')).setOrigin(0.5).setStroke('#000', 3);
+    // posti: la prima linea vicino alla rete (da sinistra a destra), il difensore dietro al centro
+    const at = [[8, 70], [114, 70], [220, 70], [114, 150]];
+    F.forEach((f, i) => {
+      const [x, y] = at[i], nm = P.names[i], tr = playerTraits(code, nm, !!GS.women);
+      const name = GS.women ? femLabel(code, nm) : nm, num = P.nums && P.nums[i] ? '#' + P.nums[i] + ' ' : '';
+      const card = this.add.container(x - 340, y);
+      const g = this.add.graphics();
+      g.fillStyle(0x000000, 0.35).fillRoundedRect(2, 2, 94, 40, 4);
+      g.fillStyle(0x0c1a48, 0.92).fillRoundedRect(0, 0, 94, 40, 4);
+      g.lineStyle(1.5, Phaser.Display.Color.HexStringToColor(P.sh).color, 1).strokeRoundedRect(0, 0, 94, 40, 4);
+      const face = this.add.image(3, 4, makeFaceTex(this, code, i, 'neutral')).setOrigin(0).setScale(0.8);
+      const role = this.add.text(38, 3, f.pos === 'def' ? 'DIFESA' : POS_NAMES[f.pos] || '', TXT(5, '#7ad0ff'));
+      const nmT = this.add.text(38, 12, num + name, TXT(name.length > 7 ? 6 : 7));
+      const info = this.add.text(38, 23, `${tr.cm}cm`, TXT(5, '#ffffff'));
+      const tag = this.add.text(38, 30, tr.tag, TXT(5, '#ffd23a'));
+      card.add([g, face, role, nmT, info, tag]);
+      this.tweens.add({ targets: card, x, duration: 380, delay: 200 + i * 260, ease: 'Back.out' });
     });
-    this.time.delayedCall(3200, () => this.d.next(this));
+    this.time.delayedCall(4200, () => this.d.next(this));
   }
 }
 

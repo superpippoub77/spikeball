@@ -193,6 +193,7 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
   Le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea.
   Mentre la palla è nell'altro campo (o durante la battuta avversaria) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte).
   Il giocatore che stai comandando ha un **alone rosso leggero** e la scritta **P1** (o **P2**) sopra la testa.
+- **Pallonetto di seconda dell'alzatore** (verso la rete durante l'alzata in salto): l'alzatore si gira verso la rete e con un braccio teso spinge la palla corta appena di là, con un colpo secco del polso.
 - **Alzata:** automatica. Se la ricezione è sbagliata ("OH! HE MISHITS THE BALL!") muovi l'alzatore col joystick.
 - **Schiacciata:** rincorsa e salto automatici, premi il pulsante quando la palla arriva alla mano. La rincorsa è come nella pallavolo vera: passi di corsa, l'ultimo passo lungo con un piccolo balzo e le braccia slanciate indietro, l'arrivo a piedi pari e lo stacco (anche nella battuta in salto).
   Quando la palla è colpibile diventa rossa e sopra lo schiacciatore compare "HIT! PRESS BUTTON!".

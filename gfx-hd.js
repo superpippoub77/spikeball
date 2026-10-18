@@ -106,7 +106,7 @@ function drawPlayerFrontHD(P, hair, R, pose) {
     if (W && P.hs === 2) hdCel(g, hdEllipse([hx, hy - 5.6], 2.3, 1.9), hair, 0.8, 0.5);   // chignon
     hdCel(g, hdEllipse([hx, hy], 3.9, 4.4), P.sk, 0.9, 0.45);
     hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx, hy - 1.2, 4.3, 3.6, 0, Math.PI * 1.02, Math.PI * 1.98); g2.lineTo(hx + 4.2, hy + 0.5); g2.quadraticCurveTo(hx, hy - 2.6, hx - 4.2, hy + 0.5); g2.closePath(); }, hair, 1, 0.7);
-    if (W && !B) { g.fillStyle = '#c03848'; g.beginPath(); g.ellipse(hx, hy + 2.6, 0.9, 0.4, 0, 0, 7); g.fill(); }   // labbra
+    if (W) { g.fillStyle = '#c03848'; g.beginPath(); g.ellipse(hx, hy + 2.6, 0.9, 0.4, 0, 0, 7); g.fill(); }   // labbra
     if (B) { g.fillStyle = '#0c0c14'; g.beginPath(); g.ellipse(hx - 1.6, hy + 0.2, 1.4, 0.9, 0, 0, 7); g.ellipse(hx + 1.6, hy + 0.2, 1.4, 0.9, 0, 0, 7); g.fill(); g.fillRect(hx - 0.4, hy - 0.1, 0.8, 0.4); }
     else {
       g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(hx - 1.5, hy + 0.2, 0.75, 0.55, 0, 0, 7); g.ellipse(hx + 1.5, hy + 0.2, 0.75, 0.55, 0, 0, 7); g.fill();
@@ -236,16 +236,20 @@ function drawPlayerHD(pose, P, hair, R) {
     const head = g2 => {
       g2.beginPath();
       g2.ellipse(hx, hy, 3.7, 4.3, 0, Math.PI * 0.62, Math.PI * 2.08);
-      g2.lineTo(hx + 4.4, hy + 0.9);                          // naso
-      g2.lineTo(hx + 3.6, hy + 1.5);
-      g2.quadraticCurveTo(hx + 3.8, hy + 3.6, hx + 1.6, hy + 4.4);   // mento
+      // naso piccolo all'insù (più fine per le giocatrici) e mento morbido, come i personaggi di Power Spikes
+      g2.quadraticCurveTo(hx + (W ? 3.9 : 4.1), hy + 0.1, hx + (W ? 3.95 : 4.15), hy + 0.8);   // naso
+      g2.lineTo(hx + 3.55, hy + 1.3);
+      g2.quadraticCurveTo(hx + (W ? 3.4 : 3.8), hy + 3.5, hx + 1.5, hy + (W ? 4.2 : 4.4));   // mento
       g2.closePath();
     };
     hdCel(g, head, P.sk, 0.9, 0.45);
     hdCel(g, hdEllipse([hx - 0.9, hy + 0.4], 0.9, 1.3), shade(P.sk, 0.9), 0.3, 0.2);       // orecchio
-    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(hx + 2.1, hy - 0.4, 0.75, 0.55, 0, 0, 7); g.fill();
-    g.fillStyle = '#1c1420'; g.beginPath(); g.ellipse(hx + 2.5, hy - 0.4, 0.4, 0.5, 0, 0, 7); g.fill();
-    g.strokeStyle = shade(P.sk, 0.5); g.lineWidth = 0.3; g.beginPath(); g.moveTo(hx + 2.2, hy + 2.6); g.lineTo(hx + 3.2, hy + 2.5); g.stroke();   // bocca
+    // occhio grande con riflesso; giocatrici: ciglia
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(hx + 2.1, hy - 0.45, 0.95, 0.72, 0, 0, 7); g.fill();
+    g.fillStyle = '#3a2418'; g.beginPath(); g.ellipse(hx + 2.55, hy - 0.4, 0.52, 0.64, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(hx + 2.4, hy - 0.65, 0.18, 0, 7); g.fill();
+    if (W) { g.strokeStyle = '#1c1420'; g.lineWidth = 0.4; g.beginPath(); g.moveTo(hx + 1.1, hy - 1.05); g.quadraticCurveTo(hx + 2.2, hy - 1.5, hx + 3.2, hy - 1.15); g.lineTo(hx + 3.5, hy - 1.4); g.stroke(); }
+    g.strokeStyle = shade(P.sk, 0.5); g.lineWidth = 0.3; g.beginPath(); g.moveTo(hx + 2.2, hy + 2.5); g.lineTo(hx + 3.1, hy + 2.4); g.stroke();   // bocca
     // capelli anni '80: ciuffo voluminoso, nuca, basette
     const hairP = g2 => {
       g2.beginPath();
@@ -273,7 +277,7 @@ function drawPlayerHD(pose, P, hair, R) {
       hdCel(g, hdEllipse([hx - 4.2, hy - 2], 0.9, 1.1), P.tr, 0.4, 0.3);
     }
     hdCel(g, hairP, hair, 1, 0.7);
-    if (W && !P.beach) { g.strokeStyle = '#c03848'; g.lineWidth = 0.45; g.beginPath(); g.moveTo(hx + 2.2, hy + 2.6); g.lineTo(hx + 3.2, hy + 2.5); g.stroke(); }   // labbra
+    if (W) { g.strokeStyle = '#c03848'; g.lineWidth = 0.45; g.beginPath(); g.moveTo(hx + 2.2, hy + 2.6); g.lineTo(hx + 3.2, hy + 2.5); g.stroke(); }   // labbra
     g.strokeStyle = shade(hair, 1.8); g.lineWidth = 0.4;
     g.beginPath(); g.moveTo(hx - 2.8, hy - 3.6); g.quadraticCurveTo(hx - 0.6, hy - 5, hx + 1.6, hy - 4.2); g.stroke();
     g.strokeStyle = shade(hair, 0.55); g.lineWidth = 0.35;                                // sopracciglio
@@ -462,6 +466,8 @@ function drawRefHD(c, pose, W, H) {
   hdStrokeFill(c, g => { g.beginPath(); g.moveTo(23.5, 23.4); g.lineTo(28, 27.5); g.lineTo(32.5, 23.4); g.lineTo(31, 22); g.lineTo(28, 24.6); g.lineTo(25, 22); g.closePath(); }, '#24243a', HD_INK, 0.4);
   hdStrokeFill(c, g => { g.beginPath(); g.moveTo(20.5, 30); g.lineTo(24.5, 30); g.lineTo(24.5, 33.5); g.quadraticCurveTo(22.5, 35, 20.5, 33.5); g.closePath(); }, '#d8a828', HD_INK, 0.35);
   c.fillStyle = '#3a40a0'; c.beginPath(); c.arc(22.5, 31.8, 0.9, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#202030'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(25, 23.5); c.quadraticCurveTo(26, 28.5, 28, 30.5); c.quadraticCurveTo(30, 28.5, 31, 23.5); c.stroke();   // cordino del fischietto
+  hdStrokeFill(c, g => { g.beginPath(); g.roundRect ? g.roundRect(26.6, 30, 3, 1.8, 0.6) : g.rect(26.6, 30, 3, 1.8); }, '#c8c8d4', HD_INK, 0.35);
   // collo e testa
   hdStrokeFill(c, hdCapsule([28, 20], [28, 24], 2.6, 2.6), skD, HD_INK, 0.5);
   hdStrokeFill(c, hdEllipse([21.3, 12.5], 1.4, 2.4), skD, HD_INK, 0.5);
@@ -473,6 +479,7 @@ function drawRefHD(c, pose, W, H) {
   hdStrokeFill(c, g => { g.beginPath(); g.moveTo(21.2, 12.5); g.quadraticCurveTo(20, 3, 28, 2.4); g.quadraticCurveTo(36, 3, 34.8, 12.5); g.lineTo(33.6, 9); g.quadraticCurveTo(31, 5.6, 28, 6.4); g.quadraticCurveTo(25, 5.6, 22.4, 9); g.closePath(); }, '#d8d8d4', HD_INK, 0.5);
   c.strokeStyle = '#a8a8a4'; c.lineWidth = 0.7;
   c.beginPath(); c.moveTo(24, 10.2); c.lineTo(26.4, 10); c.moveTo(29.6, 10); c.lineTo(32, 10.2); c.stroke();
+  c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(25.3, 12.3, 1.3, 0.95, 0, 0, Math.PI * 2); c.ellipse(30.7, 12.3, 1.3, 0.95, 0, 0, Math.PI * 2); c.fill();   // occhi
   c.fillStyle = '#30304a'; c.beginPath(); c.arc(25.3, 12.3, 0.75, 0, Math.PI * 2); c.arc(30.7, 12.3, 0.75, 0, Math.PI * 2); c.fill();
   c.strokeStyle = skD; c.lineWidth = 0.55; c.beginPath(); c.moveTo(28.3, 12.6); c.quadraticCurveTo(29, 15.6, 27.6, 15.9); c.stroke();
   if (pose === 'whistle') { hdStrokeFill(c, g => { g.beginPath(); g.roundRect(26, 16.8, 4.5, 2, 0.8); }, '#c8c8d0', HD_INK, 0.4); }
