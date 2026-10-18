@@ -191,7 +191,7 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
   - SU-indietro + Z, GIÙ-indietro + Z = **THUNDER SERVE** (lampo bianco, la palla piomba giù)
 - **Ricezione:** solo joystick, porta il giocatore schiarito sul quadratino blu. Il pulsante non si usa, il tuffo è automatico.
   Le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea.
-  Mentre la palla è nell'altro campo (o durante la battuta avversaria) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte).
+  Mentre la palla è nell'altro campo (o durante la battuta avversaria) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte). Sulle palle lontane, come quelle deviate dal muro che vanno verso il fuori, il ricevitore scatta molto più veloce della corsa normale (anche all'indietro).
   Il giocatore che stai comandando ha un **alone rosso leggero** e la scritta **P1** (o **P2**) sopra la testa.
 - **Pallonetto di seconda dell'alzatore** (verso la rete durante l'alzata in salto): l'alzatore si gira verso la rete e con un braccio teso spinge la palla corta appena di là, con un colpo secco del polso.
 - **Alzata:** automatica. Se la ricezione è sbagliata ("OH! HE MISHITS THE BALL!") muovi l'alzatore col joystick.

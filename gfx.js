@@ -209,9 +209,19 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const c1 = lerpP(s.neck, s.hip, 0.02), c2 = lerpP(s.neck, s.hip, 0.92);
   const Q = (p, k) => [p[0] + nx * k, p[1] + ny * k];
   const ws = (W ? 0.9 : 1) * Math.sqrt(P.bd || 1);   // giocatrici: spalle più strette; corporatura
-  poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? skin : shirt);
-  poly(ctx, ox, [Q(c1, 5 * ws), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], BK ? skinD : shirtD);
-  poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -4.8 * ws)], BK ? shade(skin, 1.08) : shirtL);
+  // busto con le spalle arrotondate: dalla schiena il profilo sale morbido (trapezio) fino al collo, poi scende sul petto
+  const torsoPath = () => {
+    const P0 = Q(c2, 3.8), P1 = Q(lerpP(c1, c2, 0.2), 5 * ws), P2 = Q(c1, 1.9), P3 = Q(c1, -2.2), P4 = Q(lerpP(c1, c2, 0.18), -4.8 * ws), P5 = Q(c2, -4);
+    const cB = Q(lerpP(c1, c2, -0.02), 4.6 * ws), cF = Q(lerpP(c1, c2, -0.02), -4.2 * ws);
+    ctx.beginPath(); ctx.moveTo(ox + P0[0], P0[1]); ctx.lineTo(ox + P1[0], P1[1]);
+    ctx.quadraticCurveTo(ox + cB[0], cB[1], ox + P2[0], P2[1]); ctx.lineTo(ox + P3[0], P3[1]);
+    ctx.quadraticCurveTo(ox + cF[0], cF[1], ox + P4[0], P4[1]); ctx.lineTo(ox + P5[0], P5[1]); ctx.closePath();
+  };
+  torsoPath(); ctx.fillStyle = BK ? skin : shirt; ctx.fill();
+  ctx.save(); torsoPath(); ctx.clip();   // ombra sul dorso e luce sul petto dentro la sagoma
+  poly(ctx, ox, [Q(c1, 6), Q(c2, 3.8), Q(c2, 1.8), Q(c1, 2.2)], BK ? skinD : shirtD);
+  poly(ctx, ox, [Q(c1, -2.4), Q(c2, -2.8), Q(c2, -4), Q(c1, -6)], BK ? shade(skin, 1.08) : shirtL);
+  ctx.restore();
   const topC = W && P.pat === 2 ? P.tr : shirt;   // fantasia "due colori": top nel colore del bordo
   if (BK) { const t0 = lerpP(s.neck, s.hip, 0.12), t1 = lerpP(s.neck, s.hip, 0.4); poly(ctx, ox, [Q(t0, 4.4), Q(t1, 4), Q(t1, -4.4), Q(t0, -4.6)], topC);
     if (P.pat === 1) poly(ctx, ox, [Q(t1, 4), Q(lerpP(t1, s.hip, 0.06), 4), Q(lerpP(t1, s.hip, 0.06), -4.4), Q(t1, -4.4)], P.tr); }   // top (e bordo)
@@ -223,7 +233,7 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   leg(s.fl, false);
   // testa grande di profilo
   const [hx, hy] = s.head;
-  limb(ctx, ox, s.neck, lerpP(s.neck, s.head, 0.45), 3.2, 3.2, skinD);
+  limb(ctx, ox, lerpP(s.neck, s.hip, 0.05), lerpP(s.neck, s.head, 0.45), 4, 3, skinD);
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
   // naso piccolo (alla Power Spikes), più fine per le giocatrici; mento morbido
   ctx.fillStyle = skin; if (W) ctx.fillRect(ox + hx + 3.6, hy + 0.4, 1, 1.2); else ctx.fillRect(ox + hx + 3.6, hy + 0.2, 1.4, 1.6);   // naso
@@ -345,52 +355,75 @@ function hashStr(t) {
   return (Math.abs(h) % 2147483646) + 1;
 }
 
-// ritratto 40x40; expr: 'neutral' | 'cheer'
+// ritratto 40x40 in pixel art (pannello di chi batte, telecronaca, formazione); expr: 'neutral' | 'cheer'
+// viso sagomato riga per riga con ombra e luce, occhi grandi colorati con il riflesso (stile Power Spikes),
+// acconciatura del giocatore (corti, rasati, lunghi, ricci; per le giocatrici coda, treccia, chignon, caschetto)
 function drawFace(ctx, ox, oy, code, idx, expr) {
   const P = playerPal(code, idx), R = seeded(hashStr(code + ':' + (TEAMS[code].names[idx] || idx))); R(); R();   // volto legato al nome
-  const skin = P.sk, dk = shade(skin, 0.72), lt = shade(skin, 1.12);
-  const hair = P.ha[idx % P.ha.length];
+  const skin = P.sk, dk = shade(skin, 0.72), sh = shade(skin, 0.86), lt = shade(skin, 1.1);
+  const hair = P.ha[idx % P.ha.length], hairL = shade(hair, 1.45), hairD = shade(hair, 0.7);
   let style = [0, 0, 2, 3, 0, 1, 3, 2][Math.floor(R() * 8)];   // 0 corti, 1 rasati, 2 lunghi, 3 riccioli
   let jaw = 1 + Math.floor(R() * 2);
-  if (P.fem) { style = P.hs === 2 ? 0 : 2; jaw = 0; }   // giocatrici: capelli lunghi (o raccolti nel chignon), viso più morbido
-  const bg = ctx.createLinearGradient(0, oy, 0, oy + 40);
-  bg.addColorStop(0, '#1c3478'); bg.addColorStop(1, '#0c1840');
-  ctx.fillStyle = bg; ctx.fillRect(ox, oy, 40, 40);
-  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(ox + x, oy + y, w, h); };
-  // spalle e maglia
+  const W = !!P.fem;
+  if (W) { style = P.hs === 2 ? 4 : P.hs === 3 ? 5 : 2; jaw = 0; }   // giocatrici: lunghi, chignon (4), caschetto (5)
+  const iris = ['#5a3418', '#3a2412', '#3a6a9a', '#4a7a3a', '#6a4a20'][Math.floor(R() * 5)];
   const cheer = expr === 'cheer';
-  px(2, 33, 36, 7, P.sh); px(6, 31, 28, 3, P.sh);
-  px(15, 30, 10, 4, '#f4f4f4'); px(17, 31, 6, 2, P.tr);
-  if (cheer) { px(0, 18, 7, 15, P.sh); px(33, 18, 7, 15, P.sh); px(1, 11, 6, 8, skin); px(33, 11, 6, 8, skin); }
-  // collo e viso
-  px(16, 26, 8, 5, dk);
-  px(11, 8, 18, 18, skin); px(12 - jaw, 12, 2, 10, skin); px(28 - 1 + jaw, 12, 2, 10, skin);
-  px(13, 24, 14, 3, skin); px(15, 27, 10, 1, dk);
-  px(11, 18, 1, 6, dk); px(28, 18, 1, 6, dk); px(26, 10, 3, 14, shade(skin, 0.9));
-  // capelli
-  if (style !== 1) { px(10, 5, 20, 5, hair); px(9, 7, 3, 8, hair); px(28, 7, 3, 7, hair); }
-  else { px(11, 6, 18, 3, shade(skin, 0.95)); px(12, 6, 16, 1, lt); }
-  if (style === 2) { px(8, 9, 3, 14, hair); px(29, 9, 3, 12, hair); }
-  if (style === 3) for (let i = 0; i < 6; i++) px(10 + i * 3, 4 + (i % 2), 3, 3, shade(hair, 1.3));
-  px(12, 7, 6, 1, shade(hair, 1.4));
-  // occhi, sopracciglia, naso, bocca
-  const eyeY = cheer ? 15 : 15;
-  px(14, eyeY - 2, 4, 1, shade(hair, 0.8)); px(22, eyeY - 2, 4, 1, shade(hair, 0.8));
-  px(14, eyeY, 4, 2, '#ffffff'); px(22, eyeY, 4, 2, '#ffffff');
-  px(15 + (cheer ? 0 : 1), eyeY, 2, 2, '#2a1a10'); px(23 + (cheer ? 0 : 1), eyeY, 2, 2, '#2a1a10');
-  px(19, 16, 2, 5, dk); px(18, 20, 4, 1, dk);
-  if (cheer) { px(16, 22, 8, 4, '#5a1010'); px(17, 22, 6, 1, '#ffffff'); px(17, 25, 6, 1, '#c04040'); }
-  else { px(16, 23, 8, 1, P.fem ? '#c03848' : '#a05048'); px(17, 24, 6, 1, P.fem ? '#d06070' : shade(skin, 0.85)); }
-  if (P.fem) {
-    px(13, eyeY - 1, 1, 1, '#2a1a10'); px(26, eyeY - 1, 1, 1, '#2a1a10');                          // ciglia
-    if (P.hs === 2) { px(15, 1, 10, 4, hair); px(17, 0, 6, 1, shade(hair, 1.3)); }                  // chignon
-    else if (P.hs === 3) { px(8, 20, 3, 4, hair); px(29, 20, 3, 4, hair); }                         // caschetto
-    else { px(8, 22, 3, 8, hair); px(29, 20, 3, 9, hair); }                                         // capelli sulle spalle
-    if (P.hs === 1) for (let k = 0; k < 3; k++) px(30, 28 + k * 3, 3, 2, k % 2 ? shade(hair, 1.3) : hair);   // treccia
-    px(12, 19, 3, 2, 'rgba(230,80,90,0.3)'); px(25, 19, 3, 2, 'rgba(230,80,90,0.3)');               // fard
-    px(10, 22, 1, 2, P.tr); px(29, 22, 1, 2, P.tr);                                                 // orecchini
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(ox + x, oy + y, w, h); };
+  const rows = (y0, half, col, cx = 20) => half.forEach((hw, k) => { if (hw > 0) px(Math.round(cx - hw), y0 + k, Math.round(hw * 2), 1, col); });
+  // sfondo con un alone di luce dietro la testa
+  const bg = ctx.createLinearGradient(0, oy, 0, oy + 40); bg.addColorStop(0, '#24408a'); bg.addColorStop(1, '#0a1640');
+  ctx.fillStyle = bg; ctx.fillRect(ox, oy, 40, 40);
+  const glow = ctx.createRadialGradient(ox + 20, oy + 15, 2, ox + 20, oy + 15, 18); glow.addColorStop(0, 'rgba(120,170,255,0.35)'); glow.addColorStop(1, 'rgba(120,170,255,0)');
+  ctx.fillStyle = glow; ctx.fillRect(ox, oy, 40, 40);
+  // capelli dietro la testa (lunghi, caschetto)
+  if (style === 2) { px(8, 9, 4, W ? 23 : 17, hairD); px(28, 9, 4, W ? 23 : 17, hairD); }
+  if (style === 5) { px(8, 9, 4, 15, hairD); px(28, 9, 4, 15, hairD); }
+  if (W && P.hs === 1) for (let k = 0; k < 4; k++) px(30, 22 + k * 3, 3, 2, k % 2 ? hairL : hair);   // treccia
+  // braccia alzate nell'esultanza
+  if (cheer) for (const s of [-1, 1]) {
+    const x = s < 0 ? 0 : 34; px(x, 20, 6, 20, P.sh); px(x + (s < 0 ? 4 : 0), 20, 2, 20, shade(P.sh, 0.8));
+    px(x + 1, 11, 4, 9, skin); px(x + 1, 8, 5, 4, skin); px(x + 1, 8, 5, 1, lt);
   }
-  px(13, 9, 4, 1, lt);
+  // spalle e maglia: sagoma arrotondata, ombra a destra, colletto a V nel colore del bordo
+  rows(31, [9, 12, 14, 15, 16, 17, 17, 17, 17], P.sh);
+  rows(31, [0, 0, 0, 0, 0, 0, 0, 0, 0], P.sh);
+  px(27, 33, 8, 7, shade(P.sh, 0.8)); px(5, 34, 3, 6, shade(P.sh, 1.15));
+  px(15, 29, 10, 3, P.tr); px(16, 29, 8, 2, skin); px(17, 31, 6, 1, P.tr); px(18, 32, 4, 1, P.tr); px(17, 29, 6, 2, dk);
+  if (P.num) { ctx.fillStyle = P.tr; ctx.font = 'bold 5px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 10, oy + 39); ctx.textAlign = 'left'; }
+  // collo con l'ombra sotto il mento
+  px(16, 24, 8, 6, sh); px(16, 24, 8, 2, dk);
+  // viso riga per riga (mascella più o meno squadrata), ombra sulla guancia destra e luce sulla fronte
+  const face = [5, 7, 8, 8.5, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8.5, 8 + jaw * 0.5, 7.5 + jaw * 0.5, 6.5 + jaw * 0.5, 5.5 + jaw * 0.3, 4.5, 3];
+  rows(7, face, skin);
+  face.forEach((hw, k) => { if (hw > 2) px(Math.round(20 + hw) - 2, 7 + k, 2, 1, sh); });
+  px(13, 8, 5, 2, lt); px(12, 17, 2, 2, lt);
+  px(10, 14, 2, 5, dk); px(28, 14, 2, 5, dk); px(10, 15, 1, 3, sh); px(29, 15, 1, 3, sh);   // orecchie
+  // capelli sopra: calotta, frangia con il ciuffo, basette, riflessi
+  if (style === 1) { rows(5, [6, 8, 9, 9], shade(hair, 1.15)); px(13, 6, 1, 1, sh); px(19, 5, 1, 1, sh); px(25, 6, 1, 1, sh); }
+  else if (style === 3) { rows(4, [7, 9, 10, 10, 9], hair); for (let i = 0; i < 7; i++) { px(10 + i * 3, 3 + (i % 2), 3, 3, hair); px(11 + i * 3, 3 + (i % 2), 1, 1, hairL); } px(10, 9, 2, 5, hair); px(28, 9, 2, 5, hair); }
+  else {
+    rows(3, [6, 8, 9.5, 10, 10.5, 10.5, 10], hair);
+    px(11, 10, 6, 1, hair); px(11, 11, 3, 1, hair); px(21, 10, 8, 1, hair); px(25, 11, 4, 1, hair);   // frangia
+    px(10, 9, 2, style === 5 || style === 2 ? 12 : 6, hair); px(28, 9, 2, style === 5 || style === 2 ? 12 : 6, hair);
+    px(13, 5, 7, 1, hairL); px(12, 6, 3, 1, hairL); px(22, 4, 4, 1, hairL);   // riflessi
+    if (style === 4) { rows(0, [3, 4, 4], hair); px(18, 0, 3, 1, hairL); px(19, 3, 2, 1, P.tr); }   // chignon
+  }
+  // sopracciglia
+  px(13, 12, 5, 1, hairD); px(22, 12, 5, 1, hairD); px(13, 13, 1, 1, hairD); px(26, 13, 1, 1, hairD);
+  // occhi grandi: bianco, iride colorata, pupilla, riflesso, palpebra (giocatrici: ciglia)
+  if (cheer) { for (const x of [13, 22]) { px(x, 15, 1, 1, '#2a1a10'); px(x + 1, 14, 3, 1, '#2a1a10'); px(x + 4, 15, 1, 1, '#2a1a10'); } }
+  else for (const x of [13, 22]) {
+    px(x, 14, 5, 3, '#ffffff'); px(x + 1, 14, 3, 3, iris); px(x + 2, 15, 1, 2, '#100808'); px(x + 1, 14, 1, 1, '#ffffff');
+    px(x, 13, 5, 1, '#2a1a10'); px(x, 17, 5, 1, sh);
+    if (W) { px(x === 13 ? x - 1 : x + 5, 13, 1, 1, '#2a1a10'); px(x === 13 ? x - 1 : x + 5, 12, 1, 1, '#2a1a10'); }
+  }
+  // naso: ombra laterale e narice
+  px(20, 16, 1, 4, sh); px(19, 20, 3, 1, dk); px(19, 17, 1, 2, lt);
+  // bocca
+  if (cheer) { px(16, 22, 8, 1, '#3a0808'); px(16, 23, 8, 3, '#5a1010'); px(17, 22, 6, 1, '#ffffff'); px(18, 25, 4, 1, '#d05050'); px(17, 26, 6, 1, sh); }
+  else if (W) { px(17, 23, 6, 1, '#b83848'); px(18, 24, 4, 1, '#d86070'); px(18, 23, 1, 1, '#e88090'); }
+  else { px(17, 23, 6, 1, '#8a3c38'); px(18, 24, 4, 1, sh); }
+  if (W) { px(12, 19, 3, 2, 'rgba(235,90,100,0.35)'); px(25, 19, 3, 2, 'rgba(235,90,100,0.35)'); px(10, 20, 1, 2, P.tr); px(29, 20, 1, 2, P.tr); }   // fard e orecchini
 }
 
 // texture del volto (40x40) del giocatore idx; expr = 'neutral' o 'cheer'
