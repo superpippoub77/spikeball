@@ -13,7 +13,7 @@
 const FW = 32, FH = 48;   // giocatori alti ~40 px come nel gioco originale (misurati sul video HD)
 const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 'dive', 'down', 'cheer', 'toss', 'sad',
                'spkload', 'spkfol', 'passload',   // schiacciata: caricamento e accompagnamento; bagher: piegamento
-               'setload', 'dump',                 // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
+               'setload', 'dump', 'dumpfol',      // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
                'passside', 'srvload',             // bagher laterale (di fronte, affondo di lato); battuta caricata
                'cheer2', 'cheer3',                // esultanze: pugno al cielo, salto a braccia larghe
                'appr', 'plant'];                  // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
@@ -40,6 +40,10 @@ const SKEL = {
   down:  { hip: [10, 36], neck: [22, 36], head: [26, 35], bl: [[6, 37], [2, 38]],   fl: [[6, 38], [2, 37]],   ba: [[26, 38], [30, 38]], fa: [[26, 37], [30, 37]] },
   // rincorsa d'attacco: appr = penultimo passo lungo e balzo, busto avanti e braccia slanciate indietro;
   // plant = arrivo a piedi pari con le ginocchia piegate, braccia tutte indietro, un attimo prima dello stacco
+  // pallonetto di seconda dell'alzatore: in salto si gira verso la rete, il braccio teso sopra la testa spinge la palla
+  // di là con un colpo secco del polso (dump), poi la mano accompagna in basso oltre la rete (dumpfol)
+  dump:    { hip: [15, 24], neck: [17, 13], head: [19, 9], bl: [[13, 30], [11, 35]], fl: [[18, 30], [17, 36]], ba: [[14, 19], [11, 24]], fa: [[21, 7], [25, 2]] },
+  dumpfol: { hip: [15, 24], neck: [18, 13], head: [20, 9], bl: [[13, 30], [11, 35]], fl: [[18, 30], [17, 36]], ba: [[14, 19], [11, 24]], fa: [[23, 10], [28, 9]] },
   appr:  { hip: [15, 26], neck: [19, 16], head: [22, 12], bl: [[11, 31], [6, 37]],  fl: [[20, 31], [23, 38]], ba: [[12, 20], [7, 22]],  fa: [[13, 21], [8, 24]] },
   plant: { hip: [13, 29], neck: [18, 20], head: [21, 16], bl: [[16, 33], [13, 38]], fl: [[19, 33], [20, 38]], ba: [[13, 23], [6, 22]],  fa: [[14, 24], [7, 24]] },
   cheer2: { hip: [16, 24], neck: [16, 13], head: [17, 9], bl: [[14, 31], [12, 38]], fl: [[18, 31], [20, 38]], ba: [[13, 19], [16, 15]], fa: [[20, 8], [22, 2]] },
@@ -87,7 +91,6 @@ function limb(ctx, ox, a, b, w0, w1, color) {
 //  - setload: gambe piegate, gomiti larghi e mani a "finestra" sopra la fronte (aspetta la palla);
 //  - set: spinta, braccia e gambe distese verso l'alto;
 //  - passside: bagher laterale, affondo di lato con le braccia unite verso la palla;
-//  - dump: pallonetto di seconda, colpo con il braccio più lontano dalla rete (i=0; specchiato per la squadra di destra).
 // dy = abbassamento del busto (testa, spalle, pantaloncini); le coordinate di mani e gomiti sono già finali.
 const FRONTS = {
   setload: { dy: 4, hands: [[12.5, 8], [19.5, 8]], elbows: [[5.5, 15], [26.5, 15]],
@@ -97,8 +100,6 @@ const FRONTS = {
   // bagher laterale: di fronte, affondo verso la palla (a destra = verso la rete; specchiato se la palla è dietro)
   passside: { dy: 5, hands: [[27, 31], [27.5, 30]], elbows: [[21, 26], [23, 25]],
     hipL: [13, 36], hipR: [19, 36], kneeL: [8, 40], kneeR: [25, 39], footL: [3, 46], footR: [26, 46] },
-  dump: { dy: -1, hands: [[11.5, 0.5], [24, 27]], elbows: [[9.5, 8], [26, 20]],
-    hipL: [13, 31], hipR: [19, 31], kneeL: [11, 37.5], kneeR: [21, 38.5], footL: [12, 44], footR: [21, 45.5] },
 };
 const frontOf = pose => { const f = FRONTS[pose], d = f.dy;
   return { ...f, head: [16, 10 + d], sh: [[10, 17 + d], [22, 17 + d]] }; };
@@ -141,7 +142,7 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   const hl = !W ? 4 : P.hs === 2 ? 4 : P.hs === 3 ? 6 : 8;   // giocatrici: capelli lunghi, caschetto o raccolti
   ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, hl); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, hl);
   if (W && P.hs === 2) { ctx.beginPath(); ctx.ellipse(ox + hx, hy - 6.2, 2.2, 1.8, 0, 0, 7); ctx.fill(); }   // chignon
-  if (W && !B) { ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1); }
+  if (W) { ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1); }
   if (B) { ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx - 3.5, hy - 1, 7, 2); }
   else { ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx - 2.5, hy - 1, 1, 1.4); ctx.fillRect(ox + hx + 1.5, hy - 1, 1, 1.4); }
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1);
@@ -224,8 +225,9 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   const [hx, hy] = s.head;
   limb(ctx, ox, s.neck, lerpP(s.neck, s.head, 0.45), 3.2, 3.2, skinD);
   ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(ox + hx, hy, 4.2, 4.8, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = skin; ctx.fillRect(ox + hx + 3.5, hy, 2, 2);                       // naso
-  ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 3, 4, 1);                    // mascella
+  // naso piccolo (alla Power Spikes), più fine per le giocatrici; mento morbido
+  ctx.fillStyle = skin; if (W) ctx.fillRect(ox + hx + 3.6, hy + 0.4, 1, 1.2); else ctx.fillRect(ox + hx + 3.6, hy + 0.2, 1.4, 1.6);   // naso
+  ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy + 3.4, W ? 3 : 4, W ? 0.6 : 1);                                       // mascella
   if (W) femHairSide(ctx, ox, hx, hy, P, hair);
   const buzz = !W && P.ms === 1;   // rasati: capelli corti e radi
   ctx.fillStyle = buzz ? shade(hair, 1.25) : hair; ctx.beginPath(); ctx.ellipse(ox + hx - 0.8, hy - (buzz ? 3.4 : 2.8), buzz ? 4.4 : 4.8, buzz ? 2.4 : 3.2, 0, 0, 7); ctx.fill();
@@ -233,7 +235,11 @@ function drawPlayer(ctx, ox, pose, P, hair) {
   if (!W && P.ms === 3) for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(ox + hx - 4 + k * 2.2, hy - 5 + (k % 2), 1.4, 0, 7); ctx.fill(); }   // ricci
   ctx.fillStyle = shade(hair, 1.55); ctx.fillRect(ox + hx - 2, hy - 5, 4, 1);
   ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 1, hy - 1, 1, 2);                    // orecchio
-  ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx + 2, hy - 1, 1, 1);                // occhio
+  // occhio grande con il bianco (stile anime di Power Spikes); giocatrici: ciglia e labbra
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(ox + hx + 1.5, hy - 1.2, 1, 1.1);
+  ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx + 2.4, hy - 1.3, 1, 1.3);          // occhio
+  if (W) { ctx.fillRect(ox + hx + 1.2, hy - 1.9, 2.2, 0.5); ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx + 2.4, hy + 2.4, 1.3, 0.7); }
+  else { ctx.fillStyle = skinD; ctx.fillRect(ox + hx + 2.4, hy + 2.5, 1.2, 0.5); }   // bocca
   if (B) {
     ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx + 0.5, hy - 1.5, 4.5, 2);          // occhiali da sole
     ctx.fillStyle = '#5ac8f0'; ctx.fillRect(ox + hx + 3, hy - 1.5, 1, 1);
@@ -407,18 +413,33 @@ function makeRefTex(scene, pose) {
   const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#22407a'); g.addColorStop(1, '#122650');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   const px = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
-  const shirt = '#f0f0f6', sd = '#c8c8d6', skin = '#f0c4a4', sk2 = '#d09878';
-  // busto
-  px(18, 24, 20, 20, shirt); px(27, 24, 2, 20, sd); px(20, 30, 4, 4, '#d0a020'); px(21, 31, 2, 2, '#4040a0');
-  px(25, 22, 6, 3, '#2a2a3a');
-  // testa
-  px(22, 6, 12, 15, skin); px(21, 9, 1, 8, sk2); px(34, 9, 1, 8, sk2);
-  px(21, 3, 14, 5, '#e8e8e0'); px(20, 5, 3, 7, '#d8d8d0'); px(33, 5, 3, 7, '#d8d8d0');
-  px(24, 12, 2, 2, '#30304a'); px(30, 12, 2, 2, '#30304a'); px(27, 14, 2, 3, sk2);
-  px(26, 18, 4, 1, '#a05050');
-  const arm = (pts, col = shirt) => { for (let i = 0; i < pts.length - 1; i++) thick(c, 0, pts[i], pts[i + 1], 4, col); const h = pts[pts.length - 1]; px(h[0] - 2, h[1] - 2, 4, 4, skin); };
+  const shirt = '#f2f2f8', sd = '#c4c4d4', skin = '#f0c4a4', sk2 = '#d09878', hairC = '#d8d8d0', hairD = '#a8a8a0';
+  const path = (pts, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) p.length === 4 ? c.quadraticCurveTo(p[0], p[1], p[2], p[3]) : c.lineTo(p[0], p[1]); c.closePath(); c.fill(); };
+  // busto: camicia bianca con spalle arrotondate, ombra a destra, taschino con stemma della federazione
+  path([[15, 44], [16, 30], [17, 25, 22, 24], [34, 24], [39, 25, 40, 30], [41, 44]], shirt);
+  path([[33, 24], [39, 25, 40, 30], [41, 44], [35, 44], [36, 32]], sd);
+  px(27.5, 27, 1, 17, sd); px(28, 30, 1, 1, '#9898a8'); px(28, 35, 1, 1, '#9898a8'); px(28, 40, 1, 1, '#9898a8');   // abbottonatura
+  px(19, 31, 6, 6, '#e6e6f0'); px(20, 32, 4, 4, '#d0a020'); px(21, 33, 2, 2, '#2040a0');                            // stemma
+  path([[23, 23], [28, 28], [33, 23], [31, 22], [28, 25], [25, 22]], '#2a2a3a');                                     // colletto
+  // collo e testa: capelli grigi pettinati, orecchie, sopracciglia, occhi, naso, baffi
+  px(25, 19, 6, 5, sk2);
+  c.fillStyle = skin; c.beginPath(); c.ellipse(28, 12.5, 6, 7.2, 0, 0, 7); c.fill();
+  px(21, 11, 2, 4, sk2); px(33, 11, 2, 4, sk2);
+  c.fillStyle = hairC; c.beginPath(); c.ellipse(28, 7, 6.6, 3.6, 0, Math.PI, Math.PI * 2); c.fill();
+  px(21.5, 6, 2, 6, hairC); px(32.5, 6, 2, 6, hairC); px(24, 4.5, 8, 1, '#f0f0e8'); px(22, 8, 1, 3, hairD); px(33, 8, 1, 3, hairD);
+  px(24, 9.5, 3, 1, '#9a9a90'); px(29, 9.5, 3, 1, '#9a9a90');                                                       // sopracciglia
+  px(24, 11, 3, 2, '#ffffff'); px(29, 11, 3, 2, '#ffffff'); px(25, 11, 2, 2, '#30304a'); px(30, 11, 2, 2, '#30304a');
+  px(27.5, 13, 1, 3, sk2); px(26, 16, 4, 1, hairD); px(26.5, 18, 3, 1, '#a05050');                                 // naso, baffi, bocca
+  // fischietto al collo con il cordino
+  c.strokeStyle = '#202030'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(25, 23); c.quadraticCurveTo(26, 28, 28, 30); c.quadraticCurveTo(30, 28, 31, 23); c.stroke();
+  LIMB_K = 1.12;   // (la corporatura dei giocatori non vale per l'arbitro)
+  const arm = (pts, col = shirt) => {
+    for (let i = 0; i < pts.length - 1; i++) limb(c, 0, pts[i], pts[i + 1], i ? 3.8 : 5, 3.6, i ? skin : col);   // manica e avambraccio
+    const h = pts[pts.length - 1]; c.fillStyle = skin; c.beginPath(); c.arc(h[0], h[1], 2.1, 0, 7); c.fill();
+  };
+  const whistle = (x, y) => { px(x - 1.5, y - 1, 3, 2, '#c8c8d0'); px(x + 1.5, y - 0.5, 1, 1, '#909098'); };
   switch (pose) {
-    case 'whistle': arm([[20, 26], [16, 30], [24, 20]]); px(27, 17, 3, 2, '#c0c0c0'); arm([[36, 26], [44, 22], [46, 10]]); break;
+    case 'whistle': arm([[20, 26], [16, 30], [24, 20]]); whistle(27, 18); arm([[36, 26], [44, 22], [46, 10]]); break;
     case 'pointL': arm([[20, 26], [10, 28], [3, 32]]); arm([[36, 26], [46, 28], [53, 26]]); break;
     case 'pointR': arm([[20, 26], [10, 28], [3, 26]]); arm([[36, 26], [46, 28], [53, 32]]); break;
     case 'out': arm([[20, 26], [16, 16], [16, 6]]); arm([[36, 26], [40, 16], [40, 6]]); break;
@@ -609,17 +630,40 @@ function makeHallTex(scene, floorHex) {
   texDone(t); return key;
 }
 
-// campo verde in prospettiva (schermata formazione)
-// colore del campo nella schermata formazione (nel video: ITA verde, SWE giallo)
-const LINEUP_COLORS = { ITA: '#18d818', SWE: '#f8c020', FRA: '#2858e0', GER: '#e0a030', GBR: '#d82828', ESP: '#e04020', NOR: '#d83030', DEN: '#d83030', BRA: '#f8d020' };
+// schermata della formazione (arcade): palazzetto con il pubblico, rete e campo in prospettiva nel colore dell'arena
 function makeLineupCourt(scene, code) {
-  const key = 'lineup_' + code;
+  const key = 'lineup2_' + code;
   if (scene.textures.exists(key)) return key;
   const { t, c } = canvasTex(scene, key, 320, 224);
-  c.fillStyle = LINEUP_COLORS[code] || '#18d818'; c.fillRect(0, 0, 320, 224);
-  c.strokeStyle = '#ffffff'; c.lineWidth = 3;
-  c.beginPath(); c.moveTo(0, 40); c.lineTo(110, 40); c.lineTo(80, 208); c.lineTo(0, 208); c.stroke();
-  c.beginPath(); c.moveTo(110, 40); c.lineTo(320, 40); c.moveTo(80, 208); c.lineTo(320, 208); c.stroke();
-  c.beginPath(); c.moveTo(170, 40); c.lineTo(190, 208); c.moveTo(250, 40); c.lineTo(290, 208); c.moveTo(310, 40); c.lineTo(320, 70); c.stroke();
+  const R = seeded(hashStr('lineup:' + code)), fl = TEAMS[code].fl || 0x24a83a;
+  const floor = '#' + fl.toString(16).padStart(6, '0'), floorD = shade(floor, 0.62);
+  // muro del palazzetto con il pubblico e la fascia nei colori della squadra
+  const wall = c.createLinearGradient(0, 0, 0, 60); wall.addColorStop(0, '#0a0e24'); wall.addColorStop(1, '#1c2450');
+  c.fillStyle = wall; c.fillRect(0, 0, 320, 60);
+  const crowd = ['#e04040', '#f0d040', '#4080e0', '#f0f0f0', '#40c060', '#e080c0', '#f09040'];
+  for (let y = 6; y < 44; y += 4) for (let x = (y / 4) % 2 * 2; x < 320; x += 4) {
+    c.fillStyle = shade(crowd[Math.floor(R() * crowd.length)], 0.55 + y / 110); c.fillRect(x, y, 2, 2);
+    c.fillStyle = 'rgba(240,200,170,' + (0.25 + y / 120) + ')'; c.fillRect(x, y - 1.5, 2, 1.2);
+  }
+  c.fillStyle = TEAMS[code].sh; c.fillRect(0, 46, 320, 8); c.fillStyle = TEAMS[code].tr; c.fillRect(0, 46, 320, 1); c.fillRect(0, 53, 320, 1);
+  // pavimento in prospettiva: fuori campo più scuro, campo nel colore dell'arena, doghe verso il punto di fuga
+  c.fillStyle = floorD; c.fillRect(0, 54, 320, 170);
+  const vx = 160, vy = -120, edge = (x0, y) => vx + (x0 - vx) * (y - vy) / (224 - vy);
+  c.fillStyle = floor; c.beginPath(); c.moveTo(edge(-10, 64), 64); c.lineTo(edge(330, 64), 64); c.lineTo(330, 224); c.lineTo(-10, 224); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(0,0,0,0.08)'; c.lineWidth = 1;
+  for (let x0 = -200; x0 <= 520; x0 += 16) { c.beginPath(); c.moveTo(edge(x0, 64), 64); c.lineTo(x0, 224); c.stroke(); }
+  const shine = c.createLinearGradient(0, 64, 0, 224); shine.addColorStop(0, 'rgba(255,255,255,0.18)'); shine.addColorStop(0.5, 'rgba(255,255,255,0)'); c.fillStyle = shine; c.fillRect(0, 64, 320, 160);
+  // linee del campo: laterali, linea centrale sotto la rete e linea d'attacco
+  c.strokeStyle = '#ffffff'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(edge(-10, 64), 64); c.lineTo(-10, 224); c.moveTo(edge(330, 64), 64); c.lineTo(330, 224);
+  c.moveTo(edge(-10, 64), 64); c.lineTo(edge(330, 64), 64); c.moveTo(edge(-10, 118), 118); c.lineTo(edge(330, 118), 118); c.stroke();
+  // rete con i pali e la fascia bianca
+  c.fillStyle = '#d8d8e0'; c.fillRect(26, 22, 4, 44); c.fillRect(290, 22, 4, 44);
+  c.fillStyle = 'rgba(20,20,30,0.55)'; c.fillRect(30, 26, 260, 24);
+  c.strokeStyle = 'rgba(230,230,240,0.35)'; c.lineWidth = 0.6;
+  for (let x = 30; x <= 290; x += 5) { c.beginPath(); c.moveTo(x, 26); c.lineTo(x, 50); c.stroke(); }
+  for (let y = 26; y <= 50; y += 5) { c.beginPath(); c.moveTo(30, y); c.lineTo(290, y); c.stroke(); }
+  c.fillStyle = '#f4f4f8'; c.fillRect(30, 24, 260, 3); c.fillRect(30, 49, 260, 1.5);
+  c.fillStyle = '#e03030'; c.fillRect(70, 20, 2, 32); c.fillRect(248, 20, 2, 32);   // antenne
   texDone(t); return key;
 }

@@ -1004,9 +1004,10 @@ class MatchScene extends Phaser.Scene {
     // palleggio di seconda (vietato nel beach: il palleggio deve andare dritto, niente "dump")
     if (p.z > 2 && !this.beach && (t.human ? t.surprise : (Math.random() < 0.05 + t.skill * 0.05))) {
       this.touch(t, p, 'spike');
-      p.state = 'dump'; p.animT = 0.3;   // di fronte, colpo con il braccio più lontano dalla rete
-      let v = PHYS.arcTo(b.x, b.h, -side * rnd(25, 55), 0, b.h + 8);
-      for (let i = 0; i < 10 && !PHYS.clears(b.x, b.h, v, 3); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(25, 55), 0, b.h + 12 + i * 4);
+      p.state = 'dump'; p.animT = 0.3;   // braccio teso verso la rete e colpo secco del polso
+      // pallonetto dell'alzatore: palla spinta in basso, corta, appena oltre la rete (dove non c'è nessuno a difendere)
+      let v = PHYS.arcTo(b.x, b.h, -side * rnd(12, 34), 0, b.h + 2);
+      for (let i = 0; i < 10 && !PHYS.clears(b.x, b.h, v, 3); i++) v = PHYS.arcTo(b.x, b.h, -side * rnd(14, 38), 0, b.h + 5 + i * 3);
       b.vx = v.vx; b.vy = v.vy; b.lastKind = 'dink';
       this.announce(`SURPRISE ATTACK! ${p.name}`); SFX.set(); t.surprise = false; t.combo = false; return;
     }
@@ -1453,6 +1454,7 @@ class MatchScene extends Phaser.Scene {
       if (tj !== null && tj < CFG.APPR_T) return tj < CFG.PLANT_T ? 'plant' : 'appr';
     }
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
+    if (st === 'dump') return p.animT > 0.2 ? 'dump' : 'dumpfol';
     // esultanze diverse per ogni giocatore, che cambiano ogni tanto: braccia al cielo, pugno, salto a braccia larghe
     if (st === 'cheer') return ['cheer', 'cheer2', 'cheer3'][(p.ni + Math.floor(this.stateT / 0.7)) % 3];
     if (st === 'pass' && p.animT > 0.22) return 'passload';

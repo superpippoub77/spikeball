@@ -130,6 +130,8 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Cambiare le **caratteristiche dei giocatori** (altezza, corporatura, muro, ricezione, velocità, potenza) | `gfx.js` → `playerTraits`; effetti in `match.js` (`trOf`: movePlayer, checkContacts, doSpike) |
 | Cambiare la **rincorsa** (passo lungo con balzo, arrivo a piedi pari) | `gfx.js` → `SKEL.appr`, `SKEL.plant`; tempi `CFG.APPR_T`, `CFG.PLANT_T`; `match.js` → `takeoffIn`, `motion` |
 | Cambiare chi **riceve** secondo la zona (prima linea / difesa) | `config.js` → `FRONT_ZONE`; `match.js` → `choosePlayer` |
+| Cambiare il **pallonetto dell'alzatore** | `gfx.js` → `SKEL.dump`, `SKEL.dumpfol`; `match.js` → `doSet` (traiettoria) |
+| Ridisegnare l'**arbitro** o la **presentazione della formazione** | `gfx.js` → `makeRefTex` (HD: `drawRefHD`), `makeLineupCourt`; `scenes.js` → `LineupScene` |
 | Cambiare le **esultanze** | `gfx.js` → `SKEL.cheer`, `cheer2`, `cheer3`; `match.js` → `motion` |
 | Cambiare l'**alone rosso e la scritta P1/P2** del giocatore comandato | `match.js` → `render` (`p.glow`, `t.tag`) |
 | Cambiare dove guarda la **telecamera** | `match.js` → inizio di `render` |
