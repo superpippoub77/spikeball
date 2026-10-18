@@ -22,7 +22,8 @@ const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
 // braccio dietro (ba) e davanti (fa: gomito, mano). Il giocatore guarda a destra. Per cambiare una posa basta spostare i punti.
 const SKEL = {
-  idle:  { hip: [14, 25], neck: [17, 14], head: [19, 9], bl: [[17, 31], [13, 38]], fl: [[20, 31], [17, 38]], ba: [[18, 21], [22, 23]], fa: [[19, 21], [23, 22]] },
+  // posizione d'attesa come in Power Spikes: ginocchia ben piegate, busto in avanti, braccia piegate davanti pronte
+  idle:  { hip: [13, 27], neck: [18, 17], head: [21, 13], bl: [[18, 32], [13, 38]], fl: [[21, 32], [18, 38]], ba: [[19, 24], [24, 26]], fa: [[20, 24], [25, 25]] },
   run1:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[13, 30], [10, 36]], fl: [[20, 30], [20, 38]], ba: [[15, 19], [13, 22]], fa: [[21, 18], [23, 15]] },
   run2:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[16, 31], [17, 38]], fl: [[18, 30], [13, 34]], ba: [[20, 18], [22, 15]], fa: [[15, 19], [13, 22]] },
   // bagher in due tempi: passload = piegati sulle gambe, braccia tese e unite in basso; pass = spinta di gambe e braccia verso l'alto
@@ -32,7 +33,8 @@ const SKEL = {
   jump:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 30], [12, 35]], fl: [[19, 30], [16, 36]], ba: [[13, 17], [10, 14]], fa: [[14, 18], [11, 16]] },
   // schiacciata in tre tempi: spkload = corpo inarcato, braccio d'attacco caricato dietro la testa, l'altro punta la palla;
   // spike = braccio teso in alto davanti al colpo; spkfol = accompagnamento, il braccio scende davanti al corpo
-  spkload: { hip: [14, 24], neck: [15, 13], head: [17, 9], bl: [[12, 29], [14, 35]], fl: [[16, 30], [18, 35]], ba: [[20, 9], [23, 5]], fa: [[11, 7], [7, 11]] },
+  // (caricamento: gomito del braccio d'attacco alto e tirato indietro, mano dietro la testa, l'altro braccio punta la palla)
+  spkload: { hip: [14, 24], neck: [14, 13], head: [16, 9], bl: [[12, 29], [14, 35]], fl: [[16, 30], [18, 35]], ba: [[20, 10], [25, 6]], fa: [[8, 11], [12, 5]] },
   spike: { hip: [15, 24], neck: [16, 13], head: [18, 9],  bl: [[13, 30], [15, 36]], fl: [[18, 30], [15, 37]], ba: [[19, 16], [22, 18]], fa: [[19, 7], [22, 2]] },
   spkfol: { hip: [15, 24], neck: [18, 14], head: [21, 10], bl: [[14, 30], [13, 36]], fl: [[18, 30], [18, 36]], ba: [[14, 18], [11, 21]], fa: [[22, 17], [23, 23]] },
   block: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [15, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 6], [17, 1]],  fa: [[18, 6], [19, 1]] },
@@ -50,7 +52,7 @@ const SKEL = {
   cheer3: { hip: [16, 23], neck: [16, 12], head: [17, 8], bl: [[13, 29], [10, 34]], fl: [[19, 29], [22, 34]], ba: [[11, 11], [6, 7]], fa: [[21, 11], [26, 7]] },
   cheer: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[14, 31], [13, 38]], fl: [[18, 31], [19, 38]], ba: [[13, 8], [10, 3]],  fa: [[20, 8], [23, 3]] },
   // battuta da fermo: mentre la palla scende il braccio d'attacco si carica dietro la testa, l'altro indica la palla
-  srvload: { hip: [15, 25], neck: [15, 14], head: [17, 10], bl: [[13, 31], [10, 38]], fl: [[18, 31], [20, 38]], ba: [[20, 9], [23, 5]], fa: [[11, 7], [7, 11]] },
+  srvload: { hip: [15, 25], neck: [14, 14], head: [16, 10], bl: [[13, 31], [10, 38]], fl: [[18, 31], [20, 38]], ba: [[20, 10], [24, 5]], fa: [[8, 12], [12, 6]] },
   toss:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[14, 18], [12, 21]], fa: [[19, 8], [20, 3]] },
   sad:   { hip: [15, 25], neck: [17, 15], head: [19, 12], bl: [[14, 31], [13, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 20], [15, 25]], fa: [[18, 20], [17, 25]] }
 };
@@ -581,16 +583,45 @@ function makePattern(scene) {
 }
 
 // ---------------- palazzetto ----------------
-function crowd(c, x0, y0, w, h, seed, dens = 1) {
-  if (GR > 1) return crowdHD(c, x0, y0, w, h, seed, dens);
-  const R = seeded(seed);
-  const shirts = ['#c8c8c8', '#e0e0e0', '#a04040', '#4050a0', '#808090', '#c09060', '#606070', '#904070', '#d0d0d0'];
-  for (let y = y0; y < y0 + h; y += 6) for (let x = x0 + ((y / 6) % 2) * 2; x < x0 + w; x += 4) {
-    if (R() > 0.92 * dens) continue;
-    c.fillStyle = shirts[Math.floor(R() * shirts.length)]; c.fillRect(x, y + 3, 3, 3);
-    c.fillStyle = R() < 0.7 ? '#d8a888' : '#a07050'; c.fillRect(x + 1, y + 1, 2, 2);
-    c.fillStyle = R() < 0.6 ? '#2a1a10' : '#5a4030'; c.fillRect(x + 1, y, 2, 1);
+// uno spettatore (come nel pubblico di Power Spikes): testa con capelli, occhi e bocca, spalle con la maglia;
+// qualcuno ha il cappellino, i capelli lunghi o è calvo, qualcuno alza le braccia. (x, y) = angolo in alto, circa 9 x 14 px
+const FAN_SKINS = ['#f0c4a4', '#e8b898', '#d8a888', '#b07a58', '#8a5a3a'], FAN_HAIRS = ['#2a1a10', '#4a3020', '#1a1a1a', '#8a6030', '#d0b080', '#6a6a6a'];
+function fanPerson(c, x, y, R, pal) {
+  const sh = pal[Math.floor(R() * pal.length)], sk = FAN_SKINS[Math.floor(R() * FAN_SKINS.length)], hr = FAN_HAIRS[Math.floor(R() * FAN_HAIRS.length)];
+  const kind = R(), up = R() < 0.12, cx = x + 4, cap = pal[Math.floor(R() * pal.length)];
+  if (GR > 1) {   // versione HD: forme morbide
+    c.fillStyle = sh; c.beginPath(); c.moveTo(cx - 4.4, y + 15); c.quadraticCurveTo(cx - 4.4, y + 7.4, cx, y + 7.2); c.quadraticCurveTo(cx + 4.4, y + 7.4, cx + 4.4, y + 15); c.fill();
+    c.fillStyle = shade(sh, 0.78); c.beginPath(); c.moveTo(cx + 1.6, y + 7.6); c.quadraticCurveTo(cx + 4.4, y + 7.6, cx + 4.4, y + 15); c.lineTo(cx + 2.4, y + 15); c.fill();
+    if (up) { c.strokeStyle = sh; c.lineWidth = 1.8; c.beginPath(); c.moveTo(cx - 3.4, y + 9); c.lineTo(cx - 5.2, y + 2); c.moveTo(cx + 3.4, y + 9); c.lineTo(cx + 5.2, y + 2); c.stroke();
+      c.fillStyle = sk; c.beginPath(); c.arc(cx - 5.3, y + 1.4, 1.1, 0, 7); c.arc(cx + 5.3, y + 1.4, 1.1, 0, 7); c.fill(); }
+    if (kind > 0.15 && kind < 0.35) { c.fillStyle = hr; c.beginPath(); c.ellipse(cx, y + 4.6, 3.6, 4.4, 0, 0, 7); c.fill(); }   // capelli lunghi dietro
+    c.fillStyle = sk; c.beginPath(); c.ellipse(cx, y + 3.9, 2.9, 3.4, 0, 0, 7); c.fill();
+    c.fillStyle = shade(sk, 0.85); c.beginPath(); c.ellipse(cx + 1.6, y + 4.2, 1.1, 2.6, 0, 0, 7); c.fill();
+    if (kind >= 0.35 && kind < 0.45) { c.fillStyle = cap; c.beginPath(); c.ellipse(cx, y + 1.8, 3.1, 2, 0, Math.PI, 0); c.fill(); c.fillRect(cx, y + 1.4, 4.2, 0.9); }   // cappellino
+    else if (kind >= 0.15) { c.fillStyle = hr; c.beginPath(); c.ellipse(cx, y + 2, 3.1, 2.1, 0, Math.PI * 0.95, Math.PI * 2.05); c.fill(); }
+    c.fillStyle = '#1c1210'; c.beginPath(); c.arc(cx - 1.1, y + 3.9, 0.42, 0, 7); c.arc(cx + 1.1, y + 3.9, 0.42, 0, 7); c.fill();
+    c.fillStyle = up ? '#8a2020' : shade(sk, 0.62); c.beginPath(); c.ellipse(cx, y + 5.6, up ? 0.8 : 0.9, up ? 0.6 : 0.3, 0, 0, 7); c.fill();
+    return;
   }
+  const px = (a, b, w, h, col) => { c.fillStyle = col; c.fillRect(a, b, w, h); };
+  px(cx - 4, y + 8, 9, 7, sh); px(cx + 3, y + 8, 2, 7, shade(sh, 0.8)); px(cx - 4, y + 8, 1, 7, shade(sh, 1.12));   // spalle e maglia
+  if (up) { px(cx - 6, y + 1, 2, 8, sh); px(cx + 5, y + 1, 2, 8, sh); px(cx - 6, y, 2, 2, sk); px(cx + 5, y, 2, 2, sk); }
+  if (kind > 0.15 && kind < 0.35) { px(cx - 3, y + 1, 7, 7, hr); }   // capelli lunghi dietro
+  px(cx - 1, y + 7, 3, 1, shade(sk, 0.75));
+  px(cx - 2, y + 1, 5, 6, sk); px(cx - 3, y + 2, 7, 4, sk); px(cx + 2, y + 2, 1, 5, shade(sk, 0.86));             // testa
+  if (kind < 0.15) px(cx - 1, y + 1, 2, 1, shade(sk, 1.15));                                                        // calvo
+  else if (kind < 0.35) { px(cx - 3, y, 7, 2, hr); }
+  else if (kind < 0.45) { px(cx - 3, y, 7, 2, cap); px(cx + 3, y + 1, 2, 1, cap); }                                // cappellino
+  else { px(cx - 2, y, 5, 1, hr); px(cx - 3, y + 1, 7, 1, hr); px(cx - 3, y + 2, 1, 2, hr); }
+  px(cx - 1, y + 3, 1, 1, '#201410'); px(cx + 1, y + 3, 1, 1, '#201410');                                           // occhi
+  px(cx, y + 5, 1, 1, up ? '#8a2020' : shade(sk, 0.66));                                                             // bocca
+}
+// tribuna piena di spettatori a file sfalsate (le file davanti coprono il busto di quelle dietro)
+function crowd(c, x0, y0, w, h, seed, dens = 1) {
+  const R = seeded(seed), shirts = ['#c8c8c8', '#e0e0e0', '#a04040', '#4050a0', '#808090', '#c09060', '#606070', '#904070', '#d0d0d0', '#2a7a4a', '#d8b030'];
+  c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip();
+  for (let y = y0 - 4, r = 0; y < y0 + h; y += 10, r++) for (let x = x0 - 4 + (r % 2) * 4; x < x0 + w; x += 8) if (R() < 0.94 * dens) fanPerson(c, x + (R() - 0.5), y, R, shirts);
+  c.restore();
 }
 const ADS1 = ['VOLTEX', 'MIRAKO', 'KOBAYA', 'SESIA', 'NORDLUX', 'ALPINA'];
 const ADS2 = ['SPIKE COLA', 'NETWORX', 'RIVA', 'ZEPHYR', 'KOMA'];
@@ -663,7 +694,25 @@ function makeHallTex(scene, floorHex) {
   texDone(t); return key;
 }
 
-// schermata della formazione (arcade): palazzetto con il pubblico, rete e campo in prospettiva nel colore dell'arena
+// schermata della formazione nel modello originale (ARCADE): campo verde in prospettiva come in Power Spikes,
+// con le righe e le strisce del taglio dell'erba
+const LINEUP_COLORS = { ITA: '#18c818', SWE: '#f0b818', FRA: '#2858e0', GER: '#e0a030', GBR: '#d82828', ESP: '#e04020', NOR: '#d83030', DEN: '#d83030', BRA: '#f0c818' };
+function makeLineupClassic(scene, code) {
+  const key = 'lineupC_' + code;
+  if (scene.textures.exists(key)) return key;
+  const { t, c } = canvasTex(scene, key, 320, 224);
+  const base = LINEUP_COLORS[code] || '#18c818';
+  const gr = c.createLinearGradient(0, 0, 320, 224); gr.addColorStop(0, shade(base, 1.12)); gr.addColorStop(1, shade(base, 0.82));
+  c.fillStyle = gr; c.fillRect(0, 0, 320, 224);
+  for (let x = -224; x < 320; x += 12) { c.fillStyle = 'rgba(0,0,0,0.05)'; c.beginPath(); c.moveTo(x, 224); c.lineTo(x + 6, 224); c.lineTo(x + 230, 0); c.lineTo(x + 224, 0); c.fill(); }   // strisce del campo
+  c.strokeStyle = '#ffffff'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(0, 40); c.lineTo(110, 40); c.lineTo(80, 208); c.lineTo(0, 208); c.stroke();
+  c.beginPath(); c.moveTo(110, 40); c.lineTo(320, 40); c.moveTo(80, 208); c.lineTo(320, 208); c.stroke();
+  c.beginPath(); c.moveTo(170, 40); c.lineTo(190, 208); c.moveTo(250, 40); c.lineTo(290, 208); c.stroke();
+  texDone(t); return key;
+}
+
+// schermata della formazione (HD e 3D): palazzetto con il pubblico, rete e campo in prospettiva nel colore dell'arena
 function makeLineupCourt(scene, code) {
   const key = 'lineup2_' + code;
   if (scene.textures.exists(key)) return key;

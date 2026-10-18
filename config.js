@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.6.3';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.7.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -166,7 +166,8 @@ const DEFAULT_RANKING = [
 
 // ---------------- stato globale della partita arcade ----------------
 const GS = {
-  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1, women: false,   // women: versione femminile (scelta in SELECT YOUR TEAM)
+  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1, women: false,
+  shake: (() => { try { return localStorage.getItem('sf91_shake') !== '0'; } catch (e) { return true; } })(),   // women: versione femminile (scelta in SELECT YOUR TEAM); shake: scossa dello schermo su schiacciate e muri
   ranking: null, attract: 0,
   loadRanking() {
     if (this.ranking) return this.ranking;
@@ -174,6 +175,7 @@ const GS = {
     if (!this.ranking) this.ranking = DEFAULT_RANKING.map(x => ({ ...x }));
     return this.ranking;
   },
+  saveOpts() { try { localStorage.setItem('sf91_shake', this.shake ? '1' : '0'); } catch (e) {} },   // la scelta della scossa resta salvata
   saveRanking() { try { localStorage.setItem('sf91_rank', JSON.stringify(this.ranking)); } catch (e) {} }
 };
 

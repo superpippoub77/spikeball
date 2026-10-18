@@ -104,15 +104,12 @@ function makeModernArena(scene, id) {
   const W = 560, H = 224 - ATOP, Y = v => v - ATOP;
   const { t, c } = canvasTex(scene, key, W, H);
   const R = seeded(hashStr(id));
-  const person = GR > 1 ? (x, y, s, pal) => crowdPersonHD(c, x, y, pal, R) : (x, y, s, pal) => {
-    c.fillStyle = pal[Math.floor(R() * pal.length)]; c.fillRect(x, y + 3 * s, 4 * s, 4 * s);
-    c.fillStyle = R() < 0.7 ? '#e0b090' : '#8a5a3a'; c.fillRect(x + s, y, 2 * s, 3 * s);
-    c.fillStyle = R() < 0.6 ? '#2a1a10' : '#6a4a2a'; c.fillRect(x + s, y, 2 * s, s);
-  };
-  const crowdRows = (y0, y1, seat, pal, dens, step = 6) => {
-    for (let y = y0; y < y1; y += step) {
-      c.fillStyle = seat; c.fillRect(0, Y(y) + 5, W, 2);
-      for (let x = ((y / step) % 2) * 3; x < W; x += 5) if (R() < dens) person(x, Y(y), 1, pal);
+  // spettatori con il volto riconoscibile (fanPerson in gfx.js), a file sfalsate sui gradoni
+  const person = (x, y, s, pal) => fanPerson(c, x, y, R, pal);
+  const crowdRows = (y0, y1, seat, pal, dens) => {
+    for (let y = y0, r = 0; y < y1; y += 11, r++) {
+      c.fillStyle = seat; c.fillRect(0, Y(y) + 12, W, 2);
+      for (let x = (r % 2) * 4; x < W; x += 8) if (R() < dens) person(x, Y(y), 1, pal);
     }
   };
   const fans = ['#f2d020', '#2a7a3a', '#e8e8e8', '#2a48c8', '#d83030', '#202020', '#9ad0f0', '#f07018'];
@@ -122,7 +119,7 @@ function makeModernArena(scene, id) {
     c.fillStyle = g; c.fillRect(0, 0, W, H);
     for (let x = 10; x < W; x += 9) { c.fillStyle = '#ffffff'; c.fillRect(x, Y(-104), 3, 2); c.fillStyle = 'rgba(255,255,240,0.25)'; c.fillRect(x - 2, Y(-102), 7, 3); }
     c.fillStyle = '#3a2a1c'; c.fillRect(0, Y(-92), W, 270);
-    crowdRows(-92, 176, '#a8581c', fans, 0.92, 7);
+    crowdRows(-92, 176, '#a8581c', fans, 0.92);
     // scale laterali
     for (const sx of [60, 500]) { c.fillStyle = '#2a2e38'; c.beginPath(); c.moveTo(sx - 4, Y(-92)); c.lineTo(sx + 4, Y(-92)); c.lineTo(sx + 22, Y(176)); c.lineTo(sx + 10, Y(176)); c.fill(); }
     // tunnel con scalinata dietro la rete
@@ -135,7 +132,7 @@ function makeModernArena(scene, id) {
     c.fillStyle = '#2a2c34'; c.fillRect(0, Y(-80), W, 60);
     for (let x = 16; x < W; x += 34) { c.fillStyle = '#0a0e1a'; c.beginPath(); c.arc(x, Y(-52), 9, 0, 7); c.fill(); c.fillStyle = '#28408a'; c.beginPath(); c.arc(x, Y(-52), 7, 0, 7); c.fill(); }
     c.fillStyle = '#3a1a1e'; c.fillRect(0, Y(-20), W, 196);
-    crowdRows(-18, 176, '#6a1e24', fans, 0.55, 8);
+    crowdRows(-18, 176, '#6a1e24', fans, 0.55);
     for (let x = 0; x < W; x += 70) { c.fillStyle = '#c8a020'; c.fillRect(x + 10, Y(150), 40, 6); }
   } else if (id === 'gym') {
     c.fillStyle = '#c8bca0'; c.fillRect(0, 0, W, H);
@@ -145,7 +142,7 @@ function makeModernArena(scene, id) {
     c.fillStyle = '#e8e0cc'; c.fillRect(0, Y(-24), W, 200);
     for (let y = -10; y < 170; y += 24) { c.fillStyle = '#d8d0bc'; c.fillRect(0, Y(y), W, 1); }
     // spalti in legno con pochi spettatori
-    for (let y = 110; y < 176; y += 9) { c.fillStyle = '#a8784a'; c.fillRect(0, Y(y) + 6, W, 3); for (let x = 0; x < W; x += 9) if (R() < 0.35) person(x, Y(y), 1, fans); }
+    for (let y = 104; y < 176; y += 12) { c.fillStyle = '#a8784a'; c.fillRect(0, Y(y) + 12, W, 3); for (let x = 0; x < W; x += 10) if (R() < 0.35) person(x, Y(y), 1, fans); }
     c.fillStyle = '#d02828'; c.fillRect(20, Y(20), 30, 40); c.fillStyle = '#ffffff'; c.fillRect(28, Y(30), 14, 20);
   } else if (id === 'school') {
     const g = c.createLinearGradient(0, 0, 0, Y(120)); g.addColorStop(0, '#5ab0f0'); g.addColorStop(1, '#bfe6ff');
@@ -173,7 +170,8 @@ const OPT = {
   target: ['ON', 'OFF'],
   rules: ['RALLY 25', 'RALLY 15', 'SIDE-OUT 15 (1991)'],
   fx: ['ON', 'OFF'],
-  women: ['MASCHILE', 'FEMMINILE'],   // versione del gioco: squadre maschili o femminili
+  women: ['MASCHILE', 'FEMMINILE'],
+  shake: ['ON', 'OFF'],               // scossa dello schermo su schiacciate e muri (GS.shake, vale in tutte le modalità)   // versione del gioco: squadre maschili o femminili
   players: PLAYER_COUNTS.map(n => n + ' CONTRO ' + n)   // giocatori in campo (FORMATIONS in config.js)
 };
 
@@ -403,11 +401,11 @@ class MatchSettingsScene extends Base {
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [
       ['women', 'SQUADRE (maschili / femminili)'], ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
-      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'],
+      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'], ['shake', 'SCOSSA DELLO SCHERMO'],
       ['players', 'GIOCATORI IN CAMPO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
     ];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 12.5, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 12.5, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(305, 83, 'ball').setScale(1.3);
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 11.8, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 11.8, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
+    this.ballImg = this.add.image(305, 81, 'ball').setScale(1.3);
     this.add.text(160, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(5, '#9ab8f0')).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
   }
@@ -417,6 +415,7 @@ class MatchSettingsScene extends Base {
     if (k === 'ball') return '';
     if (k === 'start') return String(OPT.start[MSET.start]);
     if (k === 'play') return '►';
+    if (k === 'shake') return GS.shake ? 'ON' : 'OFF';
     return OPT[k][MSET[k]];
   }
   refresh() {
@@ -434,6 +433,7 @@ class MatchSettingsScene extends Base {
     if (k === 'field') cyc('arena', ARENAS.length);
     else if (k === 'ball') cyc('ball', BALLS.length);
     else if (k === 'start') cyc('start', OPT.start.length);
+    else if (k === 'shake') { GS.shake = !GS.shake; GS.saveOpts(); }
     else if (OPT[k]) cyc(k, OPT[k].length);
     else return;
     SFX.blip(); this.refresh();

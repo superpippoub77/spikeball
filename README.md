@@ -34,6 +34,11 @@
   - la battuta si alterna tra i due giocatori.
 - **Sabbia:** la sabbia si alza e schizza negli stacchi, negli atterraggi, nei tuffi e quando la palla cade. Restano le impronte, che spariscono dopo qualche secondo (il solco del tuffo, la conca della palla). Sulla sabbia si corre più piano che sul parquet.
 
+### Presentazione della formazione
+- Nella versione **ARCADE** è come l'originale: campo verde e figurine dei giocatori (volto, numero, nome).
+- In **HD** e **3D**: palazzetto e campo in prospettiva, con una scheda per giocatore (ruolo, altezza, specialità).
+- Va avanti da sola dopo qualche secondo anche se il computer è lento; con il pulsante si salta.
+
 ### Giocatori tutti diversi
 - Ogni giocatore (e giocatrice) ha **altezza**, **corporatura** e **capelli** suoi, sempre gli stessi per lo stesso nome.
 - Ha anche una **specialità**, scritta nella schermata FORMAZIONE insieme all'altezza in cm:
@@ -74,7 +79,8 @@
   - REBOUND INDICATOR: EASY/HARD/OFF;
   - ATTACK TARGET: ON/OFF;
   - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
-  - ARCADE FX: telecronaca, arbitro, volti, battute speciali di Power Spikes e leggera scossa dello schermo su schiacciate e muri sì/no.
+  - ARCADE FX: telecronaca, arbitro, volti, battute speciali di Power Spikes e leggera scossa dello schermo su schiacciate e muri sì/no;
+  - SCOSSA DELLO SCHERMO: ON/OFF (la scelta resta salvata; in partita si cambia anche con il tasto **V**, in tutte le modalità).
 - **In partita:**
   - pavimento lucido con i riflessi;
   - telecamera che allarga in battuta e stringe durante lo scambio;
