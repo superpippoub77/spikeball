@@ -13,6 +13,16 @@ python3 build_sheet2.py foglio-sprite-2.webp ../../photo-sprites.js
 (maglia bianca attaccata ai pantaloncini, pantaloncini rossi, pelle) e crea l'atlante. In `photo.js` → `photoFrame` ogni
 stato del giocatore sceglie il fotogramma della riga giusta. Un foglio nuovo con lo stesso schema si usa senza toccare il codice.
 
+## Palloni: palloni.webp
+Sfondo magenta, 4 righe x 8 fotogrammi: pallone moderno giallo-blu (PRO), classico bianco (CLASSIC), beach, moderno schiacciato.
+
+```sh
+python3 build_balls.py palloni.webp ../../ball-sprites.js
+```
+
+In HD e 3D `balls.js` usa questi fotogrammi: rotazione in 8 tempi con la luce ferma e schiacciamento all'impatto
+(a terra, schiacciata, muro). Nella versione ARCADE restano i palloni in pixel art.
+
 ## Foglio precedente (divisa nera)
 
 Dal foglio sprite fotografico (`foglio-sprite.webp`) ai fotogrammi del gioco. Serve Python 3 con `numpy`, `pillow`, `scipy`.

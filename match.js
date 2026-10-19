@@ -86,6 +86,10 @@ class MatchScene extends Phaser.Scene {
     this.shadowG = this.add.graphics().setDepth(5);
     this.fx = this.add.graphics().setDepth(990);
     this.ballSpr = this.add.image(0, 0, md ? md.ball : 'ball').setDepth(1000);
+    // palloni del foglio sprite (balls.js, HD e 3D): fotogrammi di rotazione e di schiacciamento
+    const bk = md ? md.ball : 'ball';
+    this.ballKey = this.textures.exists('ballfx_' + bk) ? bk : null; this.squashT = 0;
+    if (this.ballKey) this.ballSpr.setTexture('ballfx_' + bk, 'r0');
     if (md && md.arena !== 'classic' && !md.sand) {
       // riflessi sul pavimento lucido
       this.ballRef = this.add.image(0, 0, md.ball).setDepth(-15).setAlpha(0.3).setFlipY(true);
@@ -1104,7 +1108,7 @@ class MatchScene extends Phaser.Scene {
       for (let i = 0; i < 30 && !PHYS.clears(b.x, b.h, v, 2); i++) { if (d < 8.7 * K) d += 0.3; else sp *= 0.92; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
     }
     b.vx = v.vx; b.vy = v.vy;
-    SFX.spike(); this.shake(90, style === 'power' ? 0.004 : 0.0025);
+    SFX.spike(); this.shake(90, style === 'power' ? 0.004 : 0.0025); this.squashT = CFG.SQUASH_T;
   }
 
   // caratteristiche del giocatore che ha ora quel posto (altezza, muro, ricezione, velocità, potenza: playerTraits in gfx.js)
@@ -1157,7 +1161,7 @@ class MatchScene extends Phaser.Scene {
       b.vx = -b.vx * rnd(0.25, 0.45); b.vy = -rnd(40, 90); b.x = -t.side * 3;
       b.lastTeam = t; b.lastPlayer = p; b.lastKind = 'block'; b.ver++; t.touches = 0;
       this.announce('THE SPIKE WAS BLOCKED.');
-      SFX.block(); this.shake(100, 0.003);
+      SFX.block(); this.shake(100, 0.003); this.squashT = CFG.SQUASH_T;
     } else if (r < chance + 0.15) {
       // tocco a muro: la palla schizza via, difficile da recuperare (non una palla regalata)
       b.vx = b.vx * rnd(0.3, 0.6); b.vy = rnd(70, 140);
@@ -1172,6 +1176,7 @@ class MatchScene extends Phaser.Scene {
     const b = this.ball;
     this.sand(b.x, 0, Math.round(clamp(Math.abs(b.vy) / 12, 8, 26)), clamp(Math.abs(b.vy) * 0.45, 50, 130), 7);   // la palla affonda nella sabbia
     b.live = false; b.h = 0; b.bouncing = true; b.vy = Math.abs(b.vy) * 0.4; b.vx *= 0.6;
+    this.squashT = CFG.SQUASH_T;   // la palla si schiaccia a terra
     SFX.floor();
     const land = this.teamAt(b.x);
     const inside = Math.abs(b.x) <= CFG.HALF;
@@ -1623,6 +1628,7 @@ class MatchScene extends Phaser.Scene {
     b.trail.forEach((tp, i) => { if (i) f.fillStyle(0xffffff, 0.35 - i * 0.06).fillCircle(SX(tp[0]), FY + 2 - tp[1], 3 - i * 0.4); });
     this.ballSpr.x = SX(b.x); this.ballSpr.y = FY + 2 - b.h - 4;
     this.ballSpr.rotation = b.spin;
+    if (this.ballKey) ballFrame(this, dt);
 
     if (this.testOn) this.testTxt.setText(this.testHelp());
     const sec = this.timeLeft === null ? 0 : Math.ceil(this.timeLeft);
