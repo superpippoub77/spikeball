@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.7.0';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.8.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----

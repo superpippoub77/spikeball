@@ -1,5 +1,20 @@
 # Giocatori "foto": rigenerare photo-sprites.js
 
+## Foglio attuale: foglio-sprite-2.webp (generato con ChatGPT)
+Sfondo magenta (#FF00FF), maglia bianca, pantaloncini rossi, due pannelli da 6 righe x 8 fotogrammi:
+attesa, corsa, rincorsa, schiacciata, bagher, palleggio | muro, battuta in salto, battuta, tuffo, pallonetto, esultanze.
+
+```sh
+cd tools/photo
+python3 build_sheet2.py foglio-sprite-2.webp ../../photo-sprites.js
+```
+
+`build_sheet2.py` ritaglia le figure sul magenta (senza alone), le assegna a riga e pannello, trova le zone da ricolorare
+(maglia bianca attaccata ai pantaloncini, pantaloncini rossi, pelle) e crea l'atlante. In `photo.js` → `photoFrame` ogni
+stato del giocatore sceglie il fotogramma della riga giusta. Un foglio nuovo con lo stesso schema si usa senza toccare il codice.
+
+## Foglio precedente (divisa nera)
+
 Dal foglio sprite fotografico (`foglio-sprite.webp`) ai fotogrammi del gioco. Serve Python 3 con `numpy`, `pillow`, `scipy`.
 
 ```sh
