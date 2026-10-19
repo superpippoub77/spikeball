@@ -91,7 +91,7 @@
 
 ### Versione 3D (giocatori fotorealistici)
 Tre versioni grafiche, si cambia col tasto **H** (o `index.html?gfx=pixel|hd|3d`): **ARCADE** (pixel art), **HD** (giocatori disegnati), **3D**.
-Nella 3D i giocatori sono fotogrammi presi da un foglio sprite fotografico (66 pose: attesa, corsa, salto, schiacciata, bagher, muro, battuta; tuffo e caduta generati),
+Nella 3D i giocatori sono fotogrammi presi da un foglio sprite (`tools/photo/foglio-sprite-2.webp`, 94 pose in 12 movimenti: attesa molleggiata, corsa, rincorsa, schiacciata con il braccio caricato, bagher, palleggio, muro, battuta in salto, battuta, tuffo, pallonetto dell'alzatore, esultanze),
 in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
 Per rigenerare i fotogrammi: `tools/photo/README.md`.
 

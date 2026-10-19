@@ -77,10 +77,11 @@ function photoBeach(d, R, W, H, sk, ref) {
   }
 }
 
-// pose statiche (menu, schermate) prese dalle animazioni
-const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 4], pass: ['bagher', 3], set: ['block', 2], jump: ['jump', 5],
-  spkload: ['spike', 3], spkfol: ['spike', 8], passload: ['bagher', 1], setload: ['block', 1], dump: ['spike', 5], dumpfol: ['spike', 7], passside: ['bagher', 3], srvload: ['serve', 4],
-  spike: ['spike', 5], block: ['block', 4], dive: ['dive', 0], down: ['down', 0], cheer: ['block', 5], cheer2: ['block', 4], cheer3: ['block', 5], appr: ['run', 2], plant: ['spike', 1], toss: ['serve', 3], sad: ['idle', 0] };
+// pose statiche (menu, schermate) prese dalle animazioni del foglio (righe di tools/photo/foglio-sprite-2.webp)
+const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 3], set: ['set', 4], jump: ['block', 2],
+  spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
+  passside: ['dive', 0], srvload: ['serve', 3], spike: ['spike', 4], block: ['block', 4], dive: ['dive', 3], down: ['down', 0],
+  cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {
@@ -101,34 +102,55 @@ function makePhotoTex(scene, code) {
   return key;
 }
 
-// fotogramma animato secondo lo stato del giocatore
-// sceglie il fotogramma animato (attesa, corsa, bagher, salto, schiacciata, muro, battuta...) dallo stato del giocatore
+// fotogramma animato secondo lo stato del giocatore: ogni riga del foglio è un movimento in 8 tempi
+// (attesa, corsa, rincorsa, schiacciata, bagher, palleggio, muro, battuta in salto, battuta, tuffo, pallonetto, esultanze)
 function photoFrame(m, p) {
-  const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000;
+  const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000, b = m.ball;
   const pick = (an, i) => 'a' + A[an][clamp(Math.floor(i), 0, A[an].length - 1)];
   const prog = dur => 1 - clamp(p.animT / dur, 0, 1);
-  const st = p.state;
-  if (st === 'run') return pick('run', (p.runT * 14) % A.run.length);
-  if (st === 'dive') return pick('dive', 0);
-  if (st === 'down') return pick('down', 0);
-  if (st === 'pass' || st === 'passside') return pick('bagher', 2 + prog(0.3) * 4);                 // contatto e accompagnamento
-  if (st === 'set') return pick('block', 2 + prog(0.3) * 2);                   // mani sopra la testa
-  if (st === 'dump') return pick('spike', 5 + prog(0.3) * 3);
-  if (st === 'toss') return pick('serve', 2 + prog(0.4) * 2);
+  const st = p.state, server = m.server === p;
+  if (st === 'dive') return pick('dive', 2 + (p.diveT > 0.12 ? 0 : 1));
+  if (st === 'down') return pick('dive', p.downT > 0.3 ? 4 : 5 + (p.downT < 0.12 ? 1 : 0));
+  if (st === 'passside') return pick('dive', 1);
+  if (st === 'pass') return pick('bagher', 2 + prog(0.3) * 5);                    // contatto, spinta, ritorno
+  if (st === 'set') return pick('set', 3 + prog(0.3) * 3);                         // spinta a braccia tese
+  if (st === 'dump') return pick('dump', 3 + prog(0.3) * 3);                       // pallonetto dell'alzatore
+  if (st === 'toss') {
+    if (m.serveKind === 'jump') return pick('jserve', 0);
+    return pick('serve', b.vy < 0 && m.serveKind !== 'tower' ? 3 : 1 + prog(0.4));  // lancio, poi braccio caricato
+  }
   if (st === 'spike') {
-    if (m.server === p && m.ball.lastKind === 'serve') return pick('serve', 5 + prog(0.3) * 3);
-    return pick('spike', 5 + prog(0.3) * 4);
+    if (server && b.lastKind === 'serve') return m.serveKind === 'jump' ? pick('jserve', 4 + prog(0.3) * 2) : pick('serve', 4 + prog(0.3) * 2);
+    return pick('spike', 4 + prog(0.3) * 2);                                       // colpo e accompagnamento
   }
+  // rincorsa: passi, passo lungo con le braccia indietro, arrivo a piedi pari, stacco
+  if (p.z <= 0 && (st === 'run' || st === 'idle')) {
+    const tj = m.takeoffIn(p);
+    if (tj !== null && tj < CFG.APPR_T + 0.2) {
+      if (m.state === 'serve') return pick('jserve', 0);
+      return pick('appr', 2 + (1 - clamp(tj / (CFG.APPR_T + 0.2), 0, 1)) * 4);
+    }
+  }
+  if (st === 'run') return pick('run', (p.runT * 12) % A.run.length);
   if (p.z > 0 || st === 'jump' || st === 'block') {
-    if (st === 'block' || (t.blockers.includes(p) && m.ball.lastTeam !== t)) return pick('block', p.vz > 60 ? 2 : p.vz > -40 ? 4 : p.z > 6 ? 6 : 7);
-    if (t.attacker === p && !p.decoy) return pick('spike', p.vz > 90 ? 2 : 3 + (p.vz < 0 ? 1 : 0));   // braccio caricato
-    return pick('jump', p.vz > 80 ? 3 : p.vz > -40 ? 5 : p.z > 6 ? 7 : 8);
+    const fall = p.vz < 0, low = p.z < 8;
+    if (st === 'block' || (t.blockers.includes(p) && b.lastTeam !== t)) return pick('block', p.vz > 80 ? 1 : p.vz > 0 ? 3 : low ? 6 : 5);
+    if (server && m.serveKind === 'jump' && b.lastKind !== 'serve') return pick('jserve', p.vz > 60 ? 1 : 2 + (p.vz < 0 ? 1 : 0));
+    if (t.attacker === p && !p.decoy) return pick('spike', p.vz > 90 ? 0 : p.vz > 20 ? 1 : 2 + (fall ? 1 : 0));   // braccio caricato
+    if (t.plan && t.plan.kind === 'set' && t.plan.p === p) return pick('dump', p.vz > 40 ? 0 : 1);          // alzata in salto
+    if (fall && low) return pick(t.attacker === p ? 'spike' : 'block', 6);
+    return pick('block', p.vz > 60 ? 1 : p.vz > -40 ? 3 : 5);
   }
-  if (st === 'cheer' || st === 'cheer2' || st === 'cheer3') return pick('block', 4 + Math.floor(now * 4 + p.idx) % 2);
-  if (st === 'sad') return pick('idle', 0);
-  // fermo: in azione posizione di attesa (bagher pronto), altrimenti respiro
-  if (m.state === 'rally' || (m.state === 'serve' && m.server !== p)) return pick('bagher', Math.floor(now * 3 + p.idx) % 2);
-  return pick('idle', (now * 6 + p.idx * 2) % A.idle.length);
+  if (st === 'cheer' || st === 'cheer2' || st === 'cheer3') {
+    const base = st === 'cheer' ? 0 : st === 'cheer2' ? 1 : 2;
+    return pick('cheer', (base + Math.floor(now * 2 + p.idx) % 2 * 3) % 5);
+  }
+  if (st === 'sad') return pick('cheer', 5 + Math.floor(now + p.idx) % 2);
+  // palleggio in arrivo: mani alla fronte
+  if (m.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'set' && b.vy < 0) return pick('set', 1 + (now * 4 % 2));
+  // posizione d'attesa molleggiata (in azione e durante la battuta), altrimenti attesa più calma
+  if (m.state === 'rally' || m.state === 'serve') return pick('idle', (now * 8 + p.idx * 2) % A.idle.length);
+  return pick('idle', (now * 3 + p.idx * 2) % A.idle.length);
 }
 
 // menu principale: versione grafica attiva
