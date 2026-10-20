@@ -20,8 +20,8 @@ Sfondo magenta, 4 righe x 8 fotogrammi: pallone moderno giallo-blu (PRO), classi
 python3 build_balls.py palloni.webp ../../ball-sprites.js
 ```
 
-In HD e 3D `balls.js` usa questi fotogrammi: rotazione in 8 tempi con la luce ferma e schiacciamento all'impatto
-(a terra, schiacciata, muro). Nella versione ARCADE restano i palloni in pixel art.
+Nella 3D `balls.js` usa questi fotogrammi: rotazione in 8 tempi con la luce ferma e schiacciamento all'impatto
+(a terra, schiacciata, muro). In ARCADE e HD restano i palloni disegnati.
 
 ## Foglio precedente (divisa nera)
 

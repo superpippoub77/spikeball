@@ -1,8 +1,8 @@
 // ============================================================
 //  PALLONI DAL FOGLIO SPRITE (ball-sprites.js, da tools/photo/palloni.webp)
-//  Nelle versioni HD e 3D i palloni CLASSIC (bianco), PRO (giallo e blu) e beach usano i fotogrammi del foglio:
+//  Nella versione 3D i palloni CLASSIC (bianco), PRO (giallo e blu) e beach usano i fotogrammi del foglio:
 //  8 fotogrammi di rotazione (la luce resta in alto a sinistra) e, per il PRO, 8 fotogrammi di schiacciamento
-//  all'impatto. Nella versione ARCADE restano i palloni in pixel art.
+//  all'impatto. Nelle versioni ARCADE e HD restano i palloni disegnati.
 //   - pballInstall: crea le texture 'ball', 'ball_pro', 'ball_beach' (immagine ferma, per i menu)
 //     e 'ballfx_<chiave>' (fotogrammi r0..r7 e s0..s7, per la partita)
 //   - in partita: ballFrame sceglie il fotogramma secondo la rotazione e lo schiacciamento
@@ -11,7 +11,7 @@ const PBALL = { img: null, map: { ball: 'classic', ball_pro: 'pro', ball_beach: 
 
 const _startGameBalls = startGame;
 startGame = function () {
-  const ok = GR > 1 && typeof BALL_SPRITES !== 'undefined';
+  const ok = GFX === '3d' && typeof BALL_SPRITES !== 'undefined';   // solo 3D: in HD restano i palloni disegnati
   (ok ? loadImg(BALL_SPRITES.atlas).then(i => { PBALL.img = i; }).catch(() => {}) : Promise.resolve()).finally(_startGameBalls);
 };
 
