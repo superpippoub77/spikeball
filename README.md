@@ -81,6 +81,7 @@
   - REGOLE: Rally 25, Rally 15 o Side-out 15 del 1991;
   - ARCADE FX: telecronaca, arbitro, volti, battute speciali di Power Spikes e leggera scossa dello schermo su schiacciate e muri sì/no;
   - SCOSSA DELLO SCHERMO: ON/OFF (la scelta resta salvata; in partita si cambia anche con il tasto **V**, in tutte le modalità).
+  - EFFETTO CRT: ON/OFF, come un vecchio monitor arcade (righe di scansione, angoli arrotondati, bordi scuri, colori più accesi). Si cambia anche con il tasto **K** in qualsiasi schermata; la scelta resta salvata.
 - **In partita:**
   - pavimento lucido con i riflessi;
   - telecamera che allarga in battuta e stringe durante lo scambio;

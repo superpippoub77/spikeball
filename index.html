@@ -12,9 +12,19 @@
   #game { width: 100%; height: 100%; }
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
   body.hd canvas { image-rendering: auto; }
+  /* effetto CRT (tasto K o impostazioni): righe di scansione, bordo scuro arrotondato, colori più accesi e un leggero sfarfallio */
+  #crt { position: fixed; pointer-events: none; display: none; z-index: 10; border-radius: 2.5% / 3.5%;
+         background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 50%, rgba(0,0,0,0.28) 50%, rgba(0,0,0,0.28) 100%);
+         box-shadow: inset 0 0 6vmin rgba(0,0,0,0.75), inset 0 0 1.5vmin rgba(0,0,0,0.6); animation: crtflick 0.12s infinite; }
+  #crt::after { content: ''; position: absolute; inset: 0; border-radius: inherit;
+         background: radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.35) 100%); }
+  body.crt #crt { display: block; }
+  body.crt canvas { filter: contrast(1.12) saturate(1.2) brightness(1.06); }
+  @keyframes crtflick { 0% { opacity: 0.94; } 50% { opacity: 1; } 100% { opacity: 0.96; } }
 </style>
 </head>
 <body>
+<div id="crt"></div>
 <div id="game"></div>
 <script src="phaser.min.js"></script>
 <script src="config.js"></script>

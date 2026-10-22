@@ -668,9 +668,23 @@ function startGame() {
     if (e.key === '5' || e.key === 'c' || e.key === 'C') { GS.credits = Math.min(9, GS.credits + 1); SFX.coin(); }
     // H: ARCADE -> HD -> 3D -> ARCADE (ricarica la pagina)
     // (non mentre si scrive il nome nella scheda del mio giocatore)
+    // K: effetto CRT acceso/spento (ovunque, resta salvato)
+    if ((e.key === 'k' || e.key === 'K') && !(window.__game && window.__game.scene.isActive('MyPlayer'))) { GS.crt = !GS.crt; GS.saveOpts(); applyCRT(); }
     if ((e.key === 'h' || e.key === 'H') && !(window.__game && window.__game.scene.isActive('MyPlayer'))) { const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[(GFX_MODES.indexOf(GFX) + 1) % GFX_MODES.length]); location.href = u.href; }
   });
   if (HIRES) document.body.classList.add('hd');
+  applyCRT();
+  window.addEventListener('resize', fitCRT); setInterval(fitCRT, 1000);
+}
+
+// effetto CRT: la maschera (#crt in index.html) copre esattamente lo schermo di gioco, con una riga di scansione
+// per ogni riga dei 224 pixel originali
+function applyCRT() { document.body.classList.toggle('crt', !!GS.crt); fitCRT(); }
+function fitCRT() {
+  const el = document.getElementById('crt'), cv = document.querySelector('canvas');
+  if (!el || !cv) return;
+  const r = cv.getBoundingClientRect();
+  Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', backgroundSize: `100% ${r.height / 224}px` });
 }
 
 (function boot() {

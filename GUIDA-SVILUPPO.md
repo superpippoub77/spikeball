@@ -133,6 +133,7 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Cambiare il **pallonetto dell'alzatore** | `gfx.js` → `SKEL.dump`, `SKEL.dumpfol`; `match.js` → `doSet` (traiettoria) |
 | Ridisegnare l'**arbitro** o la **presentazione della formazione** | `gfx.js` → `makeRefTex` (HD: `drawRefHD`), `makeLineupCourt`; `scenes.js` → `LineupScene` |
 | Cambiare lo **scatto** verso le palle lontane (deviate dal muro) | `config.js` → `CHASE_MAX`; `match.js` → `movePlayer` (`chase`) |
+| Cambiare l'**effetto CRT** | `index.html` → stile `#crt`; `scenes.js` → `applyCRT`, `fitCRT`; opzione `GS.crt` |
 | Ridisegnare il **pubblico** (spettatori con il volto) | `gfx.js` → `fanPerson`, `crowd`; arene moderne `modern.js` (`crowdRows`), spiagge `beach.js` (`stand`) |
 | Cambiare la **posizione d'attesa** e il molleggio | `gfx.js` → `SKEL.idle`; `match.js` → `render` (`lift`) |
 | Ridisegnare i **ritratti** (pannello di chi batte, formazione) | `gfx.js` → `drawFace`; HD: `gfx-hd.js` → `drawFaceHD` |
