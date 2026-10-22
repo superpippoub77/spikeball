@@ -401,11 +401,11 @@ class MatchSettingsScene extends Base {
     this.fieldName = this.add.text(81, 158, '', UI.f(6, '#7ad0ff', true)).setOrigin(0.5);
     this.rows = [
       ['women', 'SQUADRE (maschili / femminili)'], ['field', 'CAMPO'], ['ball', 'BALL'], ['start', 'STARTING POINTS'], ['rebound', 'REBOUND INDICATOR'],
-      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'], ['shake', 'SCOSSA DELLO SCHERMO'],
+      ['target', 'ATTACK TARGET'], ['rules', 'REGOLE'], ['fx', 'ARCADE FX (telecronaca, arbitro, battute speciali)'], ['shake', 'SCOSSA DELLO SCHERMO'], ['crt', 'EFFETTO CRT (tasto K)'],
       ['players', 'GIOCATORI IN CAMPO'], ['lineL', 'FORMAZIONE ' + L], ['lineR', 'FORMAZIONE ' + Rt], ['play', 'PLAY']
     ];
-    this.rowT = this.rows.map((r, i) => [this.add.text(166, 54 + i * 11.8, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 54 + i * 11.8, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
-    this.ballImg = this.add.image(305, 81, 'ball').setScale(1.3);
+    this.rowT = this.rows.map((r, i) => [this.add.text(166, 52 + i * 11.2, r[1], UI.f(5.5, '#9ab8f0')), this.add.text(312, 52 + i * 11.2, '', UI.f(6.5, '#ffffff', true)).setOrigin(1, 0)]);
+    this.ballImg = this.add.image(305, 78, 'ball').setScale(1.3);
     this.add.text(160, 212, '↑↓ voce   ← → cambia   Z: avanti   ESC: indietro', UI.f(5, '#9ab8f0')).setOrigin(0.5);
     this.sel = this.rows.length - 1; this.refresh();
   }
@@ -416,6 +416,7 @@ class MatchSettingsScene extends Base {
     if (k === 'start') return String(OPT.start[MSET.start]);
     if (k === 'play') return '►';
     if (k === 'shake') return GS.shake ? 'ON' : 'OFF';
+    if (k === 'crt') return GS.crt ? 'ON' : 'OFF';
     return OPT[k][MSET[k]];
   }
   refresh() {
@@ -434,6 +435,7 @@ class MatchSettingsScene extends Base {
     else if (k === 'ball') cyc('ball', BALLS.length);
     else if (k === 'start') cyc('start', OPT.start.length);
     else if (k === 'shake') { GS.shake = !GS.shake; GS.saveOpts(); }
+    else if (k === 'crt') { GS.crt = !GS.crt; GS.saveOpts(); applyCRT(); }
     else if (OPT[k]) cyc(k, OPT[k].length);
     else return;
     SFX.blip(); this.refresh();
