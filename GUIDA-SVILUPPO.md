@@ -45,6 +45,7 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `beach.js` | **Beach volley**: squadre da spiaggia, arene sulla sabbia, menu, partita al meglio dei 3 set |
 | `myplayer.js` | **I miei giocatori**: elenco, scheda, foto (telecamera o file), inserimento nella squadra, crescita delle statistiche a fine partita, salvataggio locale / file / server |
 | `i18n.js` | **Lingue**: dizionario a 5 lingue (`I18N_ROWS`, colonne it/en/fr/de/es), traduzione al volo di ogni testo (`T`, aggancio a `Text.setText`, `i18nDom` per le pagine HTML), scena `Language` con le bandiere. Per un testo nuovo basta aggiungere una riga al dizionario |
+| `categorie.js` | **Categorie FIPAV**: piramide `FIPAV_LEVELS`, categoria/sesso di campionati e squadre dai JSON (`catOf`, `sexOf`), gruppi del SINGLE MATCH per categoria (`catBuildGroups`), spostamenti (`catMove`, `CAT_MOVES`), promosse/retrocesse a fine campionato |
 | `editor.js` | **Editor**: squadre (diventano club con `rosterTeam`), arbitri, sponsor, campionati (girone all'italiana in `LEAGUES`), profilo sul server (`PROF`) |
 | `api/profilo.php` | profili: registrazione/accesso con password (hash) e gettone, salvataggio di tutte le chiavi `sf91_` |
 | `api/giocatori.php` | salvataggio dei giocatori creati sul server, protetto dalla chiave di `api/chiave.php` (solo sul server) |
@@ -182,6 +183,7 @@ Il gioco salva alcune cose nel `localStorage` del browser (si cancellano dagli s
 | `sf91_lega_<id>` | progressi di ogni campionato (RICOMINCIA li azzera) |
 | `sf91_formazioni` | formazioni scelte per ogni squadra e numero di giocatori |
 | `sf91_miei_giocatori` | elenco dei giocatori creati (schede, foto, statistiche); il vecchio `sf91_mio_giocatore` viene importato |
+| `sf91_categorie` | squadre spostate di categoria (nome -> categoria) |
 | `sf91_lang` | lingua scelta (it, en, fr, de, es) |
 | `sf91_editor` | squadre, arbitri, sponsor e campionati creati nell'editor |
 | `sf91_profilo` | utente e gettone del profilo sul server |

@@ -4,6 +4,9 @@
       "codice": "PLB",
       "nome": "Polisportiva Lago Blu",
       "tipo": "club",
+      "categoria": "Serie D",
+      "sesso": "M",
+      "regione": "Lombardia",
       "colori": {
         "maglia": "#1a6ad8",
         "bordo": "#ffffff",
