@@ -81,7 +81,8 @@ function photoBeach(d, R, W, H, sk, ref) {
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 3], set: ['set', 4], jump: ['block', 2],
   spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
   passside: ['dive', 0], srvload: ['serve', 3], spike: ['spike', 4], block: ['block', 4], dive: ['dive', 3], down: ['down', 0],
-  cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6] };
+  cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6],
+  srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {
@@ -116,11 +117,11 @@ function photoFrame(m, p) {
   if (st === 'set') return pick('set', 3 + prog(0.3) * 3);                         // spinta a braccia tese
   if (st === 'dump') return pick('dump', 3 + prog(0.3) * 3);                       // pallonetto dell'alzatore
   if (st === 'toss') {
-    if (m.serveKind === 'jump') return pick('jserve', 0);
+    if (m.serveKind === 'jump' || m.serveKind === 'jfloat') return pick('jserve', 0);
     return pick('serve', b.vy < 0 && m.serveKind !== 'tower' ? 3 : 1 + prog(0.4));  // lancio, poi braccio caricato
   }
   if (st === 'spike') {
-    if (server && b.lastKind === 'serve') return m.serveKind === 'jump' ? pick('jserve', 4 + prog(0.3) * 2) : pick('serve', 4 + prog(0.3) * 2);
+    if (server && b.lastKind === 'serve') return m.serveKind === 'jump' || m.serveKind === 'jfloat' ? pick('jserve', 4 + prog(0.3) * 2) : pick('serve', 4 + prog(0.3) * 2);
     return pick('spike', 4 + prog(0.3) * 2);                                       // colpo e accompagnamento
   }
   // rincorsa: passi, passo lungo con le braccia indietro, arrivo a piedi pari, stacco
@@ -135,7 +136,7 @@ function photoFrame(m, p) {
   if (p.z > 0 || st === 'jump' || st === 'block') {
     const fall = p.vz < 0, low = p.z < 8;
     if (st === 'block' || (t.blockers.includes(p) && b.lastTeam !== t)) return pick('block', p.vz > 80 ? 1 : p.vz > 0 ? 3 : low ? 6 : 5);
-    if (server && m.serveKind === 'jump' && b.lastKind !== 'serve') return pick('jserve', p.vz > 60 ? 1 : 2 + (p.vz < 0 ? 1 : 0));
+    if (server && (m.serveKind === 'jump' || m.serveKind === 'jfloat') && b.lastKind !== 'serve') return pick('jserve', p.vz > 60 ? 1 : 2 + (p.vz < 0 ? 1 : 0));
     if (t.attacker === p && !p.decoy) return pick('spike', p.vz > 90 ? 0 : p.vz > 20 ? 1 : 2 + (fall ? 1 : 0));   // braccio caricato
     if (t.plan && t.plan.kind === 'set' && t.plan.p === p) return pick('dump', p.vz > 40 ? 0 : 1);          // alzata in salto
     if (fall && low) return pick(t.attacker === p ? 'spike' : 'block', 6);

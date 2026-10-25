@@ -378,7 +378,7 @@ class MatchScene extends Phaser.Scene {
     // come nell'originale: il battitore è già fuori dal campo con la palla in mano
     for (const tt of this.teams) for (const p of tt.players) p.x = tt.side * p.homeD;
     s.x = t.side * CFG.SERVE_X;
-    this.phantom = null; this.thunder = null;
+    this.phantom = null; this.thunder = null; this.floatFx = null;
   }
 
   startServeAnnounce() {
@@ -410,12 +410,12 @@ class MatchScene extends Phaser.Scene {
       if (hum) {
         if (this.pressed(t) && this.panelT > 0.3) {
           const u = this.up(t), dx = this.dirX(t);
-          this.toss(u && dx > 0 ? 'phantom' : u && dx < 0 ? 'thunder' : u ? 'tower' : dx > 0 && !this.down(t) ? 'jump' : 'float');
+          this.toss(u && dx > 0 ? 'phantom' : u && dx < 0 ? 'thunder' : u ? 'tower' : dx > 0 ? (this.down(t) ? 'jfloat' : 'jump') : 'float');
         }
         else if (this.count === 0) this.toss('float');
       } else if (this.panelT > 1.3 + rnd(0, 0.02)) {
         const r = Math.random();
-        this.toss(r < 0.06 ? 'tower' : r < 0.11 ? 'phantom' : r < 0.16 ? 'thunder' : r < 0.16 + 0.2 + t.skill * 0.25 ? 'jump' : 'float');
+        this.toss(r < 0.06 ? 'tower' : r < 0.11 ? 'phantom' : r < 0.16 ? 'thunder' : r < 0.16 + 0.2 + t.skill * 0.25 ? 'jump' : r < 0.6 + t.skill * 0.15 ? 'jfloat' : 'float');
         this.aiSpecial = true;
       }
       return;
@@ -423,7 +423,7 @@ class MatchScene extends Phaser.Scene {
     if (this.servePhase !== 'toss') return;
     const press = hum && this.pressed(t);
     const k = this.serveKind;
-    if (k !== 'jump') {
+    if (k !== 'jump' && k !== 'jfloat') {
       // zona di colpo: dall'alto (mano sopra la testa) o dal basso (mano all'altezza dell'anca)
       const low = k === 'tower';
       const lo = low ? 8 : 42, hi = low ? 38 : 66, mid = (lo + hi) / 2;
@@ -445,10 +445,10 @@ class MatchScene extends Phaser.Scene {
     // Il joystick non muove il battitore; il pulsante colpisce in cima al salto.
     if (s.z <= 0 && s.vz <= 0 && !s.served && !s.jsJumped) {
       const takeoff = side * CFG.JS_TAKEOFF;
-      const tLeft = this.jsHitT - this.jsT - CFG.TPEAK;
+      const tLeft = this.jsHitT - this.jsT - this.jsPeak();
       const dx = takeoff - s.x;
       if (tLeft > 0) { const sp = Math.abs(dx) / tLeft; s.x += clamp(dx, -sp * dt, sp * dt); s.state = Math.abs(dx) > 1 ? 'run' : 'idle'; s.runT += dt * 1.4; }
-      if (tLeft <= 0) { s.x = takeoff; this.jump(s, -side * 12); s.state = 'jump'; s.jsJumped = true; }
+      if (tLeft <= 0) { s.x = takeoff; if (k === 'jfloat') this.jump(s, -side * 6, CFG.JFLOAT_K); else this.jump(s, -side * 12); s.state = 'jump'; s.jsJumped = true; }
     }
     this.jsT += dt;
     this.serveZone = s.z > 2 && !s.served && Math.abs(b.x - this.handX(s, 5)) < 12 && b.h - s.z > 28 && b.h - s.z < 54;
@@ -486,7 +486,16 @@ class MatchScene extends Phaser.Scene {
     if (kind === 'float') b.vy = Math.sqrt(2 * CFG.G * (88 - 26));
     else if (kind === 'tower') { b.h = 20; b.vy = Math.sqrt(2 * CFG.G * (50 - 20)); }
     else if (kind === 'phantom' || kind === 'thunder') b.vy = Math.sqrt(2 * CFG.G * (88 - 26));
-    else {
+    else if (kind === 'jfloat') {
+      // salto flottante: lancio basso e appena in avanti, due passi, piccolo salto e colpo secco a mano aperta
+      b.h = 32; b.vy = Math.sqrt(2 * CFG.G * (86 - 32));
+      const pk = this.jsPeak(), hitH = CFG.PG * pk * pk / 2 + CFG.REACH_UP - 2;
+      const tH = PHYS.timeToH(b.h, b.vy, hitH);
+      const hitX = side * (CFG.JS_TAKEOFF - 6 * pk - 5);
+      b.vx = (hitX - b.x) / tH;
+      this.jsHitT = tH; this.jsT = 0; s.jsJumped = false;
+      this.announce('JUMP FLOAT SERVE');
+    } else {
       // lancio alto e in avanti: la palla scende all'altezza di colpo sopra il punto di stacco
       b.h = 34; b.vy = Math.sqrt(2 * CFG.G * (104 - 34));
       const tH = PHYS.timeToH(b.h, b.vy, CFG.HIT_H);
@@ -495,7 +504,7 @@ class MatchScene extends Phaser.Scene {
       this.jsHitT = tH; this.jsT = 0; s.jsJumped = false;
       this.announce('JUMPING SERVE');
     }
-    s.state = 'toss'; s.animT = kind === 'jump' ? 0.25 : 0.4;
+    s.state = 'toss'; s.animT = kind === 'jump' || kind === 'jfloat' ? 0.25 : 0.4;
     t.touches = 3;
     SFX.blip();
   }
@@ -527,6 +536,18 @@ class MatchScene extends Phaser.Scene {
         v = PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex);
         for (let i = 0; i < 20 && !PHYS.clears(b.x, b.h, v, 6); i++) { apex += 5; v = PHYS.arcTo(b.x, b.h, -side * d * CFG.PPM, 0, apex); }
       }
+      s.state = 'spike'; s.animT = 0.3; SFX.bump();
+    } else if (k === 'jfloat') {
+      // palla senza rotazione, tesa sopra la rete: in volo "balla" e cade di colpo nel campo avversario (floatFx in updateBall)
+      this.snap(s, 5, CFG.REACH_UP - 2);
+      let sp = 225 + 55 * q;
+      if (err) v = Math.random() < 0.5 ? PHYS.shotTo(b.x, b.h, 0, 30, sp) : PHYS.shotTo(b.x, b.h, -side * (CFG.HALF + 42), 0, sp);
+      else {
+        d = Math.max(d, 4);
+        v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp);
+        for (let i = 0; i < 25 && !PHYS.clears(b.x, b.h, v, 6); i++) { if (d < 8.6 * K) d += 0.3; else sp *= 0.95; v = PHYS.shotTo(b.x, b.h, -side * d * CFG.PPM, 0, sp); }
+      }
+      this.floatFx = { t: 0, ph: rnd(0, 6), a: 70 + 50 * q };
       s.state = 'spike'; s.animT = 0.3; SFX.bump();
     } else {
       this.snap(s, 5, CFG.REACH_UP);
@@ -797,6 +818,8 @@ class MatchScene extends Phaser.Scene {
     t.attacker = alt; t.attackType = alt === bk ? 'back' : 'high'; t.planCache = null; alt.jumpedVer = -1;
   }
 
+  // tempo per arrivare in cima al salto del battitore (salto flottante = salto più basso)
+  jsPeak() { return CFG.TPEAK * (this.serveKind === 'jfloat' ? CFG.JFLOAT_K : 1); }
   jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; }
 
   // ------------------------------------------------ sabbia (beach): spruzzi che si alzano e impronte che restano
@@ -856,7 +879,13 @@ class MatchScene extends Phaser.Scene {
     if (!b.live) return;
     const px = b.x, ph = b.h;
     b.vy -= CFG.G * dt; b.x += b.vx * dt; b.h += b.vy * dt;
-    b.spin += b.vx * dt * 0.1;
+    // battuta flottante in salto: senza rotazione la palla oscilla e, passata la rete, scende più in fretta
+    const F = this.floatFx;
+    if (F && b.lastKind === 'serve') {
+      F.t += dt;
+      b.vy += Math.sin(F.t * 13 + F.ph) * F.a * dt;
+      if (b.x * this.serving.side < -20) b.vy -= CFG.G * 0.35 * dt;
+    } else b.spin += b.vx * dt * 0.1;
     if ((px < 0) !== (b.x < 0) && px !== 0) {
       const f = Math.abs(px) / (Math.abs(px) + Math.abs(b.x));
       const hc = ph + (b.h - ph) * f;
@@ -1365,12 +1394,12 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && this.serving === t) {
       if (this.servePhase !== 'toss') {
         L.push('BATTUTA - premi Z per lanciare. Direzione tenuta al lancio:');
-        L.push(`  nessuna = dall'alto   |   ${fwd} (verso rete) = IN SALTO`);
+        L.push(`  nessuna = dall'alto   |   ${fwd} (verso rete) = IN SALTO   |   ${fwd}+GIU = SALTO FLOTTANTE`);
         L.push(`  SU = TOWERING (poi SU+Z)   |   SU+${fwd} = PHANTOM (poi GIU+${fwd}+Z)   |   SU+${back} = THUNDER (poi GIU+${back}+Z)`);
       } else {
         const k = this.serveKind;
         const need = k === 'tower' ? 'tieni SU e ' : k === 'phantom' ? `tieni GIU+${fwd} e ` : k === 'thunder' ? `tieni GIU+${back} e ` : '';
-        L.push(k === 'jump' ? 'BATTUTA IN SALTO - rincorsa e stacco automatici: premi Z quando la palla diventa ROSSA'
+        L.push(k === 'jump' || k === 'jfloat' ? (k === 'jfloat' ? 'SALTO FLOTTANTE' : 'BATTUTA IN SALTO') + ' - rincorsa e stacco automatici: premi Z quando la palla diventa ROSSA'
                             : `BATTUTA (${k.toUpperCase()}) - ${need}premi Z quando la palla diventa ROSSA`);
         L.push(`  al colpo: ${fwd} = lunga, ${back} = corta` + (this.serveZone ? '   >>> ORA! <<<' : ''));
       }
@@ -1455,7 +1484,7 @@ class MatchScene extends Phaser.Scene {
   // secondi allo stacco di chi sta prendendo la rincorsa (schiacciatore o battitore in salto), altrimenti null
   takeoffIn(p) {
     const t = p.team, b = this.ball, pl = t.plan;
-    if (this.state === 'serve' && this.server === p && this.serveKind === 'jump' && this.servePhase === 'toss' && !p.jsJumped) return this.jsHitT - this.jsT - CFG.TPEAK;
+    if (this.state === 'serve' && this.server === p && (this.serveKind === 'jump' || this.serveKind === 'jfloat') && this.servePhase === 'toss' && !p.jsJumped) return this.jsHitT - this.jsT - this.jsPeak();
     if (this.state === 'rally' && pl && pl.kind === 'spike' && pl.p === p && p.jumpedVer !== b.ver) {
       const th = PHYS.timeToH(b.h, b.vy, CFG.HIT_H); return th === null ? null : th - CFG.TPEAK;
     }
@@ -1469,21 +1498,29 @@ class MatchScene extends Phaser.Scene {
       const tj = this.takeoffIn(p);
       if (tj !== null && tj < CFG.APPR_T) return tj < CFG.PLANT_T ? 'plant' : 'appr';
     }
+    // battuta: in attesa del fischio il battitore sta in piedi con la palla tra le mani (non in posizione di ricezione)
+    if (this.state === 'serve' && this.server === p && (this.servePhase === 'walk' || this.servePhase === 'ready') && st === 'idle') return 'srvhold';
+    // battute flottanti: il braccio si ferma dopo il colpo (niente frustata del polso)
+    if (st === 'spike' && this.server === p && b.lastKind === 'serve' && b.lastPlayer === p && (this.serveKind === 'jfloat' || this.serveKind === 'float')) return p.animT > 0.08 ? 'spike' : 'spkfol';
+    // palleggio in salto, di profilo: spinta con le braccia distese, poi ricaduta
+    if (st === 'set' && p.z > 2) return p.animT > 0.15 ? 'jset' : 'land';
+    if (st === 'jump' && p.z > 0 && p.vz < 0 && b.lastPlayer === p && b.lastKind === 'set') return 'land';
     if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
     if (st === 'dump') return p.animT > 0.2 ? 'dump' : 'dumpfol';
     // esultanze diverse per ogni giocatore, che cambiano ogni tanto: braccia al cielo, pugno, salto a braccia larghe
     if (st === 'cheer') return ['cheer', 'cheer2', 'cheer3'][(p.ni + Math.floor(this.stateT / 0.7)) % 3];
     if (st === 'pass' && p.animT > 0.22) return 'passload';
     // battuta da fermo: palla in discesa = braccio caricato
-    if (st === 'toss' && this.state === 'serve' && this.server === p && this.serveKind !== 'jump' && this.serveKind !== 'tower' && b.vy < 0) return 'srvload';
+    if (st === 'toss' && this.state === 'serve' && this.server === p && this.serveKind !== 'jump' && this.serveKind !== 'jfloat' && this.serveKind !== 'tower' && b.vy < 0) return 'srvload';
     // palleggio: mentre la palla scende l'alzatore si piega e porta le mani a finestra sopra la fronte, poi spinge
     if (st !== 'set' && st !== 'dump' && st !== 'dive' && this.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'set' && b.vy < 0) {
       const tl = PHYS.timeToH(b.h, b.vy, t.jumpSet ? CFG.SET_JUMP_H : 40);
-      if (tl !== null && tl < 0.35 && Math.abs(p.x - t.plan.xc) < 16) return 'setload';
+      if (tl !== null && tl < 0.35 && Math.abs(p.x - t.plan.xc) < 16) return p.z > 0 ? 'jsetload' : 'setload';
+      if (p.z > 0) return 'jsetload';
     }
     if (p.z > 0 && (st === 'jump' || st === 'idle')) {
       const attacking = (t.attacker === p && !p.decoy && b.lastTeam === t && t.touches === 2) ||
-                        (this.state === 'serve' && this.server === p && this.serveKind === 'jump' && !p.served);
+                        (this.state === 'serve' && this.server === p && (this.serveKind === 'jump' || this.serveKind === 'jfloat') && !p.served);
       if (attacking) return p.vz > 70 ? 'jump' : 'spkload';
     }
     if (p.z <= 0 && (st === 'idle' || st === 'run') && this.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'pass' && b.vy < 0) {

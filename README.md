@@ -209,6 +209,8 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
 - **Battuta:** il battitore è già fuori dal campo con la palla in mano. Pulsante per lanciare, pulsante per colpire quando la palla diventa rossa ("HIT! PRESS BUTTON!"). Frecce riferite al battitore rivolto verso la rete:
   - neutro + Z, Z = battuta dall'alto
   - avanti + Z = battuta in salto (rincorsa e stacco automatici dietro la linea, Z in cima al salto)
+  - GIÙ-avanti + Z = **salto flottante** (due passi, piccolo salto, colpo secco a mano aperta: la palla va tesa, balla in volo e cade di colpo; anche l'IA la usa)
+  - in attesa del fischio il battitore sta in piedi con la palla tra le mani; nella battuta dall'alto lancia la palla e porta il braccio caricato in alto
   - SU + Z, SU + Z = **TOWERING SERVE** (circa 5 s in aria)
   - SU-avanti + Z, GIÙ-avanti + Z = **PHANTOM SERVE** (la palla si sdoppia in 3 scendendo)
   - SU-indietro + Z, GIÙ-indietro + Z = **THUNDER SERVE** (lampo bianco, la palla piomba giù)
