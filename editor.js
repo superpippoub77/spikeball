@@ -295,6 +295,7 @@ function openEditor(onClose) {
     wrap.append(edEl('div', { class: 'tabs' }, [['squadre', 'SQUADRE'], ['arbitri', 'ARBITRI'], ['sponsor', 'SPONSOR'], ['campionati', 'CAMPIONATI'], ['profilo', 'PROFILO']]
       .map(([k, t]) => edEl('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; edit = null; msg = ''; draw(); } }, t))));
     ({ squadre: edit ? teamForm : teamList, arbitri: refList, sponsor: sponsorList, campionati: leagueList, profilo: profile })[tab]();
+    i18nDom(wrap);   // lingua scelta (i18n.js)
   }
   function validate() {
     for (const t of D.squadre) {

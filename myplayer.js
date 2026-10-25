@@ -249,16 +249,16 @@ function openPhotoCapture(done) {
       </div>
       <input type="file" accept="image/*" capture="user" hidden>
     </div>`;
-  document.body.appendChild(wrap);
+  document.body.appendChild(wrap); i18nDom(wrap);
   const video = wrap.querySelector('video'), cv = wrap.querySelector('canvas'), g = cv.getContext('2d');
   const zoom = wrap.querySelector('input[type=range]'), file = wrap.querySelector('input[type=file]'), okB = wrap.querySelector('[data-a=ok]');
   const game = window.__game; if (game) game.input.keyboard.enabled = false;
   let stream = null, img = null, live = false, ox = 0, oy = 0, drag = null, raf = 0;
   const startCam = () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { wrap.querySelector('.pc-hint').textContent = 'Telecamera non disponibile: usa CARICA FOTO.'; return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { wrap.querySelector('.pc-hint').textContent = T('Telecamera non disponibile: usa CARICA FOTO.'); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }, audio: false })
       .then(s => { stream = s; video.srcObject = s; live = true; img = null; okB.disabled = true; })
-      .catch(() => { wrap.querySelector('.pc-hint').textContent = 'Telecamera non disponibile o negata: usa CARICA FOTO.'; });
+      .catch(() => { wrap.querySelector('.pc-hint').textContent = T('Telecamera non disponibile o negata: usa CARICA FOTO.'); });
   };
   const stopCam = () => { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; live = false; };
   const source = () => live ? (video.videoWidth ? video : null) : img;

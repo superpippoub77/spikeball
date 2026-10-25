@@ -218,6 +218,7 @@ const UI = {
 class MainMenuScene extends Base {
   constructor() { super('MainMenu'); }
   create() {
+    if (!I18N.lang) { this.scene.start('Language'); return; }   // primo avvio: scelta della lingua (i18n.js)
     camSetup(this); makeCommon(this); this.keysInit(); setLook(this, false);
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0e14, 0x0a0e14, 0x1a2420, 0x1a2420, 1).fillRect(0, 0, 320, 224);
@@ -272,7 +273,11 @@ class MainMenuScene extends Base {
       return cont;
     });
     this.hint = this.add.text(160, 166, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
-    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    T: TEST', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    L: LINGUA    T: TEST', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    // lingua: bandiera in alto a destra (clic o tasto L per cambiarla)
+    const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
+    this.add.image(306, 22, makeFlagTex(this, lg.flag, 18, 12)).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.gone = true; this.scene.start('Language'); });
+    this.kLang = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
     this.sel = GS.menuSel || 0; this.refresh();
   }
   refresh() {
@@ -290,6 +295,7 @@ class MainMenuScene extends Base {
     if (this.jd('left')) { this.sel = (this.sel + n - 1) % n; this.refresh(); SFX.blip(); }
     if (this.jd('right')) { this.sel = (this.sel + 1) % n; this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
+    if (Phaser.Input.Keyboard.JustDown(this.kLang)) { this.gone = true; this.scene.start('Language'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
       if (this.sel === 0) { GS.attract = -1; nextAttract(this); }
