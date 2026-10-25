@@ -16,7 +16,9 @@ const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 
                'setload', 'dump', 'dumpfol',      // palleggio: caricamento (mani alla fronte); pallonetto di seconda dell'alzatore
                'passside', 'srvload',             // bagher laterale (di fronte, affondo di lato); battuta caricata
                'cheer2', 'cheer3',                // esultanze: pugno al cielo, salto a braccia larghe
-               'appr', 'plant'];                  // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
+               'appr', 'plant',                   // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
+               'srvhold',                         // battitore in attesa: in piedi con la palla tra le mani
+               'jsetload', 'jset', 'land'];       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -54,6 +56,13 @@ const SKEL = {
   // battuta da fermo: mentre la palla scende il braccio d'attacco si carica dietro la testa, l'altro indica la palla
   srvload: { hip: [15, 25], neck: [14, 14], head: [16, 10], bl: [[13, 31], [10, 38]], fl: [[18, 31], [20, 38]], ba: [[20, 10], [24, 5]], fa: [[8, 12], [12, 6]] },
   toss:  { hip: [16, 24], neck: [17, 13], head: [18, 9],  bl: [[14, 31], [14, 38]], fl: [[18, 31], [18, 38]], ba: [[14, 18], [12, 21]], fa: [[19, 8], [20, 3]] },
+  // battitore in attesa del fischio: in piedi, busto dritto, la palla tenuta con due mani davanti al petto
+  srvhold: { hip: [16, 25], neck: [17, 14], head: [18, 10], bl: [[15, 31], [13, 38]], fl: [[18, 31], [19, 38]], ba: [[19, 20], [21, 17]], fa: [[20, 20], [22, 16]] },
+  // palleggio in salto visto di profilo: in aria con le ginocchia raccolte e le mani a finestra sopra la fronte (jsetload),
+  // spinta con le braccia distese in alto e il corpo allungato (jset), ricaduta con le gambe pronte e le braccia che scendono (land)
+  jsetload: { hip: [16, 24], neck: [16, 13], head: [17, 9], bl: [[14, 29], [13, 34]], fl: [[18, 29], [17, 35]], ba: [[13, 10], [16, 5]], fa: [[20, 10], [19, 5]] },
+  jset:  { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [14, 37]], fl: [[17, 31], [17, 37]], ba: [[16, 6], [18, 1]],  fa: [[19, 6], [20, 1]] },
+  land:  { hip: [15, 26], neck: [17, 15], head: [19, 11], bl: [[16, 31], [13, 37]], fl: [[20, 31], [19, 37]], ba: [[18, 20], [21, 24]], fa: [[20, 19], [24, 22]] },
   sad:   { hip: [15, 25], neck: [17, 15], head: [19, 12], bl: [[14, 31], [13, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 20], [15, 25]], fa: [[18, 20], [17, 25]] }
 };
 

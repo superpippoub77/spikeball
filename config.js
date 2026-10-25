@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.10.0';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.11.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -56,6 +56,7 @@ const CFG = {
   SETTER_D: 30,
   SPIKE_SPEED: 430,
   SERVE_X: 255,          // il battitore sta ~4 m dietro la linea di fondo (video)
+  JFLOAT_K: 0.6,         // salto flottante: altezza del salto rispetto a quello pieno
   JS_TAKEOFF: 196,       // battuta in salto: stacco sempre prima della linea di fondo (180)
   STEP: 1 / 120,
   OX: 280,
