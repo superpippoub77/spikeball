@@ -189,6 +189,24 @@ Rigenerando un campionato con lo stesso `--id`, logo, colori e codice delle squa
 
 Loghi disponibili in `loghi/`: Bellinzago, Koala Fontaneto, Pavic, Volley Novara (già collegati alla Prima Divisione), Salussola, Santhià, Vigliano Biellese, Volley Crescentino, Volley Vercelli.
 
+### Categorie FIPAV (serie, comitati, promozioni)
+Le squadre sono divise secondo la piramide dei campionati FIPAV:
+
+| Livello | Maschile | Femminile | Organizzazione |
+|---|---|---|---|
+| nazionale | SuperLega (A1), Serie A2, Serie A3, Serie B | Serie A1, A2, A3 (dal 2026/27), B1, B2 | Lega / FIPAV |
+| regionale | Serie C, Serie D | Serie C, Serie D | Comitato Regionale |
+| territoriale | Prima, Seconda, Terza Divisione | Prima, Seconda, Terza Divisione | Comitato Territoriale |
+
+- **Nei file JSON** (tutti i campi facoltativi):
+  - `campionati.json`, per ogni campionato: `"categoria": "Prima Divisione"`, `"sesso": "M"`, `"regione": "Piemonte"`, `"territorio": "..."`, `"girone": "A"`, `"promosse": 1`, `"retrocesse": 2`. Se manca, la categoria si ricava dal nome del campionato ("Prima Divisione Maschile 2026/27", "Serie B1 femminile"...).
+  - `squadre.json`, per ogni squadra: `"categoria": "Serie D"`, `"sesso": "F"`, `"regione"`, `"territorio"`.
+  - Facoltativo, in cima al file: `"categorie": [{ "id": "U18", "nome": "Under 18", "sesso": "M", "livello": 10, "ambito": "territoriale" }]` per aggiungere o cambiare categorie.
+- **SINGLE MATCH:** con Q/E si scorrono le categorie dalla più alta alla più bassa, per esempio "PRIMA DIVISIONE M · PIEMONTE". Ci sono anche tutte le squadre dei campionati, non solo quelle di `squadre.json`.
+- **Spostare una squadra:** nell'EDITOR, scheda CATEGORIE, ▲ promuove, ▼ retrocede, oppure si sceglie la categoria dal menu; ↺ la riporta all'origine. Le squadre create nell'editor e i campionati dell'editor hanno anche il campo Categoria.
+- **Fine campionato:** le prime `promosse` squadre (di solito 1) salgono di categoria e le ultime `retrocesse` scendono. Lo mostra il riquadro FINALE.
+- I cambi di categoria restano nel browser (`sf91_categorie`) e vanno nel profilo.
+
 ### Bilanciamento (misurato su centinaia di scambi simulati)
 - Ace circa 6-7% (prima 29%): la ricezione dell'IA sbaglia meno sulle battute veloci.
 - Muro: un solo tentativo per schiacciata (prima poteva ritentare a ogni fotogramma e toccava quasi tutto); più murate vincenti, tocchi a muro più rari e che schizzano via.

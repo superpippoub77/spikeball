@@ -3,6 +3,11 @@
   {
    "id": "1DIV-M-2026",
    "nome": "Prima Divisione Maschile 2026/27",
+   "categoria": "Prima Divisione",
+   "sesso": "M",
+   "regione": "Piemonte",
+   "promosse": 1,
+   "retrocesse": 0,
    "set": 3,
    "squadre": [
     {

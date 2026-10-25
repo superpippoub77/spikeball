@@ -99,7 +99,9 @@ loadLeagues = async function () {
   for (const c of ED.data.campionati) {
     const sq = (c.squadre || []).filter(s => s && s.nome);
     if (sq.length < 2) continue;
+    const cat = c.categoria && typeof catByKey === 'function' ? catByKey(c.categoria) : null;
     LEAGUES.list.push({ id: 'ed_' + c.id, nome: c.nome || 'CAMPIONATO', set: c.set || 3, squadre: sq.map(s => ({ nome: s.nome, codice: s.codice })),
+                        categoria: cat ? cat.nome : undefined, sesso: cat ? cat.sesso : undefined,
                         giornate: edCalendar(sq.map(s => s.nome), !!c.ritorno) });
   }
 };
@@ -269,6 +271,12 @@ function edPickImage(size, done, png = true) {
   inp.click();
 }
 
+// categorie FIPAV per i menu a tendina (categorie.js)
+const edCatOptions = () => [['', '—']].concat(typeof FIPAV_LEVELS === 'undefined' ? [] : FIPAV_LEVELS.map(c => [catKey(c), `${c.nome} ${c.sesso}`]));
+function edCatSelect(cur, onChange) {
+  const s = edEl('select', {}, edCatOptions().map(([v, t]) => edEl('option', { value: v, selected: v === cur }, t)));
+  s.addEventListener('change', () => onChange(s.value)); return s;
+}
 function openEditor(onClose) {
   if (document.getElementById('editor')) return;
   if (!document.getElementById('editorCss')) document.head.append(edEl('style', { id: 'editorCss' }, ED_CSS));
@@ -292,9 +300,9 @@ function openEditor(onClose) {
       edEl('button', { class: 'green', onclick: () => { if (!validate()) return; ED.data = D; if (ED.save()) close(true); } }, '✔ SALVA E CHIUDI'),
       edEl('button', { class: 'red', onclick: () => { if (!dirty() || confirm('Uscire senza salvare le modifiche?')) close(false); } }, '✖ ESCI'),
       edEl('span', { class: 'msg' }, msg)));
-    wrap.append(edEl('div', { class: 'tabs' }, [['squadre', 'SQUADRE'], ['arbitri', 'ARBITRI'], ['sponsor', 'SPONSOR'], ['campionati', 'CAMPIONATI'], ['profilo', 'PROFILO']]
+    wrap.append(edEl('div', { class: 'tabs' }, [['squadre', 'SQUADRE'], ['categorie', 'CATEGORIE'], ['arbitri', 'ARBITRI'], ['sponsor', 'SPONSOR'], ['campionati', 'CAMPIONATI'], ['profilo', 'PROFILO']]
       .map(([k, t]) => edEl('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; edit = null; msg = ''; draw(); } }, t))));
-    ({ squadre: edit ? teamForm : teamList, arbitri: refList, sponsor: sponsorList, campionati: leagueList, profilo: profile })[tab]();
+    ({ squadre: edit ? teamForm : teamList, categorie: catList, arbitri: refList, sponsor: sponsorList, campionati: leagueList, profilo: profile })[tab]();
     i18nDom(wrap);   // lingua scelta (i18n.js)
   }
   function validate() {
@@ -343,7 +351,8 @@ function openEditor(onClose) {
       edField('Nome', t, 'nome', 'text', { maxlength: 30 }), edField('Sigla (3 lettere)', t, 'codice', 'text', { maxlength: 3, size: 4 }),
       edSelect('Squadra', t, 'sesso', [['M', 'maschile'], ['F', 'femminile']]),
       edField('Maglia', t, 'maglia', 'color'), edField('Bordo e numeri', t, 'bordo', 'color'), edField('Pantaloncini', t, 'pantaloncini', 'color'), edField('Campo', t, 'pavimento', 'color'),
-      edField('Allenatore', t, 'allenatore', 'text', { maxlength: 30 }), edField('Dirigente', t, 'dirigente', 'text', { maxlength: 30 })));
+      edField('Allenatore', t, 'allenatore', 'text', { maxlength: 30 }), edField('Dirigente', t, 'dirigente', 'text', { maxlength: 30 }),
+      edSelect('Categoria', t, 'categoria', edCatOptions()), edField('Comitato / territorio', t, 'territorio', 'text', { maxlength: 30 })));
     wrap.append(edEl('div', { class: 'card' }, t.logo ? edEl('img', { src: t.logo }) : edEl('span', { class: 'muted' }, 'nessun logo (si vede lo stemma con i colori)'),
       edEl('button', { onclick: () => edPickImage(128, d => { t.logo = d; draw(); }) }, 'CARICA LOGO'),
       t.logo ? edEl('button', { class: 'red small', onclick: () => { t.logo = null; draw(); } }, 'TOGLI') : null));
@@ -365,6 +374,30 @@ function openEditor(onClose) {
     wrap.append(edEl('div', { class: 'tbl' }, edEl('table', {}, edEl('tr', {}, ['', 'Nome', 'Cognome', 'N.', 'Ruolo', 'Età', 'Liv.', 'Foto', ''].map(h => edEl('th', {}, h))), rows)));
   }
 
+  // --- categorie: la piramide FIPAV e lo spostamento delle squadre ---
+  function catList() {
+    wrap.append(edEl('p', { class: 'muted' }, 'Piramide dei campionati FIPAV: nazionali, regionali, territoriali. Sposta una squadra con ▲ (promuovi) e ▼ (retrocedi) o scegli la categoria: il cambio vale subito nel SINGLE MATCH.'));
+    const move = (code, key) => { catMove(code, key || null); say(`${TEAMS[code].name} → ${key ? catLabel(catByKey(key)) : '—'}`); };
+    for (const sx of ['M', 'F']) {
+      wrap.append(edEl('h2', {}, sx === 'F' ? 'FEMMINILE' : 'MASCHILE'));
+      for (const c of FIPAV_LEVELS.filter(x => x.sesso === sx)) {
+        const k = catKey(c), teams = Object.keys(TEAM_CAT).filter(code => TEAMS[code] && teamCatKey(code) === k).sort((a, b) => TEAMS[a].name.localeCompare(TEAMS[b].name));
+        wrap.append(edEl('div', { class: 'card', style: 'display:block' },
+          edEl('b', {}, `${c.livello}. ${c.nome}`), edEl('span', { class: 'muted' }, `  ·  ${c.ambito}  ·  ${teams.length} squadre`),
+          teams.map(code => edEl('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap' },
+            edEl('span', { class: 'grow' }, TEAMS[code].name + (CAT_MOVES[TEAMS[code].name] ? ' *' : '')),
+            catStep(k, -1) ? edEl('button', { class: 'small green', title: 'promuovi', onclick: () => move(code, catStep(k, -1)) }, '▲') : null,
+            catStep(k, 1) ? edEl('button', { class: 'small red', title: 'retrocedi', onclick: () => move(code, catStep(k, 1)) }, '▼') : null,
+            edCatSelect(k, v => move(code, v)),
+            CAT_MOVES[TEAMS[code].name] ? edEl('button', { class: 'small', onclick: () => { catMove(code, null); say(TEAMS[code].name + ' ↺'); } }, '↺') : null))));
+      }
+    }
+    const free = Object.keys(TEAMS).filter(c => TEAMS[c].club && !teamCatKey(c) && !TEAMS[c].generated);
+    if (free.length) {
+      wrap.append(edEl('h2', {}, 'SENZA CATEGORIA'));
+      for (const code of free) wrap.append(edEl('div', { class: 'card' }, edEl('span', { class: 'grow' }, TEAMS[code].name), edCatSelect('', v => move(code, v))));
+    }
+  }
   // --- arbitri ---
   function refList() {
     wrap.append(edEl('p', { class: 'muted' }, 'In ogni partita viene scelto uno degli arbitri: nome e foto compaiono nel pannello della battuta (con ARCADE FX attivo).'));
@@ -397,6 +430,7 @@ function openEditor(onClose) {
         edField('Nome', c, 'nome', 'text', { maxlength: 40 }),
         edSelect('Gare', c, 'ritorno', [['true', 'andata e ritorno'], ['false', 'solo andata']], () => { c.ritorno = c.ritorno === 'true'; }),
         edSelect('Set', c, 'set', [[3, 'al meglio dei 3'], [5, 'al meglio dei 5'], [1, 'set unico']], () => { c.set = Number(c.set); }),
+        edSelect('Categoria', c, 'categoria', edCatOptions()),
         edEl('button', { class: 'red', onclick: () => { D.campionati.splice(D.campionati.indexOf(c), 1); draw(); } }, 'ELIMINA'),
         edEl('div', { class: 'muted' }, `Squadre scelte: ${c.squadre.length} (almeno 2)`),
         edEl('div', { style: 'display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px' }, all.map(s => {

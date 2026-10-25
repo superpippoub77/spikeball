@@ -341,7 +341,8 @@ class TeamSelectScene extends Base {
       const nm = TEAMS[code].name;
       D(this.add.text(fxp, 56, nm, UI.f(nm.length > 16 ? 5 : nm.length > 11 ? 6 : 8, '#ffffff', true)).setOrigin(0.5, 0));
       UI.bars(this, s ? ox + 84 : ox + 16, 22, code, !!s).forEach(D);
-      D(this.add.text(ox + 8, 80, GROUP_NAMES[this.grp[s]] || `GROUP ${this.grp[s] + 1}`, UI.f(7, '#ffffff', true)));
+      const gn = GROUP_NAMES[this.grp[s]] || `GROUP ${this.grp[s] + 1}`;
+      D(this.add.text(ox + 8, 80, gn, UI.f(gn.length > 26 ? 4 : gn.length > 18 ? 5 : 7, '#ffffff', true)));
       D(this.add.text(ox + 140, 80, ai ? 'AI' : (s ? 'P2' : 'P1'), UI.f(7, ai ? '#7ad0ff' : '#ffd23a', true)).setOrigin(1, 0));
       GROUPS[this.grp[s]].forEach((c, i) => {
         const fx = ox + 10 + (i % 6) * 23, fy = 96 + Math.floor(i / 6) * 18;
