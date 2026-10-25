@@ -83,8 +83,20 @@
     I dati finiscono in `api/dati/`, cartella non raggiungibile dal web.
 
 ### LINGUA
-Al primo avvio si sceglie la lingua con le bandiere: **italiano, inglese, francese, tedesco, spagnolo**. Si cambia poi dal menu principale con il tasto **L** o cliccando la bandiera in alto a destra.
+Lingue disponibili: **italiano, inglese, francese, tedesco, spagnolo**. All'inizio il gioco usa la lingua del browser.
+Per cambiarla, nel menu principale sali con ↑ sulla riga della lingua, sopra le schede, e scegli con ← →.
 Sono tradotti tutti i testi: menu, telecronaca, comandi della pratica, campionati, editor e pannello della foto.
+
+### Altezze e colpi d'attacco
+Ogni giocatore ha la sua altezza, mostrata in cm nella formazione e nella presentazione. Più alto vuol dire muro più alto e colpo in attacco più in alto.
+Ha anche un **colpo d'attacco** suo, che dipende dal fisico:
+- **POTENTE:** palla sopra la spalla, braccio pesante, tira profondo e spesso forte.
+- **DALL'ALTO:** palla presa con il braccio tutto teso sopra la testa; colpo ripido, corto dietro il muro.
+- **BRACCIO VELOCE:** palla presa davanti alla testa, un po' prima e più bassa; braccio rapido.
+- **TECNICO:** palla presa davanti, cerca angoli e righe, sbaglia meno.
+- **PALLONETTI:** gioca spesso il pallonetto e piazza la palla.
+
+Il punto in cui si colpisce cambia il tempo giusto per premere Z e anche la posa del colpo (braccio teso sopra la testa o palla presa davanti).
 
 ### EDITOR (squadre, arbitri, sponsor, campionati, profilo)
 Dal menu principale, ultima scheda. Si apre una pagina sopra il gioco, comoda anche sul telefono. **SALVA E CHIUDI** salva e ricarica il gioco con le novità.

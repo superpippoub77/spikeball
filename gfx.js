@@ -18,7 +18,9 @@ const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 
                'cheer2', 'cheer3',                // esultanze: pugno al cielo, salto a braccia larghe
                'appr', 'plant',                   // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
                'srvhold',                         // battitore in attesa: in piedi con la palla tra le mani
-               'jsetload', 'jset', 'land'];       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
+               'jsetload', 'jset', 'land',
+               'spikefr',                         // schiacciata con la palla presa davanti
+               'idle2'];                          // attesa: ginocchia più piegate (si alterna con idle, piedi fermi)       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -26,6 +28,8 @@ const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 const SKEL = {
   // posizione d'attesa come in Power Spikes: ginocchia ben piegate, busto in avanti, braccia piegate davanti pronte
   idle:  { hip: [13, 27], neck: [18, 17], head: [21, 13], bl: [[18, 32], [13, 38]], fl: [[21, 32], [18, 38]], ba: [[19, 24], [24, 26]], fa: [[20, 24], [25, 25]] },
+  // seconda fase del molleggio: piedi nello stesso punto, ginocchia e busto un poco più giù, braccia che oscillano
+  idle2: { hip: [13, 28], neck: [18, 18], head: [21, 14], bl: [[18, 33], [13, 38]], fl: [[22, 33], [18, 38]], ba: [[19, 25], [24, 25]], fa: [[20, 25], [25, 24]] },
   run1:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[13, 30], [10, 36]], fl: [[20, 30], [20, 38]], ba: [[15, 19], [13, 22]], fa: [[21, 18], [23, 15]] },
   run2:  { hip: [16, 25], neck: [18, 14], head: [20, 10], bl: [[16, 31], [17, 38]], fl: [[18, 30], [13, 34]], ba: [[20, 18], [22, 15]], fa: [[15, 19], [13, 22]] },
   // bagher in due tempi: passload = piegati sulle gambe, braccia tese e unite in basso; pass = spinta di gambe e braccia verso l'alto
@@ -38,6 +42,8 @@ const SKEL = {
   // (caricamento: gomito del braccio d'attacco alto e tirato indietro, mano dietro la testa, l'altro braccio punta la palla)
   spkload: { hip: [14, 24], neck: [14, 13], head: [16, 9], bl: [[12, 29], [14, 35]], fl: [[16, 30], [18, 35]], ba: [[20, 10], [25, 6]], fa: [[8, 11], [12, 5]] },
   spike: { hip: [15, 24], neck: [16, 13], head: [18, 9],  bl: [[13, 30], [15, 36]], fl: [[18, 30], [15, 37]], ba: [[19, 16], [22, 18]], fa: [[19, 7], [22, 2]] },
+  // colpo con la palla presa davanti alla testa (braccio veloce, tecnico): braccio teso in avanti e in alto
+  spikefr: { hip: [15, 24], neck: [17, 13], head: [19, 9], bl: [[13, 30], [15, 36]], fl: [[18, 30], [16, 37]], ba: [[19, 17], [22, 20]], fa: [[22, 9], [27, 5]] },
   spkfol: { hip: [15, 24], neck: [18, 14], head: [21, 10], bl: [[14, 30], [13, 36]], fl: [[18, 30], [18, 36]], ba: [[14, 18], [11, 21]], fa: [[22, 17], [23, 23]] },
   block: { hip: [16, 24], neck: [16, 13], head: [17, 9],  bl: [[15, 31], [15, 38]], fl: [[17, 31], [17, 38]], ba: [[16, 6], [17, 1]],  fa: [[18, 6], [19, 1]] },
   dive:  { hip: [9, 32],  neck: [21, 33], head: [25, 32], bl: [[5, 31], [1, 30]],   fl: [[5, 33], [1, 33]],   ba: [[25, 35], [30, 35]], fa: [[25, 34], [30, 33]] },
@@ -293,6 +299,16 @@ function texDone(t, frames = [], R = GR) {
   }
 }
 
+// colpi d'attacco: dove si prende la palla (fwd: px davanti alla testa; up: px sopra o sotto il punto normale),
+// velocità del braccio (sp), probabilità di power spike e pallonetto per il computer, zona del campo preferita (d, metri dalla rete)
+// e posa del colpo (spike = braccio teso sopra la testa, spikefr = palla presa davanti)
+const ATK_STYLES = {
+  potente:    { nome: 'POTENTE', fwd: 5, up: 0, sp: 1.08, power: 0.5, dink: 0.02, d: [6, 8.4], pose: 'spike' },
+  alto:       { nome: "DALL'ALTO", fwd: 3, up: 3, sp: 1.0, power: 0.3, dink: 0.04, d: [3.6, 6.2], pose: 'spike' },
+  veloce:     { nome: 'BRACCIO VELOCE', fwd: 8, up: -3, sp: 1.04, power: 0.3, dink: 0.03, d: [4.5, 8], pose: 'spikefr' },
+  tecnico:    { nome: 'TECNICO', fwd: 5, up: 0, sp: 0.97, power: 0.2, dink: 0.06, d: 'angoli', pose: 'spikefr', err: 0.6 },
+  piazzatore: { nome: 'PALLONETTI', fwd: 4, up: 1, sp: 0.95, power: 0.15, dink: 0.2, d: [3, 8.4], pose: 'spike' }
+};
 // colori della squadra con i dati del giocatore i (pelle e numero di maglia dalle squadre JSON)
 // look dei giocatori: divisa da palestra oppure da spiaggia (beach volley). Le texture hanno chiavi diverse
 // ('_b' finale), così le due versioni convivono; setLook si chiama prima di creare o mostrare i giocatori.
@@ -316,6 +332,10 @@ function playerTraits(code, name, fem) {
   // specialità mostrata nella formazione: il punto di forza più marcato
   const sc = [['MURO', tr.blk / 3.5], ['RICEZIONE', tr.rcv / 0.05], ['VELOCE', (tr.spd - 1) / 0.04], ['POTENZA', tr.atk / 0.045]].sort((a, b) => b[1] - a[1]);
   tr.tag = sc[0][1] > 0.5 ? sc[0][0] : 'COMPLETO';
+  // attacco: i più alti colpiscono più in alto (reach, px), e ognuno ha il suo colpo (ATK_STYLES): dipende dal fisico
+  tr.reach = t * 4;
+  const rs = R();
+  tr.stile = bd > 1.06 ? 'potente' : t > 0.45 ? 'alto' : tr.spd > 1.03 ? 'veloce' : rs < 0.45 ? 'tecnico' : rs < 0.75 ? 'piazzatore' : 'potente';
   TRAITS.set(key, tr); return tr;
 }
 

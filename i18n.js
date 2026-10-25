@@ -7,7 +7,8 @@
 //  - frasi con nomi e numeri: modelli con {0}, {1}... (le parti variabili, se sono a loro volta nel dizionario, si traducono);
 //  - testi su più righe o con più comandi separati da spazi: si traduce riga per riga / pezzo per pezzo.
 //  Aggancio: Phaser.GameObjects.Text.setText (tutti i testi del gioco), pagine HTML (editor, foto) con i18nDom,
-//  finestre confirm/alert/prompt. Lingua scelta all'avvio con le bandiere (LanguageScene), salvata in 'sf91_lang'.
+//  finestre confirm/alert/prompt. La lingua si sceglie nel menu principale (riga LINGUA sopra le schede: ↑, poi ← →);
+//  all'inizio è quella del browser. Salvata in 'sf91_lang'.
 //  Per aggiungere una traduzione: una riga [italiano, inglese, francese, tedesco, spagnolo] in I18N_ROWS.
 // ============================================================
 const LANGS = [
@@ -557,6 +558,16 @@ const I18N_ROWS = [
   ['accedi prima', 'log in first', 'connecte-toi d\'abord', 'zuerst anmelden', 'inicia sesión primero'],
   ['nessun profilo salvato', 'no saved profile', 'aucun profil sauvé', 'kein gespeichertes Profil', 'ningún perfil guardado'],
   ['Spazio del browser pieno: togli qualche foto o logo.', 'Browser storage full: remove some photos or logos.', 'Stockage du navigateur plein : enlève des photos ou logos.', 'Browserspeicher voll: entferne einige Fotos oder Logos.', 'Almacenamiento del navegador lleno: quita alguna foto o logo.'],
+  // ---- colpi d'attacco ----
+  ['POTENTE', 'POWERFUL', 'PUISSANT', 'KRAFTVOLL', 'POTENTE'],
+  ['DALL\'ALTO', 'HIGH REACH', 'TRÈS HAUT', 'VON OBEN', 'DESDE ARRIBA'],
+  ['BRACCIO VELOCE', 'FAST ARM', 'BRAS RAPIDE', 'SCHNELLER ARM', 'BRAZO RÁPIDO'],
+  ['TECNICO', 'TECHNICAL', 'TECHNIQUE', 'TECHNISCH', 'TÉCNICO'],
+  ['PALLONETTI', 'TIPS', 'FEINTES', 'LOBS', 'FINTAS'],
+  ['{0}cm  {1}', '{0}cm  {1}', '{0}cm  {1}', '{0}cm  {1}', '{0}cm  {1}'],
+  ['LINGUA', 'LANGUAGE', 'LANGUE', 'SPRACHE', 'IDIOMA'],
+  ['← → LINGUA', '← → LANGUAGE', '← → LANGUE', '← → SPRACHE', '← → IDIOMA'],
+  ['↑ LINGUA', '↑ LANGUAGE', '↑ LANGUE', '↑ SPRACHE', '↑ IDIOMA'],
   // ---- categorie FIPAV ----
   ['CATEGORIE', 'DIVISIONS', 'CATÉGORIES', 'SPIELKLASSEN', 'CATEGORÍAS'],
   ['Categoria', 'Division', 'Catégorie', 'Spielklasse', 'Categoría'],
@@ -755,7 +766,8 @@ const I18N_IT = {
 
 const I18N = { lang: null, exact: new Map(), tpl: [], cache: new Map() };
 try { I18N.lang = localStorage.getItem('sf91_lang'); } catch (e) { /* */ }
-if (!LANGS.some(l => l.id === I18N.lang)) I18N.lang = null;
+// senza una scelta salvata: la lingua del browser, se è una delle cinque, altrimenti l'italiano
+if (!LANGS.some(l => l.id === I18N.lang)) { const b = String(navigator.language || 'it').slice(0, 2).toLowerCase(); I18N.lang = LANGS.some(l => l.id === b) ? b : 'it'; }
 const LANG_IX = { it: 0, en: 1, fr: 2, de: 3, es: 4 };
 (function buildI18n() {
   for (const r of I18N_ROWS) if (r[0] === r[1] && I18N_IT[r[1]]) r[0] = I18N_IT[r[1]];
@@ -824,48 +836,3 @@ function i18nDom(root) {
   root.querySelectorAll('[title],[placeholder]').forEach(e => { for (const a of ['title', 'placeholder']) if (e.hasAttribute(a)) e.setAttribute(a, T(e.getAttribute(a))); });
 }
 for (const f of ['alert', 'confirm', 'prompt']) { const o = window[f].bind(window); window[f] = (m, ...r) => o(T(String(m ?? '')), ...r); }
-
-// ---------------- scelta della lingua (all'avvio e con L nel menu) ----------------
-class LanguageScene extends Phaser.Scene {
-  constructor() { super('Language'); }
-  create() {
-    camSetup(this); makeCommon(this);
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0a0e14, 0x0a0e14, 0x1a2420, 0x1a2420, 1).fillRect(0, 0, 320, 224);
-    this.add.text(160, 26, GAME_TITLE[0], { fontFamily: '"Arial Black", Arial', fontSize: '22px', fontStyle: 'bold', color: '#ffd23a', resolution: CFG.ZOOM }).setOrigin(0.5).setStroke('#1a3a8a', 5);
-    this.add.text(160, 46, 'VOLLEYBALL  ·  ' + GAME_TITLE[1], UI.f(7, '#7ad0ff', true)).setOrigin(0.5);
-    // titolo nella lingua evidenziata (cambia con la selezione)
-    this.title = this.add.text(160, 72, '', UI.f(8, '#ffffff', true)).setOrigin(0.5);
-    this.sel = Math.max(0, LANGS.findIndex(l => l.id === (I18N.lang || 'it')));
-    this.items = LANGS.map((l, i) => {
-      const x = 32 + i * 64, y = 120;
-      const box = this.add.graphics();
-      const flag = this.add.image(x, y, makeFlagTex(this, l.flag, 48, 32)).setInteractive({ useHandCursor: true });
-      const name = this.add.text(x, y + 26, l.name, UI.f(6, '#ffffff', true)).setOrigin(0.5);
-      flag.on('pointerover', () => { this.sel = i; this.draw(); });
-      flag.on('pointerdown', () => this.pick(i));
-      return { x, y, box, flag, name };
-    });
-    this.add.text(160, 200, '← →   Z / ENTER', UI.f(6, '#8aa0c8')).setOrigin(0.5);
-    const K = Phaser.Input.Keyboard.KeyCodes;
-    this.K = this.input.keyboard.addKeys({ left: K.LEFT, right: K.RIGHT, z: K.Z, en: K.ENTER, sp: K.SPACE });
-    this.draw();
-  }
-  draw() {
-    const titles = ['SCEGLI LA LINGUA', 'CHOOSE YOUR LANGUAGE', 'CHOISIS TA LANGUE', 'WÄHLE DEINE SPRACHE', 'ELIGE TU IDIOMA'];
-    const l = I18N.lang; I18N.lang = null; this.title.setText(titles[this.sel]); I18N.lang = l;   // ogni titolo è già nella sua lingua
-    this.items.forEach((it, i) => {
-      const on = i === this.sel;
-      it.box.clear().fillStyle(on ? 0x1a5ad8 : 0x0e2a6a, 0.95).fillRoundedRect(it.x - 30, it.y - 26, 60, 64, 5)
-        .lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(it.x - 30, it.y - 26, 60, 64, 5);
-      it.flag.setScale(on ? 1.1 : 1); it.name.setColor(on ? '#ffd23a' : '#ffffff');
-    });
-  }
-  pick(i) { if (this.gone) return; this.gone = true; SFX.select(); setLang(LANGS[i].id); this.scene.start('MainMenu'); }
-  update() {
-    const J = k => Phaser.Input.Keyboard.JustDown(this.K[k]), n = LANGS.length;
-    if (J('left')) { this.sel = (this.sel + n - 1) % n; this.draw(); SFX.blip(); }
-    if (J('right')) { this.sel = (this.sel + 1) % n; this.draw(); SFX.blip(); }
-    if (J('z') || J('en') || J('sp')) this.pick(this.sel);
-  }
-}

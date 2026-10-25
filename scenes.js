@@ -394,7 +394,7 @@ class LineupScene extends Base {
     this._wall = setTimeout(() => this.go(), 6500);   // il tempo del gioco rallenta se i fotogrammi sono lenti
     this.events.once('shutdown', () => clearTimeout(this._wall));
   }
-  go() { if (this.gone) return; this.gone = true; clearTimeout(this._wall); this.d.next(this); }
+  go() { if (this.gone) return; this.gone = true; clearTimeout(this._wall); try { this.d.next(this); } catch (e) { showGameError(e); } }
   update() { if (!this.gone && this.time.now > 600 && (this.btn() || this.startPressed())) this.go(); }
   member(i) {
     const code = this.d.team, P = TEAMS[code], nm = P.names[i];
@@ -440,7 +440,7 @@ class LineupScene extends Base {
       const face = this.add.image(3, 4, makeFaceTex(this, code, i, 'neutral')).setOrigin(0).setScale(0.8);
       const role = this.add.text(38, 3, f.pos === 'def' ? 'DIFESA' : POS_NAMES[f.pos] || '', TXT(5, '#7ad0ff'));
       const nmT = this.add.text(38, 12, '#' + m.num + ' ' + m.name, TXT(m.name.length > 7 ? 6 : 7));
-      const info = this.add.text(38, 23, `${m.tr.cm}cm`, TXT(5, '#ffffff'));
+      const info = this.add.text(38, 23, `${m.tr.cm}cm  ${ATK_STYLES[m.tr.stile].nome}`, TXT(ATK_STYLES[m.tr.stile].nome.length > 8 ? 3.6 : 4.4, '#ffffff'));
       const tag = this.add.text(38, 30, m.tr.tag, TXT(5, '#ffd23a'));
       card.add([g, face, role, nmT, info, tag]);
       this.tweens.add({ targets: card, x, duration: 380, delay: 200 + i * 260, ease: 'Back.out' });
@@ -647,6 +647,19 @@ class PracticeScene extends Base {
 }
 
 // ---------------- avvio ----------------
+// errore mostrato sopra il gioco (una volta per messaggio), utile da riferire per correggerlo
+function showGameError(e) {
+  console.error(e);
+  const msg = String(e && (e.stack || e.message) || e).split('\n').slice(0, 3).join(' | ');
+  if (showGameError.last === msg) return; showGameError.last = msg;
+  let box = document.getElementById('gameErr');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'gameErr';
+    box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:60;background:rgba(120,10,20,0.92);color:#fff;font:12px monospace;padding:6px 8px;border-radius:6px;cursor:pointer';
+    box.title = 'clic per chiudere'; box.onclick = () => box.remove(); document.body.appendChild(box);
+  }
+  box.textContent = 'ERRORE (v' + GAME_VERSION + '): ' + msg;
+}
 // Crea il gioco. NUOVA SCENA: aggiungere la sua classe all'elenco 'scene' qui sotto.
 // roster.js, league.js e photo.js 'avvolgono' startGame per caricare squadre, campionati e giocatori foto prima dell'avvio.
 function startGame() {
@@ -654,12 +667,18 @@ function startGame() {
     const F = Phaser.GameObjects.GameObjectFactory.prototype, text = F.text;
     F.text = function (x, y, s, style) { return text.call(this, x, y, s, Object.assign({}, style, { resolution: CFG.ZOOM })); };
   }
+  // un errore in una scena non deve bloccare il gioco sull'ultima schermata: il ciclo continua e l'errore si vede in basso
+  if (!Phaser.Game.prototype._safeStep) {
+    const step = Phaser.Game.prototype.step;
+    Phaser.Game.prototype._safeStep = true;
+    Phaser.Game.prototype.step = function (t, d) { try { step.call(this, t, d); } catch (e) { showGameError(e); } };
+  }
   window.__game = new Phaser.Game({
     // rendering a 3x della risoluzione nativa: lo scorrimento è fluido (sub-pixel) e la grafica resta a pixel
     type: HIRES ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [MainMenuScene, LanguageScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, EditorScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
+    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, EditorScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
             InfoScene, TechnicScene, PracticeScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
   });
   // gettone: tasto 5 o C (ovunque)

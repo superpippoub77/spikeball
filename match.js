@@ -635,7 +635,9 @@ class MatchScene extends Phaser.Scene {
     const last = b.lastTeam === t ? b.lastPlayer : null;
     const arrive = p => Math.abs(p.x - (xc + side * 6)) / CFG.RUN;
     let best = null, bt = 1e9;
-    const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.z > 2) continue; const v = arrive(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
+    // chi è ancora in aria (muro, attacco) arriva dopo l'atterraggio: prima non può correre verso la palla
+    const landT = p => (p.z > 0 || p.vz > 0) ? (p.vz + Math.sqrt(Math.max(0, p.vz * p.vz + 2 * CFG.PG * p.z))) / CFG.PG + 0.08 : 0;
+    const pick = pen => { for (const p of t.players) { if (p === last || p.decoy || p.downT > 0) continue; const v = arrive(p) + landT(p) + (pen ? pen(p) : 0); if (v < bt) { bt = v; best = p; } } };
     // in ricezione l'alzatore si tiene fuori se può, gli attaccanti di prima linea un po'; il libero si offre per primo
     // chi il giocatore umano ha già spostato in attesa della palla ha la precedenza
     // zone: le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea
@@ -704,7 +706,7 @@ class MatchScene extends Phaser.Scene {
     else if (this.state === 'dead' || this.state === 'end') target = p.x;
     else if (plan && plan.p === p && plan.kind === 'spike') {
       // rincorsa sincronizzata: arriva al punto di stacco esattamente quando deve saltare
-      const tHit = PHYS.timeToH(b.h, b.vy, CFG.HIT_H);
+      const tHit = PHYS.timeToH(b.h, b.vy, this.hitHOf(p));
       const jvx = this.jumpVX(t.attackType);
       target = plan.xc + side * (5 + jvx * CFG.TPEAK);
       if (tHit !== null) {
@@ -769,7 +771,7 @@ class MatchScene extends Phaser.Scene {
     }
     // stacco automatico dello schiacciatore
     if (plan && plan.p === p && plan.kind === 'spike' && p.jumpedVer !== b.ver) {
-      const tHit = PHYS.timeToH(b.h, b.vy, CFG.HIT_H);
+      const tHit = PHYS.timeToH(b.h, b.vy, this.hitHOf(p));
       const jit = t.human ? 0 : (p.jj || 0);
       if (tHit !== null && tHit <= CFG.TPEAK + 0.01 + jit && Math.abs(p.x - target) < 16) {
         this.jump(p, -side * this.jumpVX(t.attackType)); p.jumpedVer = b.ver; p.role = 'hit';
@@ -989,11 +991,12 @@ class MatchScene extends Phaser.Scene {
       } else if (pl.kind === 'spike') {
         if (p.z > 2 && !p.decoy) {
           const dh = b.h - p.z;
-          if (Math.abs(b.x - this.handX(p, 5)) < 10 && dh > 38 && dh < 58 && (ai ? dh < CFG.REACH_UP + 4 : p.hitWin > 0)) {
-            const qT = clamp(1 - Math.abs(dh - CFG.REACH_UP) / 9, 0, 1), qP = clamp(1 - Math.abs(p.vz) / CFG.JUMP_V, 0, 1);
+          const ru = this.reachOf(p), A = this.atkOf(p);   // altezza e punto di presa del suo colpo
+          if (Math.abs(b.x - this.handX(p, A.fwd)) < 11 && dh > ru - 10 && dh < ru + 12 && (ai ? dh < ru + 4 : p.hitWin > 0)) {
+            const qT = clamp(1 - Math.abs(dh - ru) / 9, 0, 1), qP = clamp(1 - Math.abs(p.vz) / CFG.JUMP_V, 0, 1);
             let q = qT * 0.6 + qP * 0.4;
             if (ai) q = clamp(q * 0.5 + t.skill * 0.55 + rnd(-0.15, 0.1), 0, 1);
-            this.snap(p, 5, CFG.REACH_UP);
+            this.snap(p, A.fwd, ru);
             this.doSpike(t, p, q); return;
           }
         } else if (p.diveT <= 0 && p.downT <= 0 && p.z <= 0 && p.jumpedVer === b.ver) {
@@ -1102,8 +1105,9 @@ class MatchScene extends Phaser.Scene {
     const type = t.attackType;
     const blockUp = o.blockers.some(q2 => q2.z > 8);
     let style;
+    const A = this.atkOf(p);
     if (t.human) style = this.up(t) ? 'dink' : this.down(t) ? 'power' : 'normal';
-    else { const r = Math.random(), sh = this.beach ? (blockUp ? 0.3 : 0.12) : (blockUp ? 0.1 : 0.03); style = r < sh ? 'dink' : r < 0.35 ? 'power' : 'normal'; }
+    else { const r = Math.random(), sh = (this.beach ? (blockUp ? 0.3 : 0.12) : (blockUp ? 0.1 : 0.03)) + A.dink; style = r < sh ? 'dink' : r < sh + A.power ? 'power' : 'normal'; }
     if (style === 'dink' && this.beach) {
       // beach: il pallonetto a mano aperta è fallo; si gioca il "shot" (palla piazzata a nocche o a mano chiusa, dietro il muro)
       const far = Math.random() < 0.5;
@@ -1125,10 +1129,12 @@ class MatchScene extends Phaser.Scene {
     else this.announce(`SPIKE BY ${p.name}!`);
     const K = this.courtK();
     let d = t.human ? (t.aimD || 6) : this.modern ? this.aiSpikeTarget(t) : rnd(3, 8.4) * K;
+    // il computer tira dove gli riesce meglio: angoli e righe (tecnico) o la sua zona preferita
+    if (!t.human) d = A.d === 'angoli' ? (Math.random() < 0.5 ? rnd(3, 3.8) : rnd(7.9, 8.6)) * K : Math.random() < 0.6 ? rnd(A.d[0], A.d[1]) * K : d;
     if (type === 'back') d = Math.max(d, 5);
-    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p) + this.trOf(p).atk) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1);
+    let sp = CFG.SPIKE_SPEED * (t.atkK || 1) * (1 + this.plK(p) + this.trOf(p).atk) * (0.8 + 0.32 * q) * (type === 'quick' ? 1.05 : type === 'back' ? 0.95 : 1) * (style === 'power' ? 1.2 : 1) * A.sp;
     let v;
-    const aiErr = !t.human && Math.random() < 0.05 + (1 - t.skill) * 0.16;
+    const aiErr = !t.human && Math.random() < (0.05 + (1 - t.skill) * 0.16) * (A.err || 1);
     const errQ = style === 'power' ? 0.3 : 0.18;
     if (aiErr || (q < errQ && Math.random() < 0.6)) {
       v = Math.random() < 0.25 ? PHYS.shotTo(b.x, b.h, 0, CFG.NET_H - 12, sp) : PHYS.shotTo(b.x, b.h, -side * rnd(9.6, 10.8) * CFG.PPM, 0, sp);
@@ -1142,6 +1148,10 @@ class MatchScene extends Phaser.Scene {
 
   // caratteristiche del giocatore che ha ora quel posto (altezza, muro, ricezione, velocità, potenza: playerTraits in gfx.js)
   trOf(p) { return playerTraits(p.team.code, TEAMS[p.team.code].names[p.ni] || String(p.ni), this.women); }
+  // colpo d'attacco del giocatore (ATK_STYLES in gfx.js) e altezze di colpo: i più alti prendono la palla più in alto
+  atkOf(p) { return ATK_STYLES[this.trOf(p).stile] || ATK_STYLES.potente; }
+  reachOf(p) { return CFG.REACH_UP + this.trOf(p).reach + this.atkOf(p).up; }
+  hitHOf(p) { return CFG.HIT_H + this.trOf(p).reach + this.atkOf(p).up; }
 
   // livello del singolo giocatore (squadre JSON): +-3% per punto rispetto alla media dei titolari
   plK(p) {
@@ -1486,7 +1496,7 @@ class MatchScene extends Phaser.Scene {
     const t = p.team, b = this.ball, pl = t.plan;
     if (this.state === 'serve' && this.server === p && (this.serveKind === 'jump' || this.serveKind === 'jfloat') && this.servePhase === 'toss' && !p.jsJumped) return this.jsHitT - this.jsT - this.jsPeak();
     if (this.state === 'rally' && pl && pl.kind === 'spike' && pl.p === p && p.jumpedVer !== b.ver) {
-      const th = PHYS.timeToH(b.h, b.vy, CFG.HIT_H); return th === null ? null : th - CFG.TPEAK;
+      const th = PHYS.timeToH(b.h, b.vy, this.hitHOf(p)); return th === null ? null : th - CFG.TPEAK;
     }
     return null;
   }
@@ -1505,7 +1515,7 @@ class MatchScene extends Phaser.Scene {
     // palleggio in salto, di profilo: spinta con le braccia distese, poi ricaduta
     if (st === 'set' && p.z > 2) return p.animT > 0.15 ? 'jset' : 'land';
     if (st === 'jump' && p.z > 0 && p.vz < 0 && b.lastPlayer === p && b.lastKind === 'set') return 'land';
-    if (st === 'spike') return p.animT > 0.18 ? 'spike' : 'spkfol';
+    if (st === 'spike') return p.animT > 0.18 ? (b.lastKind === 'serve' ? 'spike' : this.atkOf(p).pose) : 'spkfol';
     if (st === 'dump') return p.animT > 0.2 ? 'dump' : 'dumpfol';
     // esultanze diverse per ogni giocatore, che cambiano ogni tanto: braccia al cielo, pugno, salto a braccia larghe
     if (st === 'cheer') return ['cheer', 'cheer2', 'cheer3'][(p.ni + Math.floor(this.stateT / 0.7)) % 3];
@@ -1527,6 +1537,8 @@ class MatchScene extends Phaser.Scene {
       const tl = PHYS.timeToH(b.h, b.vy, 14);
       if (tl !== null && tl < 0.4 && Math.abs(p.x - (t.plan.xc + t.side * 6)) < 14) return 'passload';
     }
+    // attesa: molleggio sulle gambe, ognuno col suo ritmo; i piedi non si staccano da terra (pose idle / idle2)
+    if (st === 'idle' && p.z <= 0 && (this.state === 'rally' || this.state === 'serve')) return Math.sin(this.simT / 1000 * 9 + p.idx * 1.7) > 0 ? 'idle2' : 'idle';
     return st;
   }
 
@@ -1575,8 +1587,7 @@ class MatchScene extends Phaser.Scene {
       p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza
-      // in attesa i giocatori "molleggiano" sulle gambe, ognuno col suo ritmo (stile arcade)
-      if (st === 'idle' && p.z <= 0 && (this.state === 'rally' || this.state === 'serve')) lift = 0.8 + 0.8 * Math.sin(this.simT / 1000 * 9 + p.idx * 1.7);
+      // (il molleggio dell'attesa è nelle pose idle / idle2: i piedi restano a terra)
       if (st === 'appr') lift = 3 * Math.sin(Math.PI * clamp((CFG.APPR_T - this.takeoffIn(p)) / (CFG.APPR_T - CFG.PLANT_T), 0, 1));   // piccolo balzo della rincorsa
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - lift;
       p.spr.setDepth(FY + p.dep);

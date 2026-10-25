@@ -82,7 +82,7 @@ const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pa
   spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
   passside: ['dive', 0], srvload: ['serve', 3], spike: ['spike', 4], block: ['block', 4], dive: ['dive', 3], down: ['down', 0],
   cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6],
-  srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6] };
+  spikefr: ['spike', 4], idle2: ['idle', 4], srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {

@@ -194,7 +194,7 @@ startGame = function () { loadRosters().finally(_startGameRoster); };
 const _mainMenuCreate = MainMenuScene.prototype.create;
 MainMenuScene.prototype.create = function () {
   _mainMenuCreate.call(this);
-  const n = ROSTER.teams.length;
+  const n = ROSTER.teams.filter(c => TEAMS[c] && !TEAMS[c].generated).length;   // (le squadre generate dei campionati non contano)
   const msg = n ? `SQUADRE: ${n} da ${ROSTER.source}${ROSTER.source === 'file trascinato' ? '  (CANC per toglierlo)' : ''}` : 'SQUADRE PERSONALIZZATE: trascina un file .json sulla finestra';
   this.add.text(160, 200, msg, UI.f(4.5, ROSTER.errors.length ? '#ff9a6a' : '#8aa0c8')).setOrigin(0.5);
   if (ROSTER.errors.length) this.add.text(160, 192, ROSTER.errors[0], UI.f(4.5, '#ff9a6a')).setOrigin(0.5);
