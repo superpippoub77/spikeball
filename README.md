@@ -72,6 +72,7 @@
 
 ### SINGLE MATCH / CAREER (Thunder Spikes)
 - **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
+- **Sorteggio:** prima di ogni partita il capitano chiama testa o croce; chi vince sceglie battuta/ricezione o il campo, l'altra squadra la scelta rimasta.
 - **Impostazioni:**
   - PLAYING FIELD: Volleyball Arena, Pro Sports Hall, Gym Hall, Outdoor School e Classic 1991;
   - BALL: Classic, Pro, Retro;
@@ -142,7 +143,9 @@ Da **CAREER** scegli un campionato (o il vecchio torneo delle nazionali) e la tu
 - giochi le tue gare a set (**SET: 1 / 3 / 5**, il set decisivo a 15), oppure le **SIMULI**; le altre gare della giornata sono simulate secondo la forza delle squadre;
 - **classifica FIPAV**: 3 punti per il 3-0/3-1, 2-1 al tie-break; a pari punti contano vittorie, quoziente set e quoziente punti;
 - **Q/E** mostra classifica, risultati della giornata e calendario; la scheda della gara ha data, ora, palestra e arbitro;
-- i **risultati reali** già presenti nel calendario contano e non si rigiocano;
+- i **risultati reali** già presenti nel calendario contano e non si rigiocano; dopo **RICOMINCIA** invece tutte le gare, anche quelle già giocate davvero, tornano da giocare;
+- prima di ogni gara scegli **FORMAZIONE** (chi gioca e in che ruolo: centrale, alzatore, attaccante, libero, difesa...) e **GIOCATORI** (4, 6, 3 o 2 in campo); la formazione resta salvata per le gare successive e si può cambiare anche tra un set e l'altro con **F**;
+- prima di ogni gara c'è il **sorteggio**: il capitano chiama testa o croce, chi vince sceglie battuta/ricezione o il campo (sinistro/destro), l'altra squadra prende la scelta rimasta; a ogni set le squadre cambiano campo e battuta;
 - le squadre che sono in `squadre.json` (stesso nome) giocano con i loro giocatori; le altre vengono **create in automatico** (nomi, numeri, ruoli, età, colori; sempre uguali);
 - i progressi restano salvati nel browser (**RICOMINCIA** per ripartire).
 
