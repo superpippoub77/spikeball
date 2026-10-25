@@ -82,6 +82,15 @@
     Sul server la chiave va scritta nel file `api/chiave.php` (da creare a mano, non è nel repository), per esempio `<?php return 'una-frase-lunga-e-segreta';`.
     I dati finiscono in `api/dati/`, cartella non raggiungibile dal web.
 
+### Cambi in partita e libero
+- **Cambi:** a palla ferma (dopo un punto o prima del lancio della battuta) il giocatore 1 preme **X** e il giocatore 2 **Q**. In basso compare il promemoria "X: CAMBI".
+  - Nel pannello: ↑↓ sceglie chi esce, ← → chi entra dalla panchina (con ruolo, altezza, specialità e colpo), Z conferma, X o ESC chiude.
+  - Chi entra prende il posto e il turno di battuta di chi esce. Il pannello conta i cambi fatti; alla partita dopo torna la formazione scelta.
+- **Libero:** è il giocatore con ruolo L (o L1, L2) nella rosa: nelle squadre JSON, nell'editor e nei tuoi giocatori.
+  - Ha una maglia di un colore ben diverso da quello della squadra (in ARCADE e HD; nella versione 3D, a fotogrammi, resta con la maglia della squadra).
+  - Riceve meglio e si sposta più rapido, e in ricezione si offre per primo.
+  - Come da regolamento non batte, non attacca e non va a muro: se tocca a lui battere, batte il compagno più arretrato.
+
 ### LINGUA
 Lingue disponibili: **italiano, inglese, francese, tedesco, spagnolo**. All'inizio il gioco usa la lingua del browser.
 Per cambiarla, nel menu principale sali con ↑ sulla riga della lingua, sopra le schede, e scegli con ← →.
@@ -264,7 +273,7 @@ Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure d
   - SU-indietro + Z, GIÙ-indietro + Z = **THUNDER SERVE** (lampo bianco, la palla piomba giù)
 - **Ricezione:** solo joystick, porta il giocatore schiarito sul quadratino blu. Il pulsante non si usa, il tuffo è automatico.
   Le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea.
-  Mentre la palla è nell'altro campo (o durante la battuta avversaria) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte). Sulle palle lontane, come quelle deviate dal muro che vanno verso il fuori, il ricevitore scatta molto più veloce della corsa normale (anche all'indietro).
+  Mentre la palla è nell'altro campo (durante la battuta avversaria, ma anche subito dopo la tua battuta o il tuo attacco) comandi il difensore più arretrato e puoi già piazzarti in anticipo; se lo sposti, riceve di preferenza lui. Se la palla arriva un po' fuori portata il ricevitore la prende lo stesso con un **bagher laterale** (ricezione meno precisa); più lontano si tuffa (se stai già correndo verso la palla il tuffo non parte). Sulle palle lontane, come quelle deviate dal muro che vanno verso il fuori, il ricevitore scatta molto più veloce della corsa normale (anche all'indietro).
   Il giocatore che stai comandando ha un **alone rosso leggero** e la scritta **P1** (o **P2**) sopra la testa.
 - **Pallonetto di seconda dell'alzatore** (verso la rete durante l'alzata in salto): l'alzatore si gira verso la rete e con un braccio teso spinge la palla corta appena di là, con un colpo secco del polso.
 - **Alzata:** automatica. Se la ricezione è sbagliata ("OH! HE MISHITS THE BALL!") muovi l'alzatore col joystick.

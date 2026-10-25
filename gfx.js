@@ -339,10 +339,21 @@ function playerTraits(code, name, fem) {
   TRAITS.set(key, tr); return tr;
 }
 
+// ruolo libero: 'L' oppure sigle come 'L1', 'L2' (squadre JSON)
+const isLiberoRole = r => /^L\d?$/.test(String(r || '').toUpperCase());
+// maglia del libero: un colore ben diverso da maglia e pantaloncini della squadra (come vuole il regolamento)
+function liberoKit(P) {
+  const rgb = h => { const n = parseInt(String(h || '#000000').slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const dist = (a, b) => { const x = rgb(a), y = rgb(b); return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+  const C = ['#f2d21a', '#20b0e0', '#e0303a', '#f07a1a', '#ffffff', '#1a1a1a', '#2ab060', '#e04a8a'];
+  const sh = C.slice().sort((a, b) => Math.min(dist(b, P.sh), dist(b, P.tr)) - Math.min(dist(a, P.sh), dist(a, P.tr)))[0];
+  const l = rgb(sh); return { sh, tr: l[0] * 0.3 + l[1] * 0.59 + l[2] * 0.11 > 150 ? '#1a1a2a' : '#ffffff' };
+}
 function playerPal(code, i) {
   const P = TEAMS[code];
+  const lib = P.roles && isLiberoRole(P.roles[i]) && !LOOK.beach && !(P.shs && P.shs[i]) ? liberoKit(P) : null;
   const out = Object.assign({}, P, { sk: (P.sks && P.sks[i]) || P.sk, num: P.nums ? P.nums[i] : null,
-    sh: (P.shs && P.shs[i]) || P.sh, tr: (P.trs && P.trs[i]) || P.tr });
+    sh: (P.shs && P.shs[i]) || (lib && lib.sh) || P.sh, tr: (P.trs && P.trs[i]) || (lib && lib.tr) || P.tr });
   if (LOOK.beach) { out.beach = true; out.cap = i % 2 === 1; out.num = P.beachNums ? P.beachNums[i] : (i + 1) + ''; }
   const nm = P.names ? P.names[i] : String(i), tr = playerTraits(code, nm, LOOK.fem);
   out.ht = tr.h; out.bd = tr.bd;   // altezza e corporatura nel disegno

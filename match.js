@@ -370,7 +370,7 @@ class MatchScene extends Phaser.Scene {
     const t = this.serving, b = this.ball;
     for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; tt.ctrlMoved = false; }
     for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
-    const s = t.players[t.srvI];
+    const s = this.serverOf(t);
     this.server = s;
     b.held = s; b.live = false; b.bouncing = false; b.lastTeam = t; b.lastPlayer = null; b.lastKind = null; b.ver++; b.trail = [];
     this.servePhase = 'walk'; this.serveZone = false; this.serveKind = null; this.serveWhiff = false; this.count = CFG.SERVE_COUNT; this.countT = 0;
@@ -622,12 +622,12 @@ class MatchScene extends Phaser.Scene {
   blockersOf(t) {
     const P = t.players;
     if (this.nPl <= 2) return [P.slice().sort((a, b) => Math.abs(a.x) - Math.abs(b.x))[0]];
-    const front = P.filter(p => p.pos === 'mb' || p.pos === 'oh');
-    if (front.length < 2) front.push(...P.filter(p => p.pos === 'set'));
+    const front = P.filter(p => (p.pos === 'mb' || p.pos === 'oh') && !this.isLib(p));
+    if (front.length < 2) front.push(...P.filter(p => p.pos === 'set' && !this.isLib(p)));
     return front.slice(0, 2);
   }
   // giocatore nel posto con quel ruolo (escluso 'not'), o null
-  byPos(t, pos, not) { return t.players.find(q => q.pos === pos && q !== not) || null; }
+  byPos(t, pos, not) { return t.players.find(q => q.pos === pos && q !== not && (pos === 'set' || !this.isLib(q))) || null; }
 
   // il giocatore che arriva prima sul punto di contatto (con piccole preferenze di ruolo)
   choosePlayer(t, kind, xc, tc) {
@@ -643,7 +643,7 @@ class MatchScene extends Phaser.Scene {
     // zone: le palle che superano la prima linea toccano ai difensori arretrati, quelle corte alla prima linea
     const zone = Math.abs(xc) / CFG.HALF, frontRow = p => p.pos === 'mb' || p.pos === 'set' || p.pos === 'oh';
     const zonePen = p => this.nPl <= 2 ? 0 : frontRow(p) ? (zone > CFG.FRONT_ZONE ? 0.45 : 0) : (zone < CFG.FRONT_ZONE * 0.6 ? 0.25 : 0);
-    if (kind === 'pass') pick(p => zonePen(p) + (t.human && t.ctrlMoved && p === t.ctrl ? -0.15 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0));
+    if (kind === 'pass') pick(p => zonePen(p) + (t.human && t.ctrlMoved && p === t.ctrl ? -0.6 : 0) + (p.pos === 'set' ? 0.6 : 0) + (p.pos === 'mb' || p.pos === 'oh' ? 0.1 : 0) - (p.pos === 'lib' ? 0.08 : 0) - (this.isLib(p) ? 0.12 : 0));
     else if (kind === 'set') { const st = this.byPos(t, 'set'); if (st && st !== last && (arrive(st) < tc + 0.25 || t.human)) return st; pick(); }
     else if (kind === 'spike') return t.attacker !== last ? t.attacker : null;
     else pick();
@@ -655,15 +655,18 @@ class MatchScene extends Phaser.Scene {
     if (!t.human) return false;
     if (this.state === 'rally' && t.plan) return t.plan.p === p && (t.plan.kind === 'pass' || (t.plan.kind === 'set' && t.mishit));
     // palla nell'altro campo (o battuta avversaria): come in Power Spikes ci si piazza in anticipo con il difensore
-    const waiting = (this.state === 'rally' && this.ball.lastTeam !== t) || (this.state === 'serve' && this.serving !== t);
+    // (anche dopo la propria battuta o il proprio attacco: mentre la palla vola nell'altro campo ci si prepara alla difesa)
+    const b = this.ball, gone = b.lastTeam === t && (b.lastKind === 'serve' || b.x * t.side < 0 || (b.vx * t.side < 0 && t.touches >= 3));
+    const waiting = (this.state === 'rally' && (b.lastTeam !== t || gone)) || (this.state === 'serve' && this.serving !== t);
     return waiting && p === this.ctrlOf(t);
   }
   // giocatore comandato in attesa: il difensore più arretrato che non va a muro,
   // oppure quello che il giocatore ha già spostato in questa attesa
   ctrlOf(t) {
     let c = t.ctrl;
-    if (!t.ctrlMoved || !c || t.blockers.includes(c) || c.z > 0) {
-      c = t.players.filter(q => !t.blockers.includes(q) && q.z <= 0).sort((a, b) => Math.abs(b.x) - Math.abs(a.x))[0] || null;
+    if (!t.ctrlMoved || !c || t.blockers.includes(c)) {
+      // il difensore del posto più arretrato (anche se sta atterrando, per esempio dopo la battuta in salto: si muove appena tocca terra)
+      c = t.players.filter(q => !t.blockers.includes(q)).sort((a, b) => b.homeD - a.homeD || Math.abs(b.x) - Math.abs(a.x))[0] || null;
       t.ctrl = c;
     }
     return c;
@@ -1063,7 +1066,7 @@ class MatchScene extends Phaser.Scene {
     if (t.mishit) this.announce(`NOW ${p.name} SETS UP THE BALL.`);
     // attaccanti disponibili secondo la formazione: centrale (primo tempo), palla alta, seconda linea
     const mb = this.byPos(t, 'mb', p), back = this.byPos(t, 'def', p) || this.byPos(t, 'bk', p);
-    const high = this.byPos(t, 'oh', p) || mb || t.players.find(q => q !== p && q.pos !== 'lib') || back;
+    const high = this.byPos(t, 'oh', p) || mb || t.players.find(q => q !== p && q.pos !== 'lib' && !this.isLib(q)) || back;
     const quickReady = mb && mb.z > 2 && mb.role === 'quick';
     let type;
     if (t.human) {
@@ -1147,7 +1150,19 @@ class MatchScene extends Phaser.Scene {
   }
 
   // caratteristiche del giocatore che ha ora quel posto (altezza, muro, ricezione, velocità, potenza: playerTraits in gfx.js)
-  trOf(p) { return playerTraits(p.team.code, TEAMS[p.team.code].names[p.ni] || String(p.ni), this.women); }
+  trOf(p) {
+    const tr = playerTraits(p.team.code, TEAMS[p.team.code].names[p.ni] || String(p.ni), this.women);
+    // il libero è uno specialista: riceve meglio ed è più rapido negli spostamenti
+    return this.isLib(p) ? Object.assign({}, tr, { rcv: tr.rcv + 0.06, spd: tr.spd * 1.08 }) : tr;
+  }
+  // libero: ruolo L nella rosa (squadre JSON, editor, i miei giocatori). Non batte, non attacca, non mura
+  isLib(p) { const R = TEAMS[p.team.code].roles; return !this.beach && !!R && isLiberoRole(R[p.ni]); }
+  // chi batte: il giocatore del posto di battuta, oppure (se lì c'è il libero) il più arretrato degli altri
+  serverOf(t) {
+    const s = t.players[t.srvI];
+    if (!this.isLib(s)) return s;
+    return t.players.filter(q => !this.isLib(q)).sort((a, b) => b.homeD - a.homeD)[0] || s;
+  }
   // colpo d'attacco del giocatore (ATK_STYLES in gfx.js) e altezze di colpo: i più alti prendono la palla più in alto
   atkOf(p) { return ATK_STYLES[this.trOf(p).stile] || ATK_STYLES.potente; }
   reachOf(p) { return CFG.REACH_UP + this.trOf(p).reach + this.atkOf(p).up; }
@@ -1292,7 +1307,7 @@ class MatchScene extends Phaser.Scene {
     }
     if (wasServing) {
       w.streak++;
-      const s = w.players[w.srvI];
+      const s = this.serverOf(w);
       this.serveMsg = w.streak >= 2 ? `${w.code} IS ON A ROLL.  ${s.name} SERVES AGAIN.` : `${s.name} IS SERVING AGAIN.`;
     } else {
       this.serving.streak = 0;
@@ -1301,7 +1316,7 @@ class MatchScene extends Phaser.Scene {
       const n = w.players.length;
       w.rot = (w.rot + 1) % n;
       w.players.forEach((p, i) => { p.ni = (i + w.rot) % n; p.name = this.nameOf(w.code, p.ni); p.spr.setTexture(plKey(w.code, p.ni)); if (p.ref) p.ref.setTexture(p.spr.texture.key); });
-      this.serveMsg = `${w.players[w.srvI].name} IS NOW SERVING.`;
+      this.serveMsg = `${this.serverOf(w).name} IS NOW SERVING.`;
     }
     this.updateScoreboard();
   }
@@ -1314,7 +1329,7 @@ class MatchScene extends Phaser.Scene {
       t.side = -t.side;
       for (const p of t.players) { p.spr.setFlipX(t.side === 1); if (p.ref) p.ref.setFlipX(t.side === 1); }
     }
-    this.serveMsg = `CHANGE OF SIDES!  ${this.serving.players[this.serving.srvI].name} SERVES.`;
+    this.serveMsg = `CHANGE OF SIDES!  ${this.serverOf(this.serving).name} SERVES.`;
     this.cameras.main.flash(250, 255, 240, 200);
     this.updateScoreboard();
   }
