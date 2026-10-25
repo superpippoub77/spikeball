@@ -659,7 +659,7 @@ function startGame() {
     type: HIRES ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
+    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, EditorScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
             InfoScene, TechnicScene, PracticeScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
   });
   // gettone: tasto 5 o C (ovunque)

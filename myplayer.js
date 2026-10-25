@@ -140,7 +140,7 @@ teamPool = function (code) {
 };
 // nella versione femminile i nomi della rosa diventano femminili: le giocatrici create tengono il loro
 const _femLabelMy = femLabel;
-femLabel = function (code, label) { const e = teamPool(code).find(p => p.label === label); return e && e.me ? label : _femLabelMy(code, label); };
+femLabel = function (code, label) { const e = teamPool(code).find(p => p.label === label); return (e && e.me) || (TEAMS[code] && TEAMS[code].custom) ? label : _femLabelMy(code, label); };
 const _lineupOfMy = lineupOf;
 lineupOf = function (code, n) {
   const on = _lineupOfMy(code, n).slice(), pool = teamPool(code), F = FORMATIONS[n];
@@ -517,4 +517,4 @@ class MyPlayerScene extends Base {
 }
 
 // mentre si scrive un nome o è aperto il pannello della foto i tasti rapidi globali (K, H, C...) non valgono
-function myTyping() { const g = window.__game; return !!(document.getElementById('photoCap') || (g && g.scene.isActive('MyPlayer'))); }
+function myTyping() { const g = window.__game; return !!(document.getElementById('photoCap') || document.getElementById('editor') || (g && g.scene.isActive('MyPlayer'))); }

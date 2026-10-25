@@ -32,7 +32,7 @@ function teamPool(code) {
     P._pool = P._players.map(p => ({
       label: label(p), sk: p.pelle || (nat ? P.sk : R_SKINS[H(p) % R_SKINS.length]), ha: p.capelli || R_HAIR[H(p) % R_HAIR.length],
       sh: p.maglia || null, tr: p.bordo || null, num: p.numero != null && p.numero !== '' ? String(p.numero) : '',
-      role: asciiUp(p.sigla) || p._roles[0], roles: p._roles, age: Number(p.eta) || null, lv: Number(p.livello) || 5
+      role: asciiUp(p.sigla) || p._roles[0], roles: p._roles, age: Number(p.eta) || null, lv: Number(p.livello) || 5, foto: p.foto || null
     }));
   } else {
     P._pool = B.names.map((n, i) => ({

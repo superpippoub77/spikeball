@@ -82,6 +82,20 @@
     Sul server la chiave va scritta nel file `api/chiave.php` (da creare a mano, non è nel repository), per esempio `<?php return 'una-frase-lunga-e-segreta';`.
     I dati finiscono in `api/dati/`, cartella non raggiungibile dal web.
 
+### EDITOR (squadre, arbitri, sponsor, campionati, profilo)
+Dal menu principale, ultima scheda. Si apre una pagina sopra il gioco, comoda anche sul telefono. **SALVA E CHIUDI** salva e ricarica il gioco con le novità.
+- **Squadre:** nome, sigla di 3 lettere, maschile o femminile, colori (maglia, bordo, pantaloncini, campo), logo, allenatore e dirigente.
+  - La rosa parte da 12 **giocatori inventati** con ruoli veri, oppure è **copiata** da una squadra già nel gioco o da una squadra di un campionato.
+  - Ogni giocatore si modifica a piacere (nome, cognome, numero, ruolo, età, livello 1-10) e può avere la **foto** (telecamera o file). Si possono aggiungere o togliere giocatori.
+  - Le squadre create sono nel gruppo **MIE SQUADRE** della selezione, nella formazione, in I MIEI GIOCATORI e nei campionati.
+  - Una squadra con lo stesso nome di una squadra di un campionato prende il suo posto in quel campionato.
+  - Allenatore e dirigente compaiono nella presentazione della formazione.
+- **Arbitri:** nome, cognome, nazione e foto. In ogni partita ne viene scelto uno: nome e foto compaiono nel pannello della battuta.
+- **Sponsor (fino a 6):** nome, colore e logo, sui cartelloni del palazzetto ARCADE e sulla balaustra delle arene moderne.
+- **Campionati:** girone all'italiana (solo andata o andata e ritorno, set unico, al meglio dei 3 o dei 5) tra le squadre scelte, le tue e quelle del gioco. Si gioca da CAREER come gli altri campionati.
+- **Profilo:** registrati o accedi con utente e password. SALVA SUL SERVER salva tutto quello che il gioco tiene nel browser (squadre, arbitri, sponsor, campionati con risultati e classifiche, i miei giocatori, formazioni); CARICA DAL SERVER lo riporta su un altro dispositivo.
+  Sul server serve PHP (`api/profilo.php`); le password sono salvate solo come hash, i dati in `api/dati/profili/` (non raggiungibile dal web).
+
 ### SINGLE MATCH / CAREER (Thunder Spikes)
 - **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.
 - **Sorteggio:** prima di ogni partita il capitano chiama testa o croce; chi vince sceglie battuta/ricezione o il campo, l'altra squadra la scelta rimasta.

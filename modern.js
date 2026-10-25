@@ -235,14 +235,15 @@ class MainMenuScene extends Base {
       { label: 'TUTORIAL', sub: 'PRATICA', hint: 'Allenati su ogni fondamentale con i comandi in sovraimpressione', icon: 'tut' },
       { label: 'CAREER', sub: 'CAMPIONATI', hint: 'Campionati (campionati.json) o torneo contro le nazionali', icon: 'cup' },
       { label: 'BEACH', sub: 'SABBIA', hint: 'Beach volley 2 contro 2: sole, sabbia, set a 21 e regole da spiaggia', icon: 'sun' },
-      { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea il tuo giocatore: gioca nella sua squadra e migliora partita dopo partita', icon: 'me' }
+      { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea i tuoi giocatori: giocano nella loro squadra e migliorano partita dopo partita', icon: 'me' },
+      { label: 'EDITOR', sub: 'SQUADRE', hint: 'Squadre, arbitri, sponsor, campionati e profilo sul server', icon: 'ed' }
     ];
     this.cardObjs = this.cards.map((cd, i) => {
-      const x = 32 + i * 51, y = 112;
+      const x = 26 + i * 44.6, y = 112;
       const cont = this.add.container(x, y);
       const bg = this.add.graphics();
       cont.add(bg);
-      cont.add(this.add.text(0, -34, cd.label, UI.f(cd.label.length > 8 ? 4.6 : 6, '#ffffff', true)).setOrigin(0.5));
+      cont.add(this.add.text(0, -34, cd.label, UI.f(cd.label.length > 7 ? 4.4 : 5.6, '#ffffff', true)).setOrigin(0.5));
       const ic = this.add.graphics(); cont.add(ic);
       if (cd.icon === 'stick') { ic.fillStyle(0x303030).fillRect(-2, -10, 4, 16); ic.fillStyle(0xe02020).fillCircle(0, -12, 7); ic.fillStyle(0x2a2a2a).fillRect(-12, 6, 24, 6); }
       else if (cd.icon === 'vs') { ic.lineStyle(1, 0xffffff).strokeRect(-14, -16, 28, 14); for (let k = 0; k < 6; k++) ic.lineBetween(-14 + k * 5.6, -16, -14 + k * 5.6, -2); cont.add(this.add.text(0, 8, 'VS', UI.f(12, '#ffd23a', true)).setOrigin(0.5)); }
@@ -251,7 +252,13 @@ class MainMenuScene extends Base {
         ic.fillStyle(0xe8b088).fillCircle(0, -14, 5); ic.fillStyle(0x3a2010).fillEllipse(0, -18, 10, 4);
         ic.fillStyle(0xf2c818).fillRect(-8, -8, 16, 14); ic.fillStyle(0x1a1a2a).fillRect(-3, -5, 6, 7);
         const nMy = MYP.list.length;
-        cont.add(this.add.text(0, 12, nMy ? nMy + (nMy === 1 ? ' GIOCATORE' : ' GIOCATORI') : 'NUOVO', UI.f(6, '#ffd23a', true)).setOrigin(0.5));
+        cont.add(this.add.text(0, 12, nMy ? nMy + (nMy === 1 ? ' GIOCATORE' : ' GIOCATORI') : 'NUOVO', UI.f(4.6, '#ffd23a', true)).setOrigin(0.5));
+      }
+      else if (cd.icon === 'ed') {
+        ic.fillStyle(0xf2f2f2).fillRect(-11, -18, 18, 24); ic.fillStyle(0x1a5ad8).fillRect(-8, -14, 12, 3).fillRect(-8, -9, 12, 2).fillRect(-8, -5, 8, 2);
+        ic.fillStyle(0xf2c818).fillTriangle(4, 6, 14, -12, 17, -10).fillTriangle(4, 6, 7, 8, 17, -10);
+        const nEd = ED.data.squadre.length;
+        cont.add(this.add.text(0, 12, nEd ? nEd + (nEd === 1 ? ' SQUADRA' : ' SQUADRE') : 'NUOVO', UI.f(4.6, '#ffd23a', true)).setOrigin(0.5));
       }
       else if (cd.icon === 'sun') {
         ic.fillStyle(0x3ab0f0).fillRect(-14, -18, 28, 16); ic.fillStyle(0x1a7ad0).fillRect(-14, -2, 28, 4); ic.fillStyle(0xf2d8a0).fillRect(-14, 2, 28, 8);
@@ -272,7 +279,7 @@ class MainMenuScene extends Base {
     this.cardObjs.forEach((c, i) => {
       const on = i === this.sel;
       const beach = i === 4;
-      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-24, -42, 48, 84, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-24, -42, 48, 84, 4);
+      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-21, -42, 42, 84, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-21, -42, 42, 84, 4);
       c.setScale(on ? 1.06 : 1);
     });
     this.hint.setText(this.cards[this.sel].hint);
@@ -290,7 +297,8 @@ class MainMenuScene extends Base {
       else if (this.sel === 2) this.scene.start('Practice');
       else if (this.sel === 3) this.scene.start('Leagues');
       else if (this.sel === 4) this.scene.start('BeachSelect');
-      else this.scene.start('MyPlayers');
+      else if (this.sel === 5) this.scene.start('MyPlayers');
+      else this.scene.start('Editor');
     }
   }
 }
