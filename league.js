@@ -111,8 +111,9 @@ function leagueSave(lg, st) { try { localStorage.setItem('sf91_lega_' + lg.id, J
 
 const garaId = (g, gi, k) => String(g.gara || `${gi}-${k}`);
 // risultato di una gara: reale dal calendario oppure giocato/simulato
+// (dopo RICOMINCIA, st.noReal: anche le gare con il risultato reale tornano da giocare)
 function garaResult(lg, st, g, id) {
-  if (Array.isArray(g.risultato) && g.risultato.length === 2) {
+  if (!st.noReal && Array.isArray(g.risultato) && g.risultato.length === 2) {
     const p = (g.parziali || []).map(x => String(x).split(/[\/\-]/).map(Number)).filter(x => x.length === 2 && !isNaN(x[0]));
     return { h: g.risultato[0], a: g.risultato[1], parz: p, real: true };
   }
@@ -201,14 +202,21 @@ function startLeagueSet(scene) {
   const a = ARENAS[MSET.arena], stt = [statsOf(hc), statsOf(ac)];
   const sk = s => clamp(0.35 + (s[0] + s[1] + s[2] - 210) / 90 * 0.55, 0.4, 0.92);
   const home = gara.g.casa === st.team;
+  // sorteggio (LG.toss): campo e battuta del primo set; a ogni set le squadre cambiano campo e battuta
+  const k = LG.sets.length, toss = LG.toss || { aServes: true, aLeft: true };
+  const homeLeft = toss.aLeft !== (k % 2 === 1), homeServes = toss.aServes !== (k % 2 === 1);
+  LG.homeLeft = homeLeft;
+  const L = homeLeft ? [hc, ac] : [ac, hc], hum = home ? [1, 0] : [0, 1], S2 = homeLeft ? stt : [stt[1], stt[0]];
   scene.scene.start('Match', {
-    mode: 'modern', left: hc, right: ac, humans: home ? [1, 0] : [0, 1], skillL: sk(stt[0]), skillR: sk(stt[1]),
-    stats: stt, start: [0, 0], time: null, setLabel: `SET ${LG.sets.length + 1}   ${hc} ${won[0]}-${won[1]} ${ac}`,
-    firstServe: LG.sets.length % 2,
+    mode: 'modern', left: L[0], right: L[1], humans: homeLeft ? hum : [hum[1], hum[0]], skillL: sk(S2[0]), skillR: sk(S2[1]),
+    players: st.players || 4,   // giocatori in campo scelti nel campionato (formazione scelta con FORMAZIONE)
+    stats: S2, start: [0, 0], time: null, setLabel: `SET ${LG.sets.length + 1}   ${hc} ${won[0]}-${won[1]} ${ac}`,
+    firstServe: homeServes === homeLeft ? 0 : 1,
     modern: { arena: a.id === 'classic' ? 'arena' : a.id, floor: a.floor || ARENAS[0].floor, ball: BALLS[MSET.ball].key, rebound: OPT.rebound[MSET.rebound],
               target: MSET.target === 0, targetPts: tb ? 15 : 25, sideOut: false, fx: MSET.fx === 0 },
     onDone: m => {
-      LG.sets.push([m.teams[0].score, m.teams[1].score]);
+      const sc = [m.teams[0].score, m.teams[1].score];
+      LG.sets.push(LG.homeLeft ? sc : [sc[1], sc[0]]);   // sempre casa - ospite
       const w = LG.sets.reduce((c, s) => (s[0] > s[1] ? c[0]++ : c[1]++, c), [0, 0]);
       if (w[0] >= need || w[1] >= need) {
         LG.st.results[LG.gara.id] = { h: w[0], a: w[1], parz: LG.sets.slice(), played: true };
@@ -333,9 +341,13 @@ class LeagueHubScene extends Base {
       if (r) R(134, `GIÀ GIOCATA: ${r.h}-${r.a}${r.real ? ' (reale)' : ''}`, 5, '#7ad0ff', true);
     }
     // comandi
-    this.opts = cr < 0 ? ['RICOMINCIA', 'ESCI'] : mine && !garaResult(lg, st, mine.g, mine.id) ? ['GIOCA', 'SIMULA', 'SET', 'RICOMINCIA', 'ESCI'] : ['CONTINUA', 'SET', 'RICOMINCIA', 'ESCI'];
-    this.optT = this.opts.map((o, i) => this.add.text(30 + i * (260 / Math.max(1, this.opts.length - 1)), 192, '', UI.f(6.5, '#ffffff', true)).setOrigin(0.5));
+    // prima di ogni gara si scelgono i giocatori in campo e il loro ruolo (FORMAZIONE) e quanti giocano (GIOCATORI)
+    this.opts = cr < 0 ? ['RICOMINCIA', 'ESCI'] : mine && !garaResult(lg, st, mine.g, mine.id) ? ['GIOCA', 'FORMAZIONE', 'GIOCATORI', 'SIMULA', 'SET', 'RICOMINCIA', 'ESCI'] : ['CONTINUA', 'FORMAZIONE', 'GIOCATORI', 'SET', 'RICOMINCIA', 'ESCI'];
+    const many = this.opts.length > 5;
+    this.optT = this.opts.map((o, i) => this.add.text(24 + i * (272 / Math.max(1, this.opts.length - 1)), 192, '', UI.f(many ? 5 : 6.5, '#ffffff', true)).setOrigin(0.5));
+    this.myCode = codes[st.team] && codes[st.team].code;
     this.add.text(160, 210, '← → comando   Z: conferma   Q/E: classifica / risultati / calendario   ESC: indietro', UI.f(4.3, '#9ab8f0')).setOrigin(0.5);
+    this.add.text(160, 201, 'FORMAZIONE: chi gioca e in che ruolo   ·   GIOCATORI: quanti in campo', UI.f(3.8, '#7ad0ff')).setOrigin(0.5);
     this.sel = 0; this.confirm = false; this.refresh();
   }
   drawLeft() {
@@ -368,7 +380,7 @@ class LeagueHubScene extends Base {
   refresh() {
     this.optT.forEach((t, i) => {
       const o = this.opts[i];
-      t.setText(o === 'SET' ? `SET: ${this.st.sets}` : o === 'RICOMINCIA' && this.confirm && i === this.sel ? 'SICURO? Z' : o)
+      t.setText(o === 'SET' ? `SET: ${this.st.sets}` : o === 'GIOCATORI' ? `${this.st.players || 4} vs ${this.st.players || 4}` : o === 'RICOMINCIA' && this.confirm && i === this.sel ? 'SICURO? Z' : o)
         .setColor(i === this.sel ? '#ffd23a' : '#ffffff').setScale(i === this.sel ? 1.1 : 1);
     });
   }
@@ -384,9 +396,14 @@ class LeagueHubScene extends Base {
     const o = this.opts[this.sel], lg = this.lg, st = this.st;
     SFX.select();
     if (o === 'SET') { st.sets = st.sets === 1 ? 3 : st.sets === 3 ? 5 : 1; leagueSave(lg, st); this.refresh(); return; }
+    if (o === 'GIOCATORI') { const L = [4, 6, 3, 2]; st.players = L[(L.indexOf(st.players || 4) + 1) % L.length]; leagueSave(lg, st); this.refresh(); return; }
+    if (o === 'FORMAZIONE' && this.myCode) {   // chi gioca e in che ruolo (si salva e vale per le gare successive)
+      this.gone = true; this.scene.start('Formazione', { code: this.myCode, n: st.players || 4, back: 'LeagueHub' }); return;
+    }
     if (o === 'RICOMINCIA') {
       if (!this.confirm) { this.confirm = true; this.refresh(); return; }
-      leagueSave(lg, { team: null, results: {}, sets: st.sets }); this.gone = true; this.scene.start('LeagueTeam'); return;
+      // ricomincia da zero: tutte le gare (anche quelle con il risultato reale del calendario) tornano da giocare
+      leagueSave(lg, { team: null, results: {}, sets: st.sets, players: st.players, noReal: true }); this.gone = true; this.scene.start('LeagueTeam'); return;
     }
     if (o === 'ESCI') { this.gone = true; this.scene.start('MainMenu'); return; }
     if (o === 'CONTINUA') { simRound(lg, st, this.cr, false); leagueSave(lg, st); this.scene.restart({ page: 'res' }); return; }
@@ -397,8 +414,11 @@ class LeagueHubScene extends Base {
     }
     if (o === 'GIOCA') {
       this.gone = true;
-      Object.assign(LG, { lg, st, gara: this.mine, sets: [], gi: this.cr });
-      startLeagueSet(this);
+      Object.assign(LG, { lg, st, gara: this.mine, sets: [], gi: this.cr, toss: null });
+      // sorteggio del capitano: chi batte per primo e in che campo (squadra A = squadra di casa)
+      const codes = leagueTeams(lg), g = this.mine.g, home = g.casa === st.team;
+      this.scene.start('CoinToss', { a: codes[g.casa].code, b: codes[g.ospite].code, human: home ? [1, 0] : [0, 1],
+        next: (s2, toss) => { LG.toss = toss; startLeagueSet(s2); } });
     }
   }
   keysInit() {
@@ -428,9 +448,16 @@ class LeagueSetScene extends Base {
       this.add.text(160, 152, 'le altre gare della giornata sono state simulate', UI.f(4.5, '#9ab8f0')).setOrigin(0.5);
     }
     this.add.text(160, 200, this.finished ? 'Z: CLASSIFICA E RISULTATI' : 'Z: SET SUCCESSIVO', UI.f(7, '#ffffff', true)).setOrigin(0.5);
+    if (!this.finished) this.add.text(160, 212, 'F: CAMBIA FORMAZIONE (giocatori e ruoli)', UI.f(5, '#9ab8f0')).setOrigin(0.5);
+    this.kf = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
   }
   update() {
-    if (this.gone || !(this.btn() || this.startPressed())) return;
+    if (this.gone) return;
+    if (!this.finished && Phaser.Input.Keyboard.JustDown(this.kf)) {   // cambi tra un set e l'altro
+      const codes = leagueTeams(LG.lg), code = codes[LG.st.team] && codes[LG.st.team].code;
+      if (code) { this.gone = true; SFX.select(); this.scene.start('Formazione', { code, n: LG.st.players || 4, back: 'LeagueSet', backData: { done: false } }); return; }
+    }
+    if (!(this.btn() || this.startPressed())) return;
     this.gone = true; SFX.select();
     if (this.finished) this.scene.start('LeagueHub', { page: 'res' }); else startLeagueSet(this);
   }

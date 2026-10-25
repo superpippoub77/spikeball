@@ -452,22 +452,29 @@ class MatchSettingsScene extends Base {
       this.gone = true; SFX.select();
       // formazione: scelta dei giocatori in campo per il numero di giocatori impostato
       if (k === 'lineL' || k === 'lineR') this.scene.start('Formazione', { code: k === 'lineL' ? MSET.left : MSET.right, n: PLAYER_COUNTS[MSET.players], women: MSET.women === 1, back: 'MatchSettings' });
-      else startModernMatch(this);
+      else this.scene.start('CoinToss', { a: MSET.left, b: MSET.right, human: [MSET.leftAI ? 0 : 1, MSET.rightAI ? 0 : (MSET.leftAI ? 1 : 2)],
+        next: (s, toss) => startModernMatch(s, toss) });   // sorteggio: chi batte e in che campo
     }
   }
 }
 
 // traduce MSET (scelte dei menu) nella configurazione della scena Match; skill dell'IA ricavata dalle statistiche
-function startModernMatch(scene) {
+// toss = esito del sorteggio (CoinToss): { aServes, aLeft } riferiti a MSET.left; senza sorteggio batte la squadra a sinistra
+function startModernMatch(scene, toss) {
   const a = ARENAS[MSET.arena], sp = OPT.start[MSET.start];
   const rules = [{ target: 25, sideOut: false }, { target: 15, sideOut: false }, { target: 15, sideOut: true }][MSET.rules];
-  const st = [statsOf(MSET.left), statsOf(MSET.right)];
+  let codes = [MSET.left, MSET.right], st = [statsOf(MSET.left), statsOf(MSET.right)];
   const sk = s => clamp(0.35 + (s[0] + s[1] + s[2] - 210) / 90 * 0.55, 0.4, 0.92);
-  const humans = [MSET.leftAI ? 0 : 1, MSET.rightAI ? 0 : (MSET.leftAI ? 1 : 2)];
+  let humans = [MSET.leftAI ? 0 : 1, MSET.rightAI ? 0 : (MSET.leftAI ? 1 : 2)];
+  let first = 0;
+  if (toss) {
+    if (!toss.aLeft) { codes = codes.reverse(); st = st.reverse(); humans = humans.reverse(); }   // la squadra A gioca nel campo destro
+    first = toss.aServes === toss.aLeft ? 0 : 1;
+  }
   scene.scene.start('Match', {
-    mode: 'modern', left: MSET.left, right: MSET.right, humans, skillL: sk(st[0]), skillR: sk(st[1]), players: PLAYER_COUNTS[MSET.players],
-    stats: st, start: [sp, sp], time: null, women: MSET.women === 1, setLabel: MSET.left + ' vs ' + MSET.right,
-    firstServe: 0,
+    mode: 'modern', left: codes[0], right: codes[1], humans, skillL: sk(st[0]), skillR: sk(st[1]), players: PLAYER_COUNTS[MSET.players],
+    stats: st, start: [sp, sp], time: null, women: MSET.women === 1, setLabel: codes[0] + ' vs ' + codes[1],
+    firstServe: first,
     modern: { arena: a.id, floor: a.floor, ball: BALLS[MSET.ball].key, rebound: OPT.rebound[MSET.rebound], target: MSET.target === 0,
               targetPts: rules.target, sideOut: rules.sideOut, fx: MSET.fx === 0 },
     onDone: m => m.scene.start('MatchStats', { teams: m.teams.map(t => ({ code: t.code, score: t.score, players: t.players.map(p => ({ name: p.name, ni: p.ni, idx: p.idx, pos: p.pos })), stats: t.pstats })), winner: m.winner.id })
@@ -532,5 +539,95 @@ class MatchStatsScene extends Base {
       else if (this.d.beach) startBeachMatch(this, true);
       else startModernMatch(this);
     }
+  }
+}
+
+// ---------------- SORTEGGIO (testa o croce) ----------------
+// Prima della partita il capitano chiama testa o croce. Chi vince sceglie BATTUTA / RICEZIONE oppure il CAMPO
+// (sinistro / destro); l'altra squadra prende la scelta rimasta, come nelle regole della pallavolo.
+// dati: { a, b: codici delle squadre (a = squadra di casa / sinistra di default), human: [ha, hb] (0 = computer),
+//         next(scene, { aServes, aLeft }) }
+class CoinTossScene extends Base {
+  constructor() { super('CoinToss'); }
+  init(d) { this.d = d; this.gone = false; }
+  create() {
+    camSetup(this); makeCommon(this); this.keysInit(); UI.bg(this);
+    const d = this.d, T = [d.a, d.b];
+    this.add.text(160, 10, 'SORTEGGIO', UI.f(10, '#ffd23a', true)).setOrigin(0.5, 0);
+    T.forEach((c, i) => {
+      this.add.image(i ? 250 : 70, 52, makeFlagTex(this, c, 40, 27));
+      this.add.text(i ? 250 : 70, 70, TEAMS[c].name, UI.f(5.5, '#ffffff', true)).setOrigin(0.5, 0);
+      this.add.text(i ? 250 : 70, 80, d.human[i] ? 'P' + d.human[i] : 'CPU', UI.f(5, d.human[i] ? '#ffd23a' : '#9ab8f0', true)).setOrigin(0.5, 0);
+    });
+    this.coin = this.add.graphics(); this.coinTxt = this.add.text(160, 60, '', UI.f(12, '#5a3a08', true)).setOrigin(0.5);
+    this.msg = this.add.text(160, 108, '', { ...UI.f(6.5, '#ffffff', true), align: 'center' }).setOrigin(0.5, 0);
+    this.optT = [0, 1, 2, 3].map(i => this.add.text(160, 136 + i * 13, '', UI.f(6.5, '#ffffff', true)).setOrigin(0.5, 0));
+    this.add.text(160, 212, '↑↓ / ← → scegli   Z: conferma', UI.f(5, '#9ab8f0')).setOrigin(0.5);
+    // chiama chi gioca (la squadra di casa se giocano in due); senza persone chiama il computer
+    this.caller = d.human[0] ? 0 : d.human[1] ? 1 : 0;
+    this.face = 0; this.res = {};
+    this.drawCoin(1, 0);
+    this.ask('call', `IL CAPITANO DI ${TEAMS[T[this.caller]].name}\nCHIAMA:`, ['TESTA', 'CROCE'], this.caller);
+  }
+  drawCoin(sy, face) {
+    const g = this.coin; g.clear();
+    g.fillStyle(0x000000, 0.35).fillEllipse(162, 63, 40, 40 * Math.max(0.08, Math.abs(sy)));
+    g.fillStyle(0xd8a020, 1).fillEllipse(160, 60, 40, 40 * Math.max(0.08, Math.abs(sy)));
+    g.fillStyle(0xf2c840, 1).fillEllipse(160, 60, 32, 32 * Math.max(0.08, Math.abs(sy)));
+    this.coinTxt.setText(Math.abs(sy) > 0.35 ? (face ? '✚' : 'T') : '').setScale(1, Math.max(0.1, Math.abs(sy)));
+  }
+  // domanda alla squadra who: persona = menu, computer = scelta automatica dopo un attimo
+  ask(step, text, opts, who) {
+    this.step = step; this.opts = opts; this.who = who; this.sel = 0;
+    this.msg.setText(text);
+    this.optT.forEach((t, i) => t.setText(opts[i] || ''));
+    this.refresh();
+    if (!this.d.human[who]) this.time.delayedCall(900, () => this.choose(this.aiPick(step)));
+  }
+  aiPick(step) {
+    if (step === 'call') return Math.random() < 0.5 ? 0 : 1;
+    if (step === 'win') return Math.random() < 0.7 ? 0 : 2;            // di solito il computer sceglie di battere
+    return Math.floor(Math.random() * this.opts.length);
+  }
+  refresh() { this.optT.forEach((t, i) => t.setColor(i === this.sel ? '#ffd23a' : '#ffffff').setScale(i === this.sel ? 1.1 : 1)); }
+  choose(i) {
+    if (this.step === 'call') {
+      this.call = i; this.step = 'flip'; this.optT.forEach(t => t.setText(''));
+      this.msg.setText(`${TEAMS[[this.d.a, this.d.b][this.caller]].name} CHIAMA ${i ? 'CROCE' : 'TESTA'}...`);
+      const out = Math.random() < 0.5 ? 0 : 1; SFX.select();
+      this.tweens.addCounter({ from: 0, to: Math.PI * 9 + (out ? Math.PI : 0), duration: 1600, ease: 'Cubic.out',
+        onUpdate: tw => { const v = tw.getValue(); this.drawCoin(Math.cos(v), Math.floor((v + Math.PI / 2) / Math.PI) % 2); },
+        onComplete: () => {
+          this.drawCoin(1, out);
+          this.winner = out === this.call ? this.caller : 1 - this.caller;
+          const W = TEAMS[[this.d.a, this.d.b][this.winner]].name;
+          this.time.delayedCall(500, () => this.ask('win', `${out ? 'CROCE' : 'TESTA'}!  VINCE ${W}\nCHE COSA SCEGLIE?`, ['BATTUTA', 'RICEZIONE', 'CAMPO SINISTRO', 'CAMPO DESTRO'], this.winner));
+        } });
+      return;
+    }
+    const me = this.who, other = 1 - me, o = this.opts[i];
+    if (o === 'BATTUTA' || o === 'RICEZIONE') this.res.serve = o === 'BATTUTA' ? me : other;
+    else this.res.left = o === 'CAMPO SINISTRO' ? me : other;
+    if (this.step === 'win') {   // l'altra squadra prende la scelta rimasta
+      const name = TEAMS[[this.d.a, this.d.b][other]].name;
+      if (this.res.serve === undefined) this.ask('lose', `${name}: BATTUTA O RICEZIONE?`, ['BATTUTA', 'RICEZIONE'], other);
+      else this.ask('lose', `${name}: IN QUALE CAMPO?`, ['CAMPO SINISTRO', 'CAMPO DESTRO'], other);
+      return;
+    }
+    // riepilogo e via
+    const T = [this.d.a, this.d.b];
+    this.step = 'done'; this.optT.forEach(t => t.setText(''));
+    this.msg.setText(`BATTE PER PRIMA: ${TEAMS[T[this.res.serve]].name}\n${TEAMS[T[this.res.left]].name} NEL CAMPO SINISTRO\n\nZ: VIA!`);
+    if (!this.d.human[0] && !this.d.human[1]) this.time.delayedCall(1500, () => this.go());
+  }
+  go() { if (this.gone) return; this.gone = true; SFX.select(); this.d.next(this, { aServes: this.res.serve === 0, aLeft: this.res.left === 0 }); }
+  update() {
+    if (this.gone) return;
+    if (this.step === 'done') { if (this.btn() || this.startPressed()) this.go(); return; }
+    if (this.step === 'flip' || !this.d.human[this.who]) return;
+    const n = this.opts.length;
+    if (this.jd('up') || this.jd('left')) { this.sel = (this.sel + n - 1) % n; this.refresh(); SFX.blip(); }
+    if (this.jd('down') || this.jd('right')) { this.sel = (this.sel + 1) % n; this.refresh(); SFX.blip(); }
+    if (this.btn() || this.startPressed()) { SFX.select(); this.choose(this.sel); }
   }
 }
