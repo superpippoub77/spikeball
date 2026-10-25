@@ -84,6 +84,7 @@ function applyLineup(scene, code, n) {
   const L = order.map(i => pool[i]);
   P.names = L.map(p => p.label); P.sks = L.map(p => p.sk); P.ha = L.map(p => p.ha);
   P.shs = L.map(p => p.sh); P.trs = L.map(p => p.tr); P.nums = L.map(p => p.num);
+  P.fotos = L.map(p => p.foto || null);   // foto dei giocatori creati (ritratto, myplayer.js)
   P.roles = L.map(p => p.role); P.ages = L.map(p => p.age);
   if (pool.some(p => p.lv)) P.lv = L.map(p => p.lv || 5); else delete P.lv;
   if (!pool.some(p => p.num)) delete P.nums;
@@ -98,7 +99,7 @@ class FormazioneScene extends Base {
   constructor() { super('Formazione'); }
   init(d) { this.d = d; }
   create() {
-    camSetup(this); makeCommon(this); this.keysInit(); UI.bg(this);
+    camSetup(this); makeCommon(this); this.keysInit(); UI.bg(this); setLook(this, !!this.d.beach, !!this.d.women);
     this.ka = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     const { code, n } = this.d;
     this.pool = teamPool(code); this.on = lineupOf(code, n).slice(); this.F = FORMATIONS[n];

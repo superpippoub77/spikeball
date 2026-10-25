@@ -13,6 +13,20 @@
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
   body.hd canvas { image-rendering: auto; }
   /* effetto CRT (tasto K o impostazioni): righe di scansione, bordo scuro arrotondato, colori più accesi e un leggero sfarfallio */
+  /* pannello della foto del giocatore (myplayer.js) */
+  #photoCap { position: fixed; inset: 0; z-index: 50; background: rgba(4,10,30,0.88); display: flex; align-items: center; justify-content: center; font-family: "Arial Black", Arial, sans-serif; }
+  #photoCap .pc-box { background: #0a1e4a; border: 2px solid #3a7ae0; border-radius: 10px; padding: 14px; width: min(360px, calc(100vw - 32px)); color: #fff; text-align: center; }
+  #photoCap .pc-title { color: #ffd23a; font-size: 18px; margin-bottom: 8px; }
+  #photoCap .pc-stage { position: relative; width: 100%; aspect-ratio: 1; }
+  #photoCap video { display: none; }
+  #photoCap canvas { width: 100%; height: 100%; border-radius: 6px; touch-action: none; cursor: grab; }
+  #photoCap .pc-hint { font: 12px Arial, sans-serif; color: #9ab8f0; margin: 8px 0; }
+  #photoCap .pc-zoom { font-size: 12px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+  #photoCap .pc-zoom input { flex: 1; }
+  #photoCap .pc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  #photoCap button { font: bold 13px "Arial Black", Arial, sans-serif; padding: 10px 4px; border: 0; border-radius: 6px; background: #2a8ae8; color: #fff; cursor: pointer; }
+  #photoCap button[data-a=ok] { background: #2ab060; } #photoCap button[data-a=no] { background: #a03040; }
+  #photoCap button:disabled { opacity: 0.4; cursor: default; }
   #crt { position: fixed; pointer-events: none; display: none; z-index: 10; border-radius: 2.5% / 3.5%;
          background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 50%, rgba(0,0,0,0.28) 50%, rgba(0,0,0,0.28) 100%);
          box-shadow: inset 0 0 6vmin rgba(0,0,0,0.75), inset 0 0 1.5vmin rgba(0,0,0,0.6); animation: crtflick 0.12s infinite; }

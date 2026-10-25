@@ -659,18 +659,18 @@ function startGame() {
     type: HIRES ? Phaser.WEBGL : Phaser.AUTO, parent: 'game', width: CFG.W * CFG.ZOOM, height: CFG.H * CFG.ZOOM,
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
+    scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
             InfoScene, TechnicScene, PracticeScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
   });
   // gettone: tasto 5 o C (ovunque)
   window.addEventListener('keydown', e => {
     SFX.init();
-    if (e.key === '5' || e.key === 'c' || e.key === 'C') { GS.credits = Math.min(9, GS.credits + 1); SFX.coin(); }
+    if ((e.key === '5' || e.key === 'c' || e.key === 'C') && !myTyping()) { GS.credits = Math.min(9, GS.credits + 1); SFX.coin(); }
     // H: ARCADE -> HD -> 3D -> ARCADE (ricarica la pagina)
     // (non mentre si scrive il nome nella scheda del mio giocatore)
     // K: effetto CRT acceso/spento (ovunque, resta salvato)
-    if ((e.key === 'k' || e.key === 'K') && !(window.__game && window.__game.scene.isActive('MyPlayer'))) { GS.crt = !GS.crt; GS.saveOpts(); applyCRT(); }
-    if ((e.key === 'h' || e.key === 'H') && !(window.__game && window.__game.scene.isActive('MyPlayer'))) { const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[(GFX_MODES.indexOf(GFX) + 1) % GFX_MODES.length]); location.href = u.href; }
+    if ((e.key === 'k' || e.key === 'K') && !myTyping()) { GS.crt = !GS.crt; GS.saveOpts(); applyCRT(); }
+    if ((e.key === 'h' || e.key === 'H') && !myTyping()) { const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[(GFX_MODES.indexOf(GFX) + 1) % GFX_MODES.length]); location.href = u.href; }
   });
   if (HIRES) document.body.classList.add('hd');
   applyCRT();
