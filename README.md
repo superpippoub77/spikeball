@@ -55,9 +55,16 @@
 - **Divise:** nel palazzetto maglia e pantaloncini corti; nel beach il costume a due pezzi come nel beach volley vero, con occhiali da sole e visiera. Ogni squadra ha la sua fantasia: tinta unita, bordi colorati o due colori.
 - Nella versione 3D le giocatrici sono disegnate come in HD (le foto dei giocatori sono maschili).
 
-### MY PLAYER (il mio giocatore)
-- **Scheda:** nome e cognome (scritti con la tastiera), numero, ruolo, età, pelle, capelli e squadra.
-- **In campo:** il giocatore entra nella rosa della sua squadra e va **sempre in campo**, in ogni modalità: partita singola, beach, campionati e arcade.
+### MY PLAYER (i miei giocatori)
+- **Elenco:** si possono creare quanti giocatori e giocatrici si vuole, e poi modificarli o eliminarli in qualsiasi momento.
+  Tasti: ↑↓ scegli, Z modifica, N nuovo, X elimina (premuto due volte), E/I esporta/importa un file, S/L salva/carica dal server.
+- **Scheda:** sesso (maschile o femminile), nome e cognome (scritti con la tastiera), numero, ruolo, età, foto, pelle, capelli, squadra e IN CAMPO (sempre titolare oppure in panchina).
+- **Foto:** sulla riga FOTO premi Z. Si apre la telecamera del telefono o del computer, oppure si carica un'immagine (CARICA FOTO).
+  Il viso va messo nell'ovale; si può spostare trascinandolo e ingrandire con lo zoom. USA FOTO ritaglia il viso e lo usa come ritratto del giocatore (in ARCADE con i colori ridotti come un vecchio gioco).
+  Dalla foto vengono presi anche il colore della pelle e dei capelli, che si possono comunque cambiare con ← →.
+- **Squadra:** si può scegliere una qualsiasi squadra configurata: nazionali, coppie da spiaggia e club dei campionati.
+  Le giocatrici entrano nelle partite e nei tornei femminili, i giocatori in quelli maschili.
+- **In campo:** se è titolare, il giocatore va **sempre in campo** in ogni modalità: partita singola, beach, campionati e arcade. Altrimenti resta nella rosa e si può scegliere in FORMAZIONE.
 - **Statistiche:** ATTACCO, DIFESA, MURO, BATTUTA e ALZATA. Ognuna cresce con i gesti fatti davvero in partita:
   - schiacciate → ATTACCO;
   - ricezioni e difese → DIFESA;
@@ -67,8 +74,13 @@
 
   Una vittoria dà una piccola spinta a tutte le statistiche.
 - **Livello:** va da 1 a 10 ed è la media delle statistiche. Più è alto, più il giocatore schiaccia forte e sbaglia meno.
-- **Fine partita:** viene mostrato `★ NOME +XP  LIVELLO x → y`.
-- **Salvataggio:** tutto resta salvato nel browser (`sf91_mio_giocatore`).
+- **Fine partita:** per ogni giocatore creato che ha giocato viene mostrato `★ NOME +XP  LIVELLO x → y`.
+- **Salvataggio:**
+  - nel browser, automatico (`sf91_miei_giocatori`);
+  - su file con E (esporta) e I (importa);
+  - sul server con S (salva) e L (carica). Serve una chiave: la prima volta il gioco la chiede e la ricorda.
+    Sul server la chiave va scritta nel file `api/chiave.php` (da creare a mano, non è nel repository), per esempio `<?php return 'una-frase-lunga-e-segreta';`.
+    I dati finiscono in `api/dati/`, cartella non raggiungibile dal web.
 
 ### SINGLE MATCH / CAREER (Thunder Spikes)
 - **Squadre:** 24 nazionali in 2 gruppi (Q/E per cambiare gruppo), ognuna con ATTACK / DEFENSE / SPEED che influiscono sul gioco (velocità di corsa, potenza delle schiacciate, difesa). C alterna tastiera/IA per ogni lato: 1 giocatore, 2 giocatori o IA contro IA.

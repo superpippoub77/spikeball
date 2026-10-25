@@ -250,8 +250,8 @@ class MainMenuScene extends Base {
       else if (cd.icon === 'me') {
         ic.fillStyle(0xe8b088).fillCircle(0, -14, 5); ic.fillStyle(0x3a2010).fillEllipse(0, -18, 10, 4);
         ic.fillStyle(0xf2c818).fillRect(-8, -8, 16, 14); ic.fillStyle(0x1a1a2a).fillRect(-3, -5, 6, 7);
-        const lv = MYP.data ? MYP.level() : 0;
-        cont.add(this.add.text(0, 12, MYP.data ? 'LV ' + lv.toFixed(1) : 'NUOVO', UI.f(6, '#ffd23a', true)).setOrigin(0.5));
+        const nMy = MYP.list.length;
+        cont.add(this.add.text(0, 12, nMy ? nMy + (nMy === 1 ? ' GIOCATORE' : ' GIOCATORI') : 'NUOVO', UI.f(6, '#ffd23a', true)).setOrigin(0.5));
       }
       else if (cd.icon === 'sun') {
         ic.fillStyle(0x3ab0f0).fillRect(-14, -18, 28, 16); ic.fillStyle(0x1a7ad0).fillRect(-14, -2, 28, 4); ic.fillStyle(0xf2d8a0).fillRect(-14, 2, 28, 8);
@@ -290,7 +290,7 @@ class MainMenuScene extends Base {
       else if (this.sel === 2) this.scene.start('Practice');
       else if (this.sel === 3) this.scene.start('Leagues');
       else if (this.sel === 4) this.scene.start('BeachSelect');
-      else this.scene.start('MyPlayer');
+      else this.scene.start('MyPlayers');
     }
   }
 }

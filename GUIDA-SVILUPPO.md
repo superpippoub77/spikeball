@@ -43,7 +43,8 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `photo.js` | Versione **3D**: ricolore per squadra e animazioni dei giocatori fotorealistici |
 | `lineup.js` | **Formazione**: rosa di ogni squadra, titolari automatici, scelta dei giocatori in ogni posto (scena `Formazione`) |
 | `beach.js` | **Beach volley**: squadre da spiaggia, arene sulla sabbia, menu, partita al meglio dei 3 set |
-| `myplayer.js` | **Il mio giocatore**: scheda, inserimento nella squadra, crescita delle statistiche a fine partita |
+| `myplayer.js` | **I miei giocatori**: elenco, scheda, foto (telecamera o file), inserimento nella squadra, crescita delle statistiche a fine partita, salvataggio locale / file / server |
+| `api/giocatori.php` | salvataggio dei giocatori creati sul server, protetto dalla chiave di `api/chiave.php` (solo sul server) |
 
 Dati e risorse:
 
@@ -82,8 +83,9 @@ Alcuni file estendono funzioni definite prima, senza modificarle:
 - `drawFlag` → `modern.js` aggiunge bandiere, `roster.js` aggiunge stemmi e loghi.
 - `startGame` → `roster.js`, `league.js` e `photo.js` caricano i loro dati prima dell'avvio.
 - `MainMenuScene.prototype.create` → `roster.js` e `photo.js` aggiungono scritte al menu.
-- `teamPool` / `lineupOf` (lineup.js) → `myplayer.js` aggiunge il mio giocatore alla rosa e lo mette in campo.
-- `MatchScene.prototype.startEnd` → `myplayer.js` aggiorna le statistiche del mio giocatore.
+- `teamPool` / `lineupOf` (lineup.js) → `myplayer.js` aggiunge i giocatori creati alla rosa (solo quelli del sesso giusto) e mette in campo i titolari; `femLabel` lascia il loro nome nella versione femminile.
+- `drawFace` / `drawFaceHD` → `myplayer.js` disegna la foto al posto del volto quando `TEAMS[code].fotos[i]` c'è.
+- `MatchScene.prototype.startEnd` → `myplayer.js` aggiorna le statistiche dei giocatori creati.
 
 ### Giocatori in campo, ruoli dei posti, look
 - La partita usa `FORMATIONS[n]` (2, 3, 4 o 6 giocatori). Ogni giocatore ha `pos` (mb, set, oh, def, bk, lib, bch): l'IA sceglie chi alza, chi attacca e chi mura dal ruolo del posto, non dall'indice.
@@ -176,7 +178,8 @@ Il gioco salva alcune cose nel `localStorage` del browser (si cancellano dagli s
 | `sf91_squadre`, `sf91_campionati` | file trascinati sulla finestra (CANC nel menu principale li toglie) |
 | `sf91_lega_<id>` | progressi di ogni campionato (RICOMINCIA li azzera) |
 | `sf91_formazioni` | formazioni scelte per ogni squadra e numero di giocatori |
-| `sf91_mio_giocatore` | scheda e statistiche del mio giocatore |
+| `sf91_miei_giocatori` | elenco dei giocatori creati (schede, foto, statistiche); il vecchio `sf91_mio_giocatore` viene importato |
+| `sf91_chiave_server` | chiave per salvare i giocatori sul server |
 
 ---
 
