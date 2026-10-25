@@ -82,6 +82,10 @@
     Sul server la chiave va scritta nel file `api/chiave.php` (da creare a mano, non è nel repository), per esempio `<?php return 'una-frase-lunga-e-segreta';`.
     I dati finiscono in `api/dati/`, cartella non raggiungibile dal web.
 
+### LINGUA
+Al primo avvio si sceglie la lingua con le bandiere: **italiano, inglese, francese, tedesco, spagnolo**. Si cambia poi dal menu principale con il tasto **L** o cliccando la bandiera in alto a destra.
+Sono tradotti tutti i testi: menu, telecronaca, comandi della pratica, campionati, editor e pannello della foto.
+
 ### EDITOR (squadre, arbitri, sponsor, campionati, profilo)
 Dal menu principale, ultima scheda. Si apre una pagina sopra il gioco, comoda anche sul telefono. **SALVA E CHIUDI** salva e ricarica il gioco con le novità.
 - **Squadre:** nome, sigla di 3 lettere, maschile o femminile, colori (maglia, bordo, pantaloncini, campo), logo, allenatore e dirigente.
