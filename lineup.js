@@ -123,7 +123,7 @@ class FormazioneScene extends Base {
       D(this.add.text(14, y + 7, `${cur ? '◄ ' : ''}${p.num ? '#' + p.num + ' ' : ''}${this.d.women ? femLabel(code, p.label) : p.label}${cur ? ' ►' : ''}`, UI.f(rh > 20 ? 7 : 6, '#ffffff', true)));
       const tr = playerTraits(code, p.label, this.d.women);   // altezza e specialità
       D(this.add.text(170, y + 1, [p.role, p.lv ? 'LV ' + p.lv : '', p.age ? p.age + 'a' : '', tr.cm + 'cm'].filter(Boolean).join('  '), UI.f(4.5, '#ffd23a', true)).setOrigin(1, 0));
-      D(this.add.text(170, y + 8, tr.tag, UI.f(4.2, '#7ad0ff', true)).setOrigin(1, 0));
+      D(this.add.text(170, y + 8, `${tr.tag}  ·  ${ATK_STYLES[tr.stile].nome}`, UI.f(4.2, '#7ad0ff', true)).setOrigin(1, 0));
     });
     const max = 26, first = Math.max(0, Math.min(this.on[this.sel] - 12, this.pool.length - max));
     this.pool.slice(first, first + max).forEach((p, k) => {

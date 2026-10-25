@@ -218,7 +218,6 @@ const UI = {
 class MainMenuScene extends Base {
   constructor() { super('MainMenu'); }
   create() {
-    if (!I18N.lang) { this.scene.start('Language'); return; }   // primo avvio: scelta della lingua (i18n.js)
     camSetup(this); makeCommon(this); this.keysInit(); setLook(this, false);
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0e14, 0x0a0e14, 0x1a2420, 0x1a2420, 1).fillRect(0, 0, 320, 224);
@@ -239,63 +238,89 @@ class MainMenuScene extends Base {
       { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea i tuoi giocatori: giocano nella loro squadra e migliorano partita dopo partita', icon: 'me' },
       { label: 'EDITOR', sub: 'SQUADRE', hint: 'Squadre, arbitri, sponsor, campionati e profilo sul server', icon: 'ed' }
     ];
+    // schede su due righe (4 + 3); sopra le schede la riga LINGUA (↑ per arrivarci, ← → per cambiare)
+    const POS = [[52, 96], [124, 96], [196, 96], [268, 96], [88, 150], [160, 150], [232, 150]];
     this.cardObjs = this.cards.map((cd, i) => {
-      const x = 26 + i * 44.6, y = 112;
+      const [x, y] = POS[i];
       const cont = this.add.container(x, y);
       const bg = this.add.graphics();
       cont.add(bg);
-      cont.add(this.add.text(0, -34, cd.label, UI.f(cd.label.length > 7 ? 4.4 : 5.6, '#ffffff', true)).setOrigin(0.5));
-      const ic = this.add.graphics(); cont.add(ic);
+      cont.add(this.add.text(0, -18, cd.label, UI.f(cd.label.length > 10 ? 4.8 : 5.8, '#ffffff', true)).setOrigin(0.5));
+      // icona a sinistra (rimpicciolita), a destra il conteggio o l'avanzamento
+      const ik = this.add.container(-16, 7).setScale(0.62); cont.add(ik);
+      const ic = this.add.graphics(); ik.add(ic);
+      const right = (t, col = '#ffd23a') => cont.add(this.add.text(15, 4, t, { ...UI.f(4.4, col, true), align: 'center' }).setOrigin(0.5));
       if (cd.icon === 'stick') { ic.fillStyle(0x303030).fillRect(-2, -10, 4, 16); ic.fillStyle(0xe02020).fillCircle(0, -12, 7); ic.fillStyle(0x2a2a2a).fillRect(-12, 6, 24, 6); }
-      else if (cd.icon === 'vs') { ic.lineStyle(1, 0xffffff).strokeRect(-14, -16, 28, 14); for (let k = 0; k < 6; k++) ic.lineBetween(-14 + k * 5.6, -16, -14 + k * 5.6, -2); cont.add(this.add.text(0, 8, 'VS', UI.f(12, '#ffd23a', true)).setOrigin(0.5)); }
-      else if (cd.icon === 'tut') { ic.fillStyle(0xe8d8b0).fillRect(-10, -18, 20, 26); ic.fillStyle(0x6a6a6a).fillRect(-6, -14, 12, 1).fillRect(-6, -10, 12, 1).fillRect(-6, -6, 8, 1); cont.add(this.add.image(7, 4, 'ballbig').setScale(0.9)); }
+      else if (cd.icon === 'vs') { ic.lineStyle(1, 0xffffff).strokeRect(-14, -16, 28, 14); for (let k = 0; k < 6; k++) ic.lineBetween(-14 + k * 5.6, -16, -14 + k * 5.6, -2); ik.add(this.add.text(0, 8, 'VS', UI.f(12, '#ffd23a', true)).setOrigin(0.5)); }
+      else if (cd.icon === 'tut') { ic.fillStyle(0xe8d8b0).fillRect(-10, -18, 20, 26); ic.fillStyle(0x6a6a6a).fillRect(-6, -14, 12, 1).fillRect(-6, -10, 12, 1).fillRect(-6, -6, 8, 1); ik.add(this.add.image(7, 4, 'ballbig').setScale(0.9)); }
       else if (cd.icon === 'me') {
         ic.fillStyle(0xe8b088).fillCircle(0, -14, 5); ic.fillStyle(0x3a2010).fillEllipse(0, -18, 10, 4);
         ic.fillStyle(0xf2c818).fillRect(-8, -8, 16, 14); ic.fillStyle(0x1a1a2a).fillRect(-3, -5, 6, 7);
         const nMy = MYP.list.length;
-        cont.add(this.add.text(0, 12, nMy ? nMy + (nMy === 1 ? ' GIOCATORE' : ' GIOCATORI') : 'NUOVO', UI.f(4.6, '#ffd23a', true)).setOrigin(0.5));
+        right(nMy ? nMy + (nMy === 1 ? ' GIOCATORE' : ' GIOCATORI') : 'NUOVO');
       }
       else if (cd.icon === 'ed') {
         ic.fillStyle(0xf2f2f2).fillRect(-11, -18, 18, 24); ic.fillStyle(0x1a5ad8).fillRect(-8, -14, 12, 3).fillRect(-8, -9, 12, 2).fillRect(-8, -5, 8, 2);
         ic.fillStyle(0xf2c818).fillTriangle(4, 6, 14, -12, 17, -10).fillTriangle(4, 6, 7, 8, 17, -10);
         const nEd = ED.data.squadre.length;
-        cont.add(this.add.text(0, 12, nEd ? nEd + (nEd === 1 ? ' SQUADRA' : ' SQUADRE') : 'NUOVO', UI.f(4.6, '#ffd23a', true)).setOrigin(0.5));
+        right(nEd ? nEd + (nEd === 1 ? ' SQUADRA' : ' SQUADRE') : 'NUOVO');
       }
       else if (cd.icon === 'sun') {
         ic.fillStyle(0x3ab0f0).fillRect(-14, -18, 28, 16); ic.fillStyle(0x1a7ad0).fillRect(-14, -2, 28, 4); ic.fillStyle(0xf2d8a0).fillRect(-14, 2, 28, 8);
         ic.fillStyle(0xffe040).fillCircle(6, -11, 4); ic.fillStyle(0x7a4a1a).fillRect(-9, -12, 2, 14); ic.fillStyle(0x2a9a3a).fillEllipse(-11, -13, 9, 3).fillEllipse(-5, -13, 9, 3);
-        cont.add(this.add.image(2, 6, 'ballbig').setScale(0.7));
+        ik.add(this.add.image(2, 6, 'ballbig').setScale(0.7)); right(cd.sub, '#ffe0a0');
       }
       else { ic.fillStyle(0xf2c818).fillRect(-8, -16, 16, 12).fillRect(-3, -4, 6, 8).fillRect(-8, 4, 16, 3); ic.fillStyle(0xf2c818).fillCircle(-10, -12, 3).fillCircle(10, -12, 3); }
       const pct = i === 0 ? Math.min(100, (GS.bestStage || 0) * 20) : i === 2 ? 34 : i === 3 ? Math.round((GS.careerBest || 0) * 25) : null;
-      if (pct !== null) { const pb = this.add.graphics(); pb.fillStyle(0x0a1a3a).fillRect(-20, 26, 40, 3); pb.fillStyle(0xf2c818).fillRect(-20, 26, 40 * pct / 100, 3); cont.add(pb); cont.add(this.add.text(0, 33, pct + '%', UI.f(7, '#ffffff', true)).setOrigin(0.5)); }
+      if (pct !== null) { const pb = this.add.graphics(); pb.fillStyle(0x0a1a3a).fillRect(3, 10, 24, 3); pb.fillStyle(0xf2c818).fillRect(3, 10, 24 * pct / 100, 3); cont.add(pb); cont.add(this.add.text(15, 2, pct + '%', UI.f(6, '#ffffff', true)).setOrigin(0.5)); }
       cont.bg = bg;
       return cont;
     });
-    this.hint = this.add.text(160, 166, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
-    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    L: LINGUA    T: TEST', UI.f(5, '#8aa0c8')).setOrigin(0.5);
-    // lingua: bandiera in alto a destra (clic o tasto L per cambiarla)
+    this.hint = this.add.text(160, 183, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
+    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    T: TEST', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
-    this.add.image(306, 22, makeFlagTex(this, lg.flag, 18, 12)).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.gone = true; this.scene.start('Language'); });
-    this.kLang = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
-    this.sel = GS.menuSel || 0; this.refresh();
+    this.langBox = this.add.graphics();
+    this.langFlag = this.add.image(140, 61, makeFlagTex(this, lg.flag, 15, 10));
+    this.langTxt = this.add.text(152, 61, '', UI.f(5.5, '#ffffff', true)).setOrigin(0, 0.5);
+    { const l = I18N.lang; I18N.lang = null; this.langTxt.setText(`${lg.name}`); I18N.lang = l; }
+    this.langArrows = [this.add.text(118, 61, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(202, 61, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.langFlag.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.cycleLang(1));
+    this.sel = GS.menuSel === undefined ? 0 : GS.menuSel; this.refresh();
+  }
+  cycleLang(d) {
+    const i = LANGS.findIndex(l => l.id === I18N.lang), n = LANGS.length;
+    setLang(LANGS[((i < 0 ? 0 : i) + d + n) % n].id);
+    GS.menuSel = -1; SFX.blip(); this.scene.restart();
   }
   refresh() {
     this.cardObjs.forEach((c, i) => {
       const on = i === this.sel;
       const beach = i === 4;
-      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-21, -42, 42, 84, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-21, -42, 42, 84, 4);
+      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-33, -25, 66, 50, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-33, -25, 66, 50, 4);
       c.setScale(on ? 1.06 : 1);
     });
-    this.hint.setText(this.cards[this.sel].hint);
+    const L = this.sel < 0;
+    this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
+    this.langArrows.forEach(a => a.setVisible(L));
+    this.hint.setText(L ? '← → LINGUA' : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
-    const n = this.cards.length;
-    if (this.jd('left')) { this.sel = (this.sel + n - 1) % n; this.refresh(); SFX.blip(); }
-    if (this.jd('right')) { this.sel = (this.sel + 1) % n; this.refresh(); SFX.blip(); }
+    // righe: lingua (-1), schede 0-3, schede 4-6
+    const row = this.sel < 0 ? -1 : this.sel < 4 ? 0 : 1;
+    if (row < 0) {
+      if (this.jd('left')) { this.cycleLang(-1); return; }
+      if (this.jd('right') || this.btn()) { this.cycleLang(1); return; }
+      if (this.jd('down')) { this.sel = 0; this.refresh(); SFX.blip(); }
+      return;
+    }
+    const lo = row ? 4 : 0, hi = row ? 6 : 3;
+    if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
+    if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
+    if (this.jd('up')) { this.sel = row ? Math.min(3, Math.max(0, this.sel - 4 + (this.sel === 4 ? 0 : 1))) : -1; this.refresh(); SFX.blip(); }
+    if (this.jd('down') && !row) { this.sel = Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
-    if (Phaser.Input.Keyboard.JustDown(this.kLang)) { this.gone = true; this.scene.start('Language'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
       if (this.sel === 0) { GS.attract = -1; nextAttract(this); }
