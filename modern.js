@@ -605,7 +605,7 @@ class CoinTossScene extends Base {
     this.add.text(160, 212, '↑↓ / ← → scegli   Z: conferma', UI.f(5, '#9ab8f0')).setOrigin(0.5);
     // chiama chi gioca (la squadra di casa se giocano in due); senza persone chiama il computer
     this.caller = d.human[0] ? 0 : d.human[1] ? 1 : 0;
-    this.face = 0; this.res = {};
+    this.face = 0; this.res = {}; this.said = [];
     this.drawCoin(1, 0);
     this.ask('call', `IL CAPITANO DI ${TEAMS[T[this.caller]].name}\nCHIAMA:`, ['TESTA', 'CROCE'], this.caller);
   }
@@ -622,7 +622,12 @@ class CoinTossScene extends Base {
     this.msg.setText(text);
     this.optT.forEach((t, i) => t.setText(opts[i] || ''));
     this.refresh();
-    if (!this.d.human[who]) this.time.delayedCall(900, () => this.choose(this.aiPick(step)));
+    // computer: si vede la sua scelta evidenziata (con il nome della squadra) prima di andare avanti
+    if (!this.d.human[who]) this.time.delayedCall(900, () => {
+      const i = this.aiPick(step); this.sel = i; this.refresh();
+      if (step !== 'call') this.msg.setText(`${text}\nCPU SCEGLIE: ${opts[i]}`);
+      this.time.delayedCall(step === 'call' ? 300 : 1300, () => this.choose(i));
+    });
   }
   aiPick(step) {
     if (step === 'call') return Math.random() < 0.5 ? 0 : 1;
@@ -646,18 +651,21 @@ class CoinTossScene extends Base {
       return;
     }
     const me = this.who, other = 1 - me, o = this.opts[i];
+    this.said.push(`${TEAMS[[this.d.a, this.d.b][me]].name} → ${o}`);
     if (o === 'BATTUTA' || o === 'RICEZIONE') this.res.serve = o === 'BATTUTA' ? me : other;
     else this.res.left = o === 'CAMPO SINISTRO' ? me : other;
     if (this.step === 'win') {   // l'altra squadra prende la scelta rimasta
       const name = TEAMS[[this.d.a, this.d.b][other]].name;
-      if (this.res.serve === undefined) this.ask('lose', `${name}: BATTUTA O RICEZIONE?`, ['BATTUTA', 'RICEZIONE'], other);
-      else this.ask('lose', `${name}: IN QUALE CAMPO?`, ['CAMPO SINISTRO', 'CAMPO DESTRO'], other);
+      // regola: chi vince il sorteggio sceglie UNA cosa (battuta/ricezione oppure campo), l'altra squadra quella rimasta
+      const why = `${TEAMS[[this.d.a, this.d.b][me]].name} HA SCELTO ${o}`;
+      if (this.res.serve === undefined) this.ask('lose', `${why}\n${name}: BATTUTA O RICEZIONE?`, ['BATTUTA', 'RICEZIONE'], other);
+      else this.ask('lose', `${why}\n${name}: IN QUALE CAMPO?`, ['CAMPO SINISTRO', 'CAMPO DESTRO'], other);
       return;
     }
     // riepilogo e via
     const T = [this.d.a, this.d.b];
     this.step = 'done'; this.optT.forEach(t => t.setText(''));
-    this.msg.setText(`BATTE PER PRIMA: ${TEAMS[T[this.res.serve]].name}\n${TEAMS[T[this.res.left]].name} NEL CAMPO SINISTRO\n\nZ: VIA!`);
+    this.msg.setText(`${this.said.join('\n')}\n\nBATTE PER PRIMA: ${TEAMS[T[this.res.serve]].name}\n${TEAMS[T[this.res.left]].name} NEL CAMPO SINISTRO\n\nZ: VIA!`);
     if (!this.d.human[0] && !this.d.human[1]) this.time.delayedCall(1500, () => this.go());
   }
   go() { if (this.gone) return; this.gone = true; SFX.select(); this.d.next(this, { aServes: this.res.serve === 0, aLeft: this.res.left === 0 }); }

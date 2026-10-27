@@ -19,8 +19,8 @@ I fogli, una volta caricati nel repository, vengono ritagliati e messi in gioco 
 1. **Prima il personaggio di riferimento** (prompt 0). Salva l'immagine: nei prompt successivi **allegala** e scrivi "usa questo stesso atleta". Così tutti i fogli hanno la stessa persona.
 2. Genera un foglio alla volta (prompt 1-4). Se ChatGPT sbaglia il numero di fotogrammi o i colori, rispondi "rifai: esattamente 8 figure per riga, 4 righe, maglia bianca, pantaloncini rossi, sfondo magenta pieno".
 3. Rinomina e mandami i file:
-   - `3d-maschile-A.png` … `3d-maschile-D.png`;
-   - `3d-femminile-A.png` … `3d-femminile-D.png` (facoltativi);
+   - `3d-maschile-A.png` … `3d-maschile-D.png`, più `3d-maschile-E.png` (palleggio in salto di fronte e di spalle);
+   - `3d-femminile-A.png` … `3d-femminile-E.png` (facoltativi);
    - `3d-beach-*.png`, `3d-palloni.png`, `3d-arbitro.png`, `3d-spettatori.png`.
 
    Li integro io: ritaglio, ricolorazione e collegamento ai movimenti del gioco.
@@ -70,6 +70,19 @@ Row 1 - OVERHEAD SET standing (side view): moving under the ball, knees bending,
 Row 2 - JUMP SET (side view, NOT facing the camera): small take-off, rising with knees slightly tucked and hands in the window above the forehead, at the top extending both arms upward to push the ball, arms fully extended, starting to come down with arms lowering forward, legs ready to land, landing on both feet, standing.
 Row 3 - SETTER DUMP (second-touch tip over the net): jump like a set, at the top the arm farther from the net extends high and taps the ball over the net with a quick wrist flick, the hand follows down past the net side, landing.
 Row 4 - BLOCK: standing at the net, small squat, jump straight up with both arms extended high and hands wide and firm above the net line, top of the block with hands pressing forward, coming down, landing on both feet.
+```
+
+## 3b. Foglio E: palleggio in salto girato (di fronte e di spalle)
+
+In volo l'alzatore è girato del tutto: nel campo destro si vede di fronte (il viso), nel campo sinistro di spalle.
+Solo 2 righe. File: `3d-maschile-E.png` (e `3d-femminile-E.png` con la giocatrice).
+
+```
+Use this same athlete (attached reference). Same rules: ONE sprite sheet, photorealistic, exactly 2 rows x 8 full-body figures, no overlap, same scale and baseline, plain pure white jersey without numbers or logos, pure red #E00000 shorts, white knee pads, socks and shoes, solid flat magenta #FF00FF background, no text.
+IMPORTANT: in this sheet the athlete is NOT in side view.
+
+Row 1 - JUMP SET seen from the FRONT (the athlete faces the camera, face fully visible): standing ready, small two-foot take-off, rising with knees slightly tucked and both hands in the window above the forehead (thumbs and index fingers forming a triangle), at the top pushing the ball up with arms extending, arms fully extended up for a short moment, coming down with arms lowering to the sides, legs ready to land, landing on both feet with bent knees.
+Row 2 - the SAME JUMP SET seen from BEHIND (back to the camera, face not visible, back of the head and back of the jersey visible): same 8 phases, same timing and same heights as row 1.
 ```
 
 ## 4. Foglio D: battute ed esultanze
