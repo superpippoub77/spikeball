@@ -315,8 +315,8 @@ const ATK_STYLES = {
 // fem = versione femminile (texture con '_w' finale): giocatrici con coda di cavallo; in spiaggia costume a due pezzi
 const LOOK = { beach: false, fem: false };
 function setLook(scene, beach, fem) { LOOK.beach = !!beach; LOOK.fem = !!fem; }
-// giocatori "foto" (versione 3D) solo per le squadre maschili: le giocatrici sono sempre disegnate
-const usePhoto = () => typeof PHOTO !== 'undefined' && PHOTO.on && !LOOK.fem;
+// giocatori "foto" (versione 3D); le giocatrici usano i loro fogli (photo-sprites-f.js), se mancano sono disegnate
+const usePhoto = () => typeof PHOTO !== 'undefined' && PHOTO.on && (!LOOK.fem || !!PHOTO.sets.f);
 
 // caratteristiche di un giocatore, sempre le stesse per lo stesso nome: altezza (h, cm), corporatura (bd) e specialità.
 // Più alti = più portata a muro ma un po' meno rapidi e meno bravi in ricezione; più robusti = schiacciate più forti.

@@ -7,7 +7,8 @@
 #  - mette i fotogrammi in un atlante a celle uguali (piedi in basso al centro) con la mappa delle zone da ricolorare
 #    (maglia, pantaloncini, pelle), nello stesso formato di build_sheet2.py: photo.js non cambia modo di leggerlo.
 # Uso:  python3 build_sheet3.py 3d-maschile ../../photo-sprites.js
-import sys, json, base64, io, colorsys
+#       python3 build_sheet3.py 3d-femminile ../../photo-sprites-f.js     (giocatrici: PHOTO_SPRITES_F)
+import sys, os, json, base64, io
 import numpy as np
 from PIL import Image
 from scipy import ndimage as nd
@@ -22,6 +23,22 @@ SHEETS = {
 }
 SKIP = {('D', 3, 4)}                       # foglio, riga, colonna (da 0): il batti cinque ha due persone
 STAND = [('D', 0, 0), ('D', 0, 7), ('D', 2, 0)]   # fotogrammi in piedi dritti: altezza di riferimento
+SKIPROWS = set()                           # righe da non usare (foglio, riga)
+ALIAS = {}                                 # movimento mancante -> (movimento simile, fotogrammi da usare)
+VAR = 'PHOTO_SPRITES'
+if 'femminile' in prefix:
+    # versione femminile: nel foglio C le righe 2-4 sono una copia del foglio B, nel foglio D le righe 3-4 sono sbagliate.
+    # Finché non vengono rigenerate, quei movimenti usano pose simili della stessa giocatrice.
+    VAR = 'PHOTO_SPRITES_F'
+    SKIPROWS = {('C', 1), ('C', 2), ('C', 3), ('D', 2), ('D', 3)}
+    STAND = [('D', 0, 0), ('D', 0, 7), ('D', 1, 0)]
+    ALIAS = {
+        'jset': ('set', [0, 1, 2, 3, 4, 5, 1, 0]),              # palleggio in salto: come quello da fermo
+        'dump': ('spikefr', [0, 1, 2, 3, 4, 5, 6, 7]),          # pallonetto: braccio teso in avanti e in alto
+        'block': ('set', [0, 1, 5, 6, 6, 5, 1, 0]),             # muro: braccia distese in alto del palleggio
+        'jfloat': ('jserve', [0, 1, 2, 3, 5, 6, 6, 7]),         # salto flottante: come la battuta in salto
+        'cheer': ('set', [6, 5, 6, 4, 6, 0, 0]),                # esultanza: braccia al cielo; delusione: attesa
+    }
 
 def hsv(a):
     f = a[..., :3] / 255.0
@@ -44,19 +61,22 @@ def clear_circle(a, cy, cx, rad):
     yy, xx = np.mgrid[y0:y1, x0:x1]
     circ = (yy - cy) ** 2 + (xx - cx) ** 2 <= rad * rad
     sub = a[y0:y1, x0:x1]
-    sub[circ & ~skin_mask(sub)] = MAGENTA
+    h, s, v = hsv(sub)
+    skin = skin_mask(sub) & (h < 33)          # il giallo del pallone (tinta ~38) non è pelle
+    sub[circ & ~skin] = MAGENTA
 
 def remove_colored_balls(a):
     """pallone giallo-blu: macchie piccole e tonde con sia giallo sia blu; il cerchio (con il bordo) diventa sfondo"""
     h, s, v = hsv(a)
-    yel = ((h > 40) & (h < 70)) & (s > 0.45) & (v > 0.35)
-    blu = ((h > 195) & (h < 250)) & (s > 0.4) & (v > 0.2)
-    lab, n = nd.label(nd.binary_dilation(yel | blu, iterations=3))
+    # (anche nei JPG, dove i colori sono più spenti e il blu tira al viola)
+    yel = ((h > 35) & (h < 70)) & (s > 0.28) & (v > 0.35)
+    blu = ((h > 195) & (h < 275)) & (s > 0.22) & (v > 0.2)
+    lab, n = nd.label(nd.binary_dilation(yel | blu, iterations=5))
     for i, sl in enumerate(nd.find_objects(lab)):
         m = lab[sl] == i + 1
         hh, ww = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
         if m.sum() < 25 or m.sum() > 4000 or not (0.55 < hh / max(1, ww) < 1.8): continue
-        if yel[sl][m].sum() < 5 or blu[sl][m].sum() < 5: continue
+        if yel[sl][m].sum() < 3 or blu[sl][m].sum() < 3: continue
         clear_circle(a, (sl[0].start + sl[0].stop) / 2, (sl[1].start + sl[1].stop) / 2, max(hh, ww) / 2 + 6)
     return a
 
@@ -153,12 +173,14 @@ def regions(rgba):
 # ---------------- lettura dei fogli ----------------
 frames, scale = [], {}
 for L, names in SHEETS.items():
-    a = np.asarray(Image.open(f'{prefix}-{L}.png').convert('RGB')).copy()
+    path = next(p for p in (f'{prefix}-{L}.png', f'{prefix}-{L}.jpg', f'{prefix}-{L}.webp') if os.path.exists(p))
+    a = np.asarray(Image.open(path).convert('RGB')).copy()
     if L == 'D': a = remove_colored_balls(a)
     al = fg_alpha(a); fg = al > 0.5
     cuts = bands(fg)
     shorts, shirt, skin = [], [], []
     for row in range(4):
+        if (L, row) in SKIPROWS: continue
         figs = figures_in_band(fg, cuts[row], cuts[row + 1])
         assert len(figs) == 8, (L, row, len(figs))
         for col, (y0, y1, x0, x1) in enumerate(figs):
@@ -218,14 +240,16 @@ for k, f in enumerate(frames):
     sl[..., 0] = np.where(f['reg'] > 0, f['reg'] * 80, sl[..., 0])
     sl[..., 1] = np.where(f['reg'] > 0, np.clip(f['lum'], 0, 255), sl[..., 1])
     anims.setdefault(f['name'], []).append(k)
+for name, (src, idx) in ALIAS.items():
+    if name not in anims: anims[name] = [anims[src][min(i, len(anims[src]) - 1)] for i in idx]
 
 def uri(img):
     bio = io.BytesIO(); img.save(bio, 'PNG', optimize=True); return 'data:image/png;base64,' + base64.b64encode(bio.getvalue()).decode()
 stand = int(np.median([f['im'].shape[0] for f in frames if (f['sheet'], f['row'], f['col']) in STAND]))
-js = ('// Generato da tools/photo/build_sheet3.py dai fogli 3d-maschile-A..D.png: non modificare a mano.\n'
-      f'const PHOTO_SPRITES = {json.dumps(dict(cw=CW, ch=CH, cols=cols, n=len(frames), stand=stand, sheet=3, anims=anims))};\n'
-      f"PHOTO_SPRITES.atlas = '{uri(atlas)}';\n"
-      f"PHOTO_SPRITES.regions = '{uri(Image.fromarray(regA))}';\n")
+js = (f'// Generato da tools/photo/build_sheet3.py dai fogli {os.path.basename(prefix)}-A..D: non modificare a mano.\n'
+      f'const {VAR} = {json.dumps(dict(cw=CW, ch=CH, cols=cols, n=len(frames), stand=stand, sheet=3, anims=anims))};\n'
+      f"{VAR}.atlas = '{uri(atlas)}';\n"
+      f"{VAR}.regions = '{uri(Image.fromarray(regA))}';\n")
 open(out, 'w').write(js)
 atlas.save(out.replace('.js', '_atlas_preview.png'))
 Image.fromarray(regA).save(out.replace('.js', '_regions_preview.png'))

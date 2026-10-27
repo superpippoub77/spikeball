@@ -21,6 +21,20 @@ python3 build_sheet3.py 3d-maschile ../../photo-sprites.js
 
 In `photo.js` → `photoFrame3` la posa scelta da `match.js` (motion) indica la riga e lo stato del giocatore il fotogramma.
 
+### Giocatrici: 3d-femminile-A..D (PNG o JPG)
+
+```sh
+python3 build_sheet3.py 3d-femminile ../../photo-sprites-f.js
+```
+
+Lo script scrive `PHOTO_SPRITES_F`; `photo.js` lo usa nella versione femminile.
+
+Nei fogli attuali non sono utilizzabili:
+- foglio C, righe 2-4 (copia del foglio B);
+- foglio D, righe 3-4 (bagher laterale ed esultanze sovrapposte ai tuffi).
+
+Lo script le salta (`SKIPROWS`) e per quei movimenti usa pose simili (`ALIAS`). Quando arrivano fogli corretti si tolgono da `SKIPROWS` e `ALIAS` e si rilancia.
+
 ## Foglio precedente: foglio-sprite-2.webp (generato con ChatGPT)
 Sfondo magenta (#FF00FF), maglia bianca, pantaloncini rossi, due pannelli da 6 righe x 8 fotogrammi:
 attesa, corsa, rincorsa, schiacciata, bagher, palleggio | muro, battuta in salto, battuta, tuffo, pallonetto, esultanze.

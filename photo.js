@@ -3,17 +3,23 @@
 //  ricolorati per squadra (maglia, pantaloncini, pelle) e animati in base allo
 //  stato del giocatore. Attivi nella versione grafica 3D (tasto H).
 // ============================================================
+// due serie di fotogrammi: giocatori (PHOTO_SPRITES, photo-sprites.js) e giocatrici (PHOTO_SPRITES_F, photo-sprites-f.js)
 const PHOTO = {
   on: GFX === '3d',
-  atlas: null, regions: null, skinRef: null
+  sets: { m: null, f: null }
 };
+// serie in uso: quella delle giocatrici nella versione femminile (se c'è)
+const photoSet = () => (LOOK.fem && PHOTO.sets.f) || PHOTO.sets.m;
 
 function loadImg(src) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }); }
+async function loadPhotoSet(S, fem) {
+  const [atlas, regions] = await Promise.all([loadImg(S.atlas), loadImg(S.regions)]);
+  return { S, atlas, regions, skinRef: null, fem };
+}
 async function loadPhoto() {
   if (!PHOTO.on || typeof PHOTO_SPRITES === 'undefined') { PHOTO.on = false; return; }
-  try {
-    [PHOTO.atlas, PHOTO.regions] = await Promise.all([loadImg(PHOTO_SPRITES.atlas), loadImg(PHOTO_SPRITES.regions)]);
-  } catch (e) { PHOTO.on = false; }
+  try { PHOTO.sets.m = await loadPhotoSet(PHOTO_SPRITES, false); } catch (e) { PHOTO.on = false; return; }
+  if (typeof PHOTO_SPRITES_F !== 'undefined') try { PHOTO.sets.f = await loadPhotoSet(PHOTO_SPRITES_F, true); } catch (e) { /* giocatrici disegnate */ }
 }
 const _startGamePhoto = startGame;
 startGame = function () { loadPhoto().finally(_startGamePhoto); };
@@ -24,19 +30,19 @@ const hexRGB = h => { const n = parseInt(String(h).replace('#', ''), 16); return
 // atlante ricolorato per una squadra (a risoluzione piena del foglio)
 // ricolora l'atlante: maglia (zona 80) e pantaloncini (160) con i colori della squadra mantenendo le pieghe, pelle (240) per tono
 function photoRecolor(P, beach) {
-  const S = PHOTO_SPRITES, W = PHOTO.atlas.width, H = PHOTO.atlas.height;
+  const ps = photoSet(), S = ps.S, W = ps.atlas.width, H = ps.atlas.height;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'); g.drawImage(PHOTO.atlas, 0, 0);
+  const g = c.getContext('2d'); g.drawImage(ps.atlas, 0, 0);
   const img = g.getImageData(0, 0, W, H), d = img.data;
   const rc = document.createElement('canvas'); rc.width = W; rc.height = H;
-  const rg = rc.getContext('2d'); rg.drawImage(PHOTO.regions, 0, 0);
+  const rg = rc.getContext('2d'); rg.drawImage(ps.regions, 0, 0);
   const R = rg.getImageData(0, 0, W, H).data;
-  if (!PHOTO.skinRef) {   // colore medio della pelle nel foglio
+  if (!ps.skinRef) {   // colore medio della pelle nel foglio
     let s = [0, 0, 0], n = 0;
     for (let i = 0; i < d.length; i += 4) if (R[i] === 240 && d[i + 3] > 200) { s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; n++; }
-    PHOTO.skinRef = s.map(v => v / Math.max(1, n));
+    ps.skinRef = s.map(v => v / Math.max(1, n));
   }
-  const sh = hexRGB(P.sh), so = hexRGB(P.so), sk = hexRGB(P.sk), ref = PHOTO.skinRef;
+  const sh = hexRGB(P.sh), so = hexRGB(P.so), sk = hexRGB(P.sk), ref = ps.skinRef;
   const lumOf = c3 => c3[0] * 0.299 + c3[1] * 0.587 + c3[2] * 0.114;
   // divisa scura: si lascia il nero originale; altrimenti si ricolora mantenendo luci e pieghe
   const keepSh = lumOf(sh) < 45, keepSo = lumOf(so) < 45;
@@ -59,7 +65,7 @@ function photoRecolor(P, beach) {
 // beach volley: niente scarpe, calzettoni e ginocchiere. In ogni cella, i pixel non ricolorati (bianchi/grigi)
 // della parte bassa della figura diventano pelle: piedi nudi e gambe scoperte.
 function photoBeach(d, R, W, H, sk, ref) {
-  const S = PHOTO_SPRITES, cw = S.cw, ch = S.ch;
+  const S = photoSet().S, cw = S.cw, ch = S.ch;
   for (let cy = 0; cy + ch <= H + 1; cy += ch) for (let cx = 0; cx + cw <= W + 1; cx += cw) {
     let top = -1, bot = -1;
     for (let y = cy; y < Math.min(H, cy + ch) && top < 0; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { top = y; break; }
@@ -95,8 +101,9 @@ const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pa
 function makePhotoTex(scene, code) {
   const key = plKey(code, 0);   // 'ph_' + codice (+ '_b' con il look da spiaggia)
   if (scene.textures.exists(key)) return key;
-  const S = PHOTO_SPRITES, src = photoRecolor(TEAMS[code], LOOK.beach);
-  const k = 43 / S.stand;   // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m)
+  const ps = photoSet(), S = ps.S, src = photoRecolor(TEAMS[code], LOOK.beach);
+  // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m); giocatrici ~1,85 m
+  const k = 43 * (ps.fem ? 0.95 : 1) / S.stand;
   const R = GR > 1 ? 1 / k : 1;                             // HD: risoluzione piena del foglio
   const sc = k * R, cw = S.cw * k, ch = S.ch * k;
   const t = scene.textures.createCanvas(key, Math.ceil(src.width * sc), Math.ceil(src.height * sc)), c = t.getContext();
@@ -114,8 +121,8 @@ function makePhotoTex(scene, code) {
 // fotogramma animato secondo lo stato del giocatore: ogni riga del foglio è un movimento in 8 tempi
 // (attesa, corsa, rincorsa, schiacciata, bagher, palleggio, muro, battuta in salto, battuta, tuffo, pallonetto, esultanze)
 function photoFrame(m, p, pose) {
-  if (PHOTO_SPRITES.sheet === 3) return photoFrame3(m, p, pose);
-  const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000, b = m.ball;
+  if (photoSet().S.sheet === 3) return photoFrame3(m, p, pose);
+  const A = photoSet().S.anims, t = p.team, now = m.simT / 1000, b = m.ball;
   const pick = (an, i) => 'a' + A[an][clamp(Math.floor(i), 0, A[an].length - 1)];
   const prog = dur => 1 - clamp(p.animT / dur, 0, 1);
   const st = p.state, server = m.server === p;
@@ -168,7 +175,7 @@ function photoFrame(m, p, pose) {
 // spikefr (palla presa davanti), bagher, lateral (bagher laterale di fronte), dive (tuffo, a terra, rialzarsi),
 // set, jset (palleggio in salto), dump, block, serve (in piedi), jserve (in salto), jfloat (salto flottante), cheer.
 function photoFrame3(m, p, pose) {
-  const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000, b = m.ball;
+  const A = photoSet().S.anims, t = p.team, now = m.simT / 1000, b = m.ball;
   const pick = (an, i) => { const L = A[an] || A.idle; return 'a' + L[clamp(Math.floor(i), 0, L.length - 1)]; };
   const prog = dur => 1 - clamp(p.animT / dur, 0, 1);
   const st = p.state, server = m.server === p, sk = m.serveKind;
