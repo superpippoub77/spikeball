@@ -159,9 +159,13 @@ def regions(rgba):
     labw, nw = nd.label(whiteish)
     near = nd.binary_dilation(red, iterations=3)
     rcy = np.nonzero(red)[0].mean() if red.any() else lum.shape[0] / 2
+    rcx = np.nonzero(red)[1].mean() if red.any() else lum.shape[1] / 2
+    lying = lum.shape[1] > lum.shape[0] * 1.3      # sdraiato (tuffo): la maglia è dal lato della testa, a destra
     for j in range(1, nw + 1):
         cj = labw == j
-        if cj.sum() > 40 and (cj & near).any() and np.nonzero(cj)[0].mean() <= rcy + 2: reg[cj] = 1
+        if cj.sum() <= 40 or not (cj & near).any(): continue
+        ys, xs = np.nonzero(cj)
+        if (xs.mean() >= rcx - 2) if lying else (ys.mean() <= rcy + 2): reg[cj] = 1
     reg[skin] = 3
     shade = np.zeros(lum.shape, np.int32)
     for z in (1, 2):
