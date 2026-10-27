@@ -143,7 +143,7 @@ Dal menu principale, ultima scheda. Si apre una pagina sopra il gioco, comoda an
 - **ESC** durante la partita torna al menu.
 
 ### Versione 3D (giocatori fotorealistici)
-Tre versioni grafiche, si cambia col tasto **H** (o `index.html?gfx=pixel|hd|3d`): **ARCADE** (pixel art), **HD** (giocatori disegnati), **3D**.
+Quattro versioni grafiche, si cambia col tasto **H** (o `index.html?gfx=pixel|pixfoto|hd|3d`): **ARCADE** (pixel art), **PIXEL FOTO** (ARCADE con i giocatori della 3D ridotti a pixel art), **HD** (giocatori disegnati), **3D**.
 Nella 3D i giocatori sono fotogrammi presi da quattro fogli sprite generati con ChatGPT (`tools/photo/3d-maschile-A..D.png`, 127 pose in 16 movimenti):
 - attesa molleggiata con i piedi a terra, corsa, rincorsa a 4 appoggi;
 - schiacciata con il gomito alto e il colpo sopra la testa, oppure con la palla presa davanti (braccio veloce);
@@ -254,13 +254,15 @@ Grafica e suoni sono generati da codice (nessun asset originale): volti, arbitro
 ## Avvio
 Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Phaser è incluso (`phaser.min.js`).
 
-### Grafica: ARCADE, HD o 3D
+### Grafica: ARCADE, PIXEL FOTO, HD o 3D
 - **ARCADE** (predefinita): la pixel art originale a 320×224.
+- **PIXEL FOTO:** tutto come l'ARCADE (campo, pubblico, testi, palloni), ma i giocatori sono quelli fotorealistici della 3D ridotti a pixel art.
+  Sono alti circa 40 pixel come i giocatori ARCADE, con pochi colori e il contorno scuro, nei colori di ogni squadra (giocatrici comprese).
 - **HD**: tutta la grafica a 1920 px, senza pixel art (`gfx-hd.js`): giocatori vettoriali con contorni netti e ombreggiatura, ritratti e arbitro disegnati, pallone, pubblico, bandiere, cartelloni e testi nitidi (carattere Russo One). Ogni texture è disegnata a 6× e mostrata alla misura originale, quindi regole e logica di gioco sono identiche.
 
 - **3D**: come HD, ma con i giocatori fotorealistici (vedi sotto).
 
-Si cambia con il tasto **H** (ARCADE → HD → 3D, ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=pixel` / `hd` / `3d`. La scelta viene ricordata.
+Si cambia con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D, ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
 
 ## Tasti
 | | Giocatore 1 | Giocatore 2 |

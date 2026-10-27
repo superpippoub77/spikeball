@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.18.1';                  // da aggiornare a ogni rilascio
+const GAME_VERSION = '2.19.0';                  // da aggiornare a ogni rilascio
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -145,18 +145,19 @@ const PLAYER_COUNTS = [4, 6, 3, 2];
 
 CFG.TPEAK = CFG.JUMP_V / CFG.PG;
 
-// Grafica: tre versioni
-//   'pixel' = ARCADE (pixel art originale), 'hd' = HD (giocatori disegnati, canvas 1920 px),
+// Grafica: quattro versioni
+//   'pixel' = ARCADE (pixel art originale), 'pixfoto' = PIXEL FOTO (come l'ARCADE, ma i giocatori sono quelli
+//   fotorealistici della 3D ridotti a pixel art: photo.js), 'hd' = HD (giocatori disegnati, canvas 1920 px),
 //   '3d' = 3D (giocatori fotorealistici dal foglio sprite, canvas 1920 px, telecamera più vicina).
-// Si sceglie con ?gfx=pixel|hd|3d nell'indirizzo oppure col tasto H; la scelta viene ricordata.
-const GFX_MODES = ['pixel', 'hd', '3d'];
-const GFX_NAMES = { pixel: 'ARCADE', hd: 'HD', '3d': '3D' };
+// Si sceglie con ?gfx=pixel|pixfoto|hd|3d nell'indirizzo oppure col tasto H; la scelta viene ricordata.
+const GFX_MODES = ['pixel', 'pixfoto', 'hd', '3d'];
+const GFX_NAMES = { pixel: 'ARCADE', pixfoto: 'PIXEL FOTO', hd: 'HD', '3d': '3D' };
 const GFX = (() => {
   let m = null;
   try { m = new URLSearchParams(location.search).get('gfx'); if (m) localStorage.setItem('sf91_gfx', m); else m = localStorage.getItem('sf91_gfx'); } catch (e) {}
   return GFX_MODES.includes(m) ? m : 'pixel';
 })();
-const HIRES = GFX !== 'pixel';
+const HIRES = GFX !== 'pixel' && GFX !== 'pixfoto';
 if (HIRES) CFG.ZOOM = 6;
 const GR = HIRES ? CFG.ZOOM : 1;   // risoluzione delle texture rispetto ai pixel nativi
 
