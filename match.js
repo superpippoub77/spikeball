@@ -1528,6 +1528,8 @@ class MatchScene extends Phaser.Scene {
   motion(p, st) {
     const t = p.team, b = this.ball;
     // rincorsa "a 4 appoggi": passi di corsa, poi il passo lungo con il piccolo balzo e le braccia indietro, poi lo stacco a piedi pari
+    // battuta in salto: subito dopo il lancio il braccio resta alto un attimo, poi parte la rincorsa
+    if (this.state === 'serve' && this.server === p && (this.serveKind === 'jump' || this.serveKind === 'jfloat') && this.servePhase === 'toss' && !p.jsJumped && p.z <= 0 && this.jsT < 0.2) return 'toss';
     if (p.z <= 0 && (st === 'run' || st === 'idle')) {
       const tj = this.takeoffIn(p);
       if (tj !== null && tj < CFG.APPR_T) return tj < CFG.PLANT_T ? 'plant' : 'appr';

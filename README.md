@@ -49,6 +49,8 @@
   - **COMPLETO**: nessun punto debole e nessuna specialità.
 
 ### Versione femminile
+Nel **menu principale**, sotto le schede, la riga **SQUADRE: MASCHILI / FEMMINILI** (↓ per arrivarci, ← → per cambiare) vale per tutte le modalità (ARCADE, SINGLE MATCH, BEACH, nuovi giocatori di MY PLAYER) e resta salvata; nelle impostazioni delle singole partite si può comunque cambiare.
+
 - A fine partita ogni giocatore e giocatrice esulta a modo suo, alternando braccia al cielo, pugno alzato e saltelli a braccia larghe.
 - **Come si sceglie:** SINGLE MATCH → scegli le due squadre → nelle impostazioni della partita la prima voce è **SQUADRE (maschili / femminili)**: ← → per cambiare. Nel BEACH è la prima voce delle impostazioni dopo la scelta delle coppie. Nell'**ARCADE** (1 o 2 giocatori) si sceglie in SELECT YOUR TEAM con ← →: **MEN / WOMEN**.
 - **Giocatrici:** acconciature diverse (coda di cavallo, treccia, chignon, caschetto), orecchini nel colore della squadra, viso e nomi femminili (per le nazionali nomi del paese), telecronaca al femminile ("SHE MISHITS THE BALL!").
@@ -264,7 +266,7 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 - **3D**: come HD, ma con i giocatori fotorealistici (vedi sotto).
 
-Si cambia dal **menu principale**, nella riga **GRAFICA** sotto le schede (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
+Si cambia dal **menu principale**, nella riga **GRAFICA** in fondo (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
 
 ### Telefono e tablet
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:

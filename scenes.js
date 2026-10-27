@@ -249,7 +249,7 @@ class SelectTeamScene extends Base {
     if (!this.ok[0]) {
       if (this.jd('up')) { this.c[0] = (this.c[0] + 8) % 9; SFX.blip(); this.refresh(); }
       if (this.jd('down')) { this.c[0] = (this.c[0] + 1) % 9; SFX.blip(); this.refresh(); }
-      if (this.jd('left') || this.jd('right')) { GS.women = !GS.women; SFX.blip(); this.refresh(); }
+      if (this.jd('left') || this.jd('right')) { setWomen(!GS.women); SFX.blip(); this.refresh(); }
       if (this.btn() || this.startPressed()) { this.ok[0] = true; SFX.select(); this.m1.setTint(0x808080); }
     }
     if (this.m2 && !this.ok[1]) {

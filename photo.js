@@ -251,12 +251,16 @@ function photoFrame3(m, p, pose) {
   if (st === 'set' || pose === 'set') return pick('set', 3 + prog(0.3) * 3);
   if (pose === 'setload') return pick('set', 1 + (now * 4) % 2);
   if (st === 'dump' || pose === 'dump' || pose === 'dumpfol') return pick('dump', 3 + prog(0.3) * 3);
+  // battuta in salto: subito dopo il lancio il braccio resta alto un attimo, poi parte la rincorsa
+  if (m.state === 'serve' && server && (sk === 'jump' || sk === 'jfloat') && m.servePhase === 'toss' && !p.jsJumped && m.jsT < 0.2) return pick(srvAnim, 1);
   // rincorsa (attacco o battuta in salto): passi, passo lungo con le braccia indietro, piedi pari
   if (p.z <= 0 && (pose === 'appr' || pose === 'plant' || st === 'run')) {
     const tj = m.takeoffIn(p);
     if (tj !== null && tj < CFG.APPR_T + 0.25) {
       const k = 1 - clamp(tj / (CFG.APPR_T + 0.25), 0, 1);
-      if (m.state === 'serve' && server) return pick(srvAnim, 2 + k * 1.9);
+      // battuta in salto: la stessa rincorsa dell'attacco (passi, passo lungo con le braccia indietro, piedi pari),
+      // un fotogramma diverso per ogni tratto (prima restavano due pose ferme mentre il battitore scivolava avanti)
+      if (m.state === 'serve' && server) return pick('appr', k * 5.4);
       return pick('appr', 1 + k * 4);
     }
   }

@@ -163,7 +163,13 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: 0 };
+const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
+// scelta maschile / femminile del menu principale: vale per tutte le modalità e resta salvata nel browser
+function setWomen(on) {
+  GS.women = !!on; MSET.women = on ? 1 : 0;
+  if (typeof BSET !== 'undefined') BSET.women = on ? 1 : 0;
+  try { localStorage.setItem('sf91_women', on ? '1' : '0'); } catch (e) { /* */ }
+}
 const OPT = {
   start: [0, 5, 10, 15],
   rebound: ['EASY', 'HARD', 'OFF'],
@@ -276,14 +282,20 @@ class MainMenuScene extends Base {
       cont.bg = bg;
       return cont;
     });
-    this.hint = this.add.text(160, 183, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
-    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    ↓ GRAFICA', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    this.hint = this.add.text(160, 181, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
+    this.add.text(160, 218, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    ↓ SQUADRE E GRAFICA', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    // riga SQUADRE: maschili o femminili, per tutte le modalità (si ricorda; si può cambiare anche nelle impostazioni)
+    this.sexBox = this.add.graphics();
+    this.add.text(116, 191.5, 'SQUADRE', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.sexTxt = this.add.text(166, 191.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
+    this.sexArrows = [this.add.text(126, 191.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 191.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.sexTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = 8; this.toggleSex(); });
     // riga della versione grafica, sotto le schede (↓ per arrivarci, ← → per cambiarla: la pagina si ricarica)
     this.gfxSel = GFX_MODES.indexOf(GFX);
     this.gfxBox = this.add.graphics();
-    this.add.text(116, 196, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
-    this.gfxTxt = this.add.text(166, 196, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
-    this.gfxArrows = [this.add.text(126, 196, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 196, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.add.text(116, 204.5, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.gfxTxt = this.add.text(166, 204.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
+    this.gfxArrows = [this.add.text(126, 204.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 204.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = 7; this.cycleGfx(1); });
     // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
@@ -297,6 +309,8 @@ class MainMenuScene extends Base {
     try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = 7; } } catch (e) { /* */ }
     this.refresh();
   }
+  // squadre maschili / femminili: vale per arcade, single match, beach e i miei giocatori nuovi
+  toggleSex() { setWomen(!GS.women); SFX.blip(); this.refresh(); }
   // versione grafica: si sceglie con ← → e si applica (ricaricando la pagina) dopo un attimo senza altre pressioni
   cycleGfx(d) {
     const n = GFX_MODES.length;
@@ -324,10 +338,14 @@ class MainMenuScene extends Base {
     this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
     this.langArrows.forEach(a => a.setVisible(L));
     const G = this.sel === 7, gm = GFX_MODES[this.gfxSel];
-    this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 189, 92, 14, 4).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 189, 92, 14, 4);
+    this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 198, 92, 13, 4).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 198, 92, 13, 4);
+    const X = this.sel === 8;
+    this.sexBox.clear().fillStyle(X ? (GS.women ? 0xb83a7a : 0x1a5ad8) : 0x0e2a6a, 0.9).fillRoundedRect(120, 185, 92, 13, 4).lineStyle(X ? 2 : 1, X ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 185, 92, 13, 4);
+    this.sexTxt.setText(GS.women ? 'FEMMINILI' : 'MASCHILI').setColor(GS.women ? '#ffb0d8' : '#ffffff');
+    this.sexArrows.forEach(a => a.setVisible(X));
     this.gfxTxt.setText(GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
     this.gfxArrows.forEach(a => a.setVisible(G));
-    this.hint.setText(L ? '← → LINGUA' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
+    this.hint.setText(L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
@@ -335,7 +353,13 @@ class MainMenuScene extends Base {
     if (this.sel === 7) {
       if (this.jd('left')) this.cycleGfx(-1);
       else if (this.jd('right') || this.btn()) this.cycleGfx(1);
+      else if (this.jd('up')) { this.sel = 8; this.refresh(); SFX.blip(); }
+      return;
+    }
+    if (this.sel === 8) {
+      if (this.jd('left') || this.jd('right') || this.btn()) this.toggleSex();
       else if (this.jd('up')) { this.sel = 5; this.refresh(); SFX.blip(); }
+      else if (this.jd('down')) { this.sel = 7; this.refresh(); SFX.blip(); }
       return;
     }
     const row = this.sel < 0 ? -1 : this.sel < 4 ? 0 : 1;
@@ -349,7 +373,7 @@ class MainMenuScene extends Base {
     if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
     if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
     if (this.jd('up')) { this.sel = row ? Math.min(3, Math.max(0, this.sel - 4 + (this.sel === 4 ? 0 : 1))) : -1; this.refresh(); SFX.blip(); }
-    if (this.jd('down')) { this.sel = row ? 7 : Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
+    if (this.jd('down')) { this.sel = row ? 8 : Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
