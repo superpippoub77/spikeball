@@ -723,7 +723,7 @@ class MatchScene extends Phaser.Scene {
       target = plan.xc + side * (5 + jvx * CFG.TPEAK);
       if (tHit !== null) {
         const need = tHit - CFG.TPEAK;
-        if (need > 0.45) { target = target + side * 22; }            // aspetta in posizione di rincorsa
+        if (need > CFG.APPR_RUN) { target = target + side * 22; }    // aspetta in posizione di rincorsa
         else speed = clamp(Math.abs(target - p.x) / Math.max(0.06, need), CFG.RUN * 0.4, CFG.RUN * 1.9);
       }
     } else if (plan && plan.p === p) {
@@ -1532,7 +1532,8 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && this.server === p && (this.serveKind === 'jump' || this.serveKind === 'jfloat') && this.servePhase === 'toss' && !p.jsJumped && p.z <= 0 && this.jsT < 0.2) return 'toss';
     if (p.z <= 0 && (st === 'run' || st === 'idle')) {
       const tj = this.takeoffIn(p);
-      if (tj !== null && tj < CFG.APPR_T) return tj < CFG.PLANT_T ? 'plant' : 'appr';
+      // primo passo (busto avanti, braccia davanti), passo lungo con le braccia indietro, piedi pari
+      if (tj !== null && tj < CFG.APPR_RUN) return tj < CFG.PLANT_T ? 'plant' : tj < CFG.APPR_T ? 'appr' : 'appr0';
     }
     // battuta: in attesa del fischio il battitore sta in piedi con la palla tra le mani (non in posizione di ricezione)
     if (this.state === 'serve' && this.server === p && (this.servePhase === 'walk' || this.servePhase === 'ready') && st === 'idle') return 'srvhold';

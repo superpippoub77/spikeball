@@ -91,12 +91,12 @@ const PHOTO_STATIC3 = { idle: ['idle', 0], idle2: ['idle', 4], run1: ['run', 1],
   jsetloadF: ['jset', 3], jsetF: ['jset', 4], landF: ['jset', 5], jsetloadB: ['jset', 3], jsetB: ['jset', 4], landB: ['jset', 5],
   jump: ['block', 2], block: ['block', 4], spkload: ['spike', 1], spike: ['spike', 5], spikefr: ['spikefr', 5], spkfol: ['spike', 6],
   dump: ['dump', 4], dumpfol: ['dump', 5], dive: ['dive', 2], down: ['dive', 4], cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2],
-  sad: ['cheer', 5], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 2], srvload: ['serve', 4], srvhold: ['serve', 0] };
+  sad: ['cheer', 5], appr: ['appr', 3], plant: ['appr', 4], appr0: ['appr', 1], toss: ['serve', 2], srvload: ['serve', 4], srvhold: ['serve', 0] };
 // pose statiche (menu, schermate) prese dalle animazioni del foglio (righe di tools/photo/foglio-sprite-2.webp)
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 3], set: ['set', 4], jump: ['block', 2],
   spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
   passside: ['dive', 0], srvload: ['serve', 3], spike: ['spike', 4], block: ['block', 4], dive: ['dive', 3], down: ['down', 0],
-  cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6],
+  cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], appr0: ['appr', 2], toss: ['serve', 1], sad: ['cheer', 6],
   spikefr: ['spike', 4], idle2: ['idle', 4], srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6],
   jsetloadF: ['set', 2], jsetF: ['set', 4], landF: ['set', 2], jsetloadB: ['set', 2], jsetB: ['set', 4], landB: ['set', 2] };
 
@@ -109,7 +109,11 @@ function makePhotoTex(scene, code) {
   const src = photoRecolor(TEAMS[code], LOOK.beach);
   // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m); giocatrici ~1,85 m
   const k = 43 * (ps.fem ? 0.95 : 1) / S.stand;
-  const R = GR > 1 ? 1 / k : 1;                             // HD: risoluzione piena del foglio
+  // HD: risoluzione piena del foglio, ma entro la texture più grande che la scheda grafica accetta (molti telefoni:
+  // 4096 px) e non oltre 2048 px sui telefoni e tablet, dove texture enormi fanno scattare e fermare il gioco
+  const rd = scene.sys.game.renderer, maxTex = (rd && rd.getMaxTextureSize && rd.getMaxTextureSize()) || 4096;
+  const lim = Math.min(maxTex, typeof TOUCH !== 'undefined' && TOUCH.on ? 2048 : 8192);
+  const R = GR > 1 ? Math.min(1 / k, lim / (src.width * k), lim / (src.height * k)) : 1;
   const sc = k * R, cw = S.cw * k, ch = S.ch * k;
   const t = scene.textures.createCanvas(key, Math.ceil(src.width * sc), Math.ceil(src.height * sc)), c = t.getContext();
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
@@ -254,14 +258,14 @@ function photoFrame3(m, p, pose) {
   // battuta in salto: subito dopo il lancio il braccio resta alto un attimo, poi parte la rincorsa
   if (m.state === 'serve' && server && (sk === 'jump' || sk === 'jfloat') && m.servePhase === 'toss' && !p.jsJumped && m.jsT < 0.2) return pick(srvAnim, 1);
   // rincorsa (attacco o battuta in salto): passi, passo lungo con le braccia indietro, piedi pari
-  if (p.z <= 0 && (pose === 'appr' || pose === 'plant' || st === 'run')) {
+  if (p.z <= 0 && (pose === 'appr0' || pose === 'appr' || pose === 'plant' || st === 'run')) {
     const tj = m.takeoffIn(p);
-    if (tj !== null && tj < CFG.APPR_T + 0.25) {
-      const k = 1 - clamp(tj / (CFG.APPR_T + 0.25), 0, 1);
-      // battuta in salto: la stessa rincorsa dell'attacco (passi, passo lungo con le braccia indietro, piedi pari),
-      // un fotogramma diverso per ogni tratto (prima restavano due pose ferme mentre il battitore scivolava avanti)
-      if (m.state === 'serve' && server) return pick('appr', k * 5.4);
-      return pick('appr', 1 + k * 4);
+    // la riga 'appr' (passi, passo lungo con le braccia indietro, piedi pari, stacco) dura quanto la rincorsa vera:
+    // APPR_RUN per l'attacco, un po' di più per la battuta in salto (che parte da più lontano)
+    const srvA = m.state === 'serve' && server, win = srvA ? CFG.APPR_T + 0.35 : CFG.APPR_RUN;
+    if (tj !== null && tj < win) {
+      const k = 1 - clamp(tj / win, 0, 1);
+      return pick('appr', k * 5.4);
     }
   }
   if (st === 'run' || pose === 'run1' || pose === 'run2') return pick('run', (p.runT * 12) % A.run.length);

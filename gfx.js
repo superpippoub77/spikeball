@@ -18,11 +18,12 @@ const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 
                'cheer2', 'cheer3',                // esultanze: pugno al cielo, salto a braccia larghe
                'appr', 'plant',                   // rincorsa: passo lungo con le braccia indietro, stacco a piedi pari
                'srvhold',                         // battitore in attesa: in piedi con la palla tra le mani
-               'jsetload', 'jset', 'land',
+               'jsetload', 'jset', 'land',        // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
                'spikefr',                         // schiacciata con la palla presa davanti
-               'idle2',
+               'idle2',                           // attesa: ginocchia più piegate (si alterna con idle, piedi fermi)
                'jsetloadF', 'jsetF', 'landF',     // palleggio in salto in volo, girato: di fronte (campo destro)
-               'jsetloadB', 'jsetB', 'landB'];    // ... e di spalle (campo sinistro)                          // attesa: ginocchia più piegate (si alterna con idle, piedi fermi)       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
+               'jsetloadB', 'jsetB', 'landB',     // ... e di spalle (campo sinistro)
+               'appr0'];                          // rincorsa: primo passo, busto avanti e braccia davanti
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -56,6 +57,7 @@ const SKEL = {
   // di là con un colpo secco del polso (dump), poi la mano accompagna in basso oltre la rete (dumpfol)
   dump:    { hip: [15, 24], neck: [17, 13], head: [19, 9], bl: [[13, 30], [11, 35]], fl: [[18, 30], [17, 36]], ba: [[14, 19], [11, 24]], fa: [[21, 7], [25, 2]] },
   dumpfol: { hip: [15, 24], neck: [18, 13], head: [20, 9], bl: [[13, 30], [11, 35]], fl: [[18, 30], [17, 36]], ba: [[14, 19], [11, 24]], fa: [[23, 10], [28, 9]] },
+  appr0: { hip: [16, 25], neck: [19, 15], head: [22, 11], bl: [[13, 31], [9, 37]],  fl: [[19, 30], [19, 38]], ba: [[20, 21], [24, 24]], fa: [[21, 20], [25, 22]] },
   appr:  { hip: [15, 26], neck: [19, 16], head: [22, 12], bl: [[11, 31], [6, 37]],  fl: [[20, 31], [23, 38]], ba: [[12, 20], [7, 22]],  fa: [[13, 21], [8, 24]] },
   plant: { hip: [13, 29], neck: [18, 20], head: [21, 16], bl: [[16, 33], [13, 38]], fl: [[19, 33], [20, 38]], ba: [[13, 23], [6, 22]],  fa: [[14, 24], [7, 24]] },
   cheer2: { hip: [16, 24], neck: [16, 13], head: [17, 9], bl: [[14, 31], [12, 38]], fl: [[18, 31], [20, 38]], ba: [[13, 19], [16, 15]], fa: [[20, 8], [22, 2]] },
@@ -399,10 +401,12 @@ function makePlayerTex(scene, code, i) {
   const key = plKey(code, i);
   if (scene.textures.exists(key)) return key;
   const P = playerPal(code, i), hair = P.ha[i % P.ha.length];
-  const { t, c } = canvasTex(scene, key, FW * POSES.length, FH);
-  if (GR > 1) { c.setTransform(1, 0, 0, 1, 0, 0); POSES.forEach((p, k) => c.drawImage(drawPlayerHD(p, P, hair, GR), k * FW * GR, 0)); }
-  else POSES.forEach((p, k) => drawPlayer(c, k * FW, p, P, hair));
-  texDone(t, POSES.map((p, k) => [k, k * FW, 0, FW, FH]));
+  // pose su righe da 12: in HD una riga sola sarebbe larga oltre 7000 px, più della texture massima di molti telefoni
+  const PC = 12, cx = k => (k % PC) * FW, cy = k => Math.floor(k / PC) * FH;
+  const { t, c } = canvasTex(scene, key, FW * PC, FH * Math.ceil(POSES.length / PC));
+  if (GR > 1) { c.setTransform(1, 0, 0, 1, 0, 0); POSES.forEach((p, k) => c.drawImage(drawPlayerHD(p, P, hair, GR), cx(k) * GR, cy(k) * GR)); }
+  else POSES.forEach((p, k) => { c.save(); c.translate(0, cy(k)); drawPlayer(c, cx(k), p, P, hair); c.restore(); });
+  texDone(t, POSES.map((p, k) => [k, cx(k), cy(k), FW, FH]));
   return key;
 }
 

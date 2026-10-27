@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.23.0';                  // da aggiornare a ogni rilascio (anche ?v= degli script in index.html)
+const GAME_VERSION = '2.24.0';                  // da aggiornare a ogni rilascio (anche ?v= degli script in index.html)
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -42,7 +42,9 @@ const CFG = {
   REACH: 12, DIVE_REACH: 38,
   SQUASH_T: 0.18,         // secondi dello schiacciamento del pallone (a terra, schiacciata, muro)
   CHASE_MAX: 1.75,        // scatto verso una palla lontana (es. deviata dal muro): fino a 1,75 volte la corsa normale
-  APPR_T: 0.4, PLANT_T: 0.13,   // rincorsa: secondi prima dello stacco per il passo lungo con il balzo e per l'arrivo a piedi pari
+  // rincorsa d'attacco: l'attaccante parte APPR_RUN secondi prima dello stacco (primo passo), APPR_T prima fa il passo lungo
+  // con il balzo e le braccia indietro, PLANT_T prima arriva a piedi pari
+  APPR_RUN: 0.45, APPR_T: 0.3, PLANT_T: 0.13,
   FRONT_ZONE: 0.36,       // ricezione: oltre questa frazione della metà campo la palla tocca ai difensori arretrati
   SAND_K: 0.86,           // beach: velocità di corsa sulla sabbia (più faticosa del parquet)
   SAND_MARK_T: 6,         // beach: secondi prima che un'impronta nella sabbia sparisca
