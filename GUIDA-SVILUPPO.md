@@ -121,6 +121,7 @@ In `step`: battuta (`updateServe`), IA (`think`), movimento (`movePlayer`), pall
 | Aggiungere una **squadra vera** | `squadre.json` (formato nel README) |
 | Aggiungere un **campionato** | `python3 tools/campionati/calendario2json.py calendario.txt campionati.json --id ID --nome "Nome"` |
 | Aggiungere un **logo** | metti l'immagine in `loghi/` e scrivi `"logo": "loghi/nome.png"` nella squadra |
+| **Logo del campionato** | `"logo"` nel campionato (campionati.json) o dall'editor; `compLogoTex` (league.js) lo trasforma per la versione grafica (pixel art in ARCADE/PIXEL FOTO, liscio in HD/3D) |
 | Aggiungere una **nazionale** | `TEAMS` (in `config.js` o `modern.js`) + `TEAM_STATS` + `GROUPS` in `modern.js` + bandiera in `drawFlag` |
 | Cambiare le frasi della **telecronaca** | `match.js`: cerca `this.announce(` |
 | Cambiare i **tasti** | `match.js` → `setupInput`; menu → `Base.keysInit` in `scenes.js` |
@@ -194,6 +195,6 @@ Il gioco salva alcune cose nel `localStorage` del browser (si cancellano dagli s
 
 ## 6. Pubblicare una modifica
 1. Prova in locale (sezione 1), controlla che la console non mostri errori, prova le tre versioni grafiche (tasto H).
-2. Aggiorna `GAME_VERSION` in `config.js`.
+2. Aggiorna `GAME_VERSION` in `config.js` e lo stesso numero in `?v=` degli script di `index.html` (così il browser non usa file vecchi dalla cache).
 3. Fai il commit su un branch e apri una pull request verso `main`.
 4. Quando la pull request viene unita in `main`, il workflow `.github/workflows/deploy-spikeball-aruba.yml` pubblica il gioco sul sito.

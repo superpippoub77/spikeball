@@ -36,6 +36,42 @@ async function loadLeagues() {
     c.squadre = c.squadre.map(s => typeof s === 'string' ? { nome: s } : s);
     LEAGUES.list.push(c);
   });
+  await preloadLogos(LEAGUES.list.map(c => c.logo));
+}
+
+// logo del campionato ("logo" in campionati.json o caricato nell'editor), trasformato per la versione grafica:
+// in ARCADE e PIXEL FOTO diventa pixel art (pochi colori, bordi netti, alla risoluzione dello schermo),
+// in HD e 3D resta un'immagine liscia ad alta risoluzione. Sta su una targa chiara, come i loghi delle squadre,
+// così si vede anche se è scuro o ha la trasparenza. Senza logo: null.
+function compLogoTex(scene, lg, w, h) {
+  const img = lg && lg.logo && LOGO_CACHE[lg.logo];
+  if (!img) return null;
+  const key = `clogo_${lg.id}_${w}x${h}_${GFX}`;
+  if (scene.textures.exists(key)) return key;
+  const { t, c } = canvasTex(scene, key, w, h);
+  const pad = Math.max(1, Math.round(w * 0.08)), k = Math.min((w - pad * 2) / img.width, (h - pad * 2) / img.height);
+  const iw = img.width * k, ih = img.height * k;
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.fillStyle = '#f2f2ee';
+  if (GR > 1) {
+    const r = Math.min(w, h) * 0.18;
+    c.beginPath(); c.moveTo(r, 0); c.arcTo(w, 0, w, h, r); c.arcTo(w, h, 0, h, r); c.arcTo(0, h, 0, 0, r); c.arcTo(0, 0, w, 0, r); c.fill();
+    c.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+    c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.6; c.stroke();
+  } else {
+    c.fillRect(1, 0, w - 2, h); c.fillRect(0, 1, w, h - 2);   // targa con gli angoli tagliati, da pixel art
+    // riduzione in due passi (più nitida), poi colori a 6 livelli per canale e niente semitrasparenze
+    const m = document.createElement('canvas'); m.width = Math.ceil(iw * 2); m.height = Math.ceil(ih * 2);
+    const g = m.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, m.width, m.height);
+    c.drawImage(m, Math.round((w - iw) / 2), Math.round((h - ih) / 2), Math.round(iw), Math.round(ih));
+    const im = c.getImageData(0, 0, w, h), d = im.data, q = v => Math.min(255, Math.round(v / 51) * 51);
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 110) { d[i + 3] = 0; continue; }
+      d[i + 3] = 255; d[i] = q(d[i]); d[i + 1] = q(d[i + 1]); d[i + 2] = q(d[i + 2]);
+    }
+    c.putImageData(im, 0, 0);
+  }
+  texDone(t); return key;
 }
 const _startGameLeague = startGame;
 startGame = function () { loadLeagues().finally(_startGameLeague); };
@@ -210,7 +246,7 @@ function startLeagueSet(scene) {
   scene.scene.start('Match', {
     mode: 'modern', left: L[0], right: L[1], humans: homeLeft ? hum : [hum[1], hum[0]], skillL: sk(S2[0]), skillR: sk(S2[1]),
     players: st.players || 4,   // giocatori in campo scelti nel campionato (formazione scelta con FORMAZIONE)
-    stats: S2, start: [0, 0], time: null, setLabel: `SET ${LG.sets.length + 1}   ${hc} ${won[0]}-${won[1]} ${ac}`,
+    stats: S2, start: [0, 0], time: null, comp: LG.lg, setLabel: `SET ${LG.sets.length + 1}   ${hc} ${won[0]}-${won[1]} ${ac}`,
     firstServe: homeServes === homeLeft ? 0 : 1,
     modern: { arena: a.id === 'classic' ? 'arena' : a.id, floor: a.floor || ARENAS[0].floor, ball: BALLS[MSET.ball].key, rebound: OPT.rebound[MSET.rebound],
               target: MSET.target === 0, targetPts: tb ? 15 : 25, sideOut: false, fx: MSET.fx === 0 },
@@ -244,6 +280,7 @@ class LeagueSelectScene extends Base {
     }
     leaguePanel(this, 20, 26, 280, 170, null);
     this.rows = this.items.map((it, i) => [this.add.text(34, 34 + i * 20, it.t, UI.f(7, '#ffffff', true)), this.add.text(34, 43 + i * 20, it.s, UI.f(5, '#9ab8f0'))]);
+    this.items.forEach((it, i) => { const lt = it.lg && compLogoTex(this, it.lg, 16, 16); if (lt) this.add.image(286, 43 + i * 20, lt); });
     if (!LEAGUES.list.length) this.add.text(160, 150, 'Nessun campionato: aggiungi campionati.json (vedi README)\no trascina il file sulla finestra del gioco', { ...UI.f(5, '#9ab8f0'), align: 'center' }).setOrigin(0.5);
     this.cur = this.add.image(26, 0, 'ballbig').setScale(0.5);
     this.add.text(160, 210, '↑↓ scegli   Z: conferma   ESC: menu', UI.f(5, '#9ab8f0')).setOrigin(0.5);
@@ -274,6 +311,7 @@ class LeagueTeamScene extends Base {
     camSetup(this); makeCommon(this); this.keysInit(); UI.bg(this);
     const lg = LG.lg, codes = leagueTeams(lg);
     this.add.text(160, 10, asciiUp(lg.nome), UI.f(7, '#ffd23a', true)).setOrigin(0.5);
+    const lt = compLogoTex(this, lg, 22, 22); if (lt) this.add.image(16, 15, lt);
     this.add.text(160, 20, 'SCEGLI LA TUA SQUADRA', UI.f(6, '#ffffff', true)).setOrigin(0.5);
     leaguePanel(this, 10, 30, 300, 172, null);
     this.teams = lg.squadre.map(s => s.nome);
@@ -313,6 +351,7 @@ class LeagueHubScene extends Base {
     const cr = currentRound(lg, st), tot = lg.giornate.length;
     this.cr = cr;
     this.add.text(160, 7, asciiUp(lg.nome), UI.f(7, '#ffd23a', true)).setOrigin(0.5);
+    const lt = compLogoTex(this, lg, 18, 18); if (lt) this.add.image(14, 12, lt);
     this.add.text(160, 16, cr < 0 ? 'CAMPIONATO CONCLUSO' : `GIORNATA ${lg.giornate[cr].numero || cr + 1} DI ${tot}   ·   ${shortName(st.team)}`, UI.f(5, '#ffffff', true)).setOrigin(0.5);
     // pannello sinistro: classifica o risultati (Q/E)
     leaguePanel(this, 4, 24, 200, 156, null);
@@ -437,6 +476,7 @@ class LeagueSetScene extends Base {
     const g = LG.gara.g, codes = leagueTeams(LG.lg);
     const w = LG.sets.reduce((c, s) => (s[0] > s[1] ? c[0]++ : c[1]++, c), [0, 0]);
     leaguePanel(this, 30, 30, 260, 150, this.finished ? 'FINE PARTITA' : `FINE SET ${LG.sets.length}`);
+    const lt = compLogoTex(this, LG.lg, 18, 18); if (lt) this.add.image(160, 48, lt);
     this.add.image(90, 70, makeFlagTex(this, codes[g.casa].code, 36, 24)); this.add.image(230, 70, makeFlagTex(this, codes[g.ospite].code, 36, 24));
     this.add.text(90, 88, shortName(g.casa), UI.f(5.5, '#ffffff', true)).setOrigin(0.5, 0);
     this.add.text(230, 88, shortName(g.ospite), UI.f(5.5, '#ffffff', true)).setOrigin(0.5, 0);

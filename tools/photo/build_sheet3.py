@@ -33,7 +33,7 @@ if 'femminile' in prefix:
     SKIPROWS = {('C', 1), ('C', 2), ('C', 3), ('D', 2), ('D', 3)}
     STAND = [('D', 0, 0), ('D', 0, 7), ('D', 1, 0)]
     ALIAS = {
-        'jset': ('set', [0, 1, 2, 3, 4, 5, 1, 0]),              # palleggio in salto: come quello da fermo
+        'jset': ('set', [0, 1, 2, 3, 4, 1, 1, 0]),              # palleggio in salto: come quello da fermo (senza braccia distese)
         'dump': ('spikefr', [0, 1, 2, 3, 4, 5, 6, 7]),          # pallonetto: braccio teso in avanti e in alto
         'block': ('set', [0, 1, 5, 6, 6, 5, 1, 0]),             # muro: braccia distese in alto del palleggio
         'jfloat': ('jserve', [0, 1, 2, 3, 5, 6, 6, 7]),         # salto flottante: come la battuta in salto

@@ -90,7 +90,7 @@ loadRosters = async function () {
     for (let i = 0; i < mine.length; i += 12) { GROUPS.push(mine.slice(i, i + 12)); GROUP_NAMES.push(mine.length > 12 ? `MIE SQUADRE ${i / 12 + 1}` : 'MIE SQUADRE'); }
   }
   // loghi delle squadre, degli sponsor e foto degli arbitri (immagini già nel browser)
-  await preloadLogos(ED.data.squadre.map(t => t.logo).concat(ED.data.sponsor.map(s => s.logo), ED.data.arbitri.map(a => a.foto)));
+  await preloadLogos(ED.data.squadre.map(t => t.logo).concat(ED.data.sponsor.map(s => s.logo), ED.data.arbitri.map(a => a.foto), ED.data.campionati.map(c => c.logo)));
 };
 // campionati creati nell'editor, accanto a quelli di campionati.json
 const _loadLeaguesEd = loadLeagues;
@@ -101,7 +101,7 @@ loadLeagues = async function () {
     if (sq.length < 2) continue;
     const cat = c.categoria && typeof catByKey === 'function' ? catByKey(c.categoria) : null;
     LEAGUES.list.push({ id: 'ed_' + c.id, nome: c.nome || 'CAMPIONATO', set: c.set || 3, squadre: sq.map(s => ({ nome: s.nome, codice: s.codice })),
-                        categoria: cat ? cat.nome : undefined, sesso: cat ? cat.sesso : undefined,
+                        categoria: cat ? cat.nome : undefined, sesso: cat ? cat.sesso : undefined, logo: c.logo || undefined,
                         giornate: edCalendar(sq.map(s => s.nome), !!c.ritorno) });
   }
 };
@@ -431,6 +431,11 @@ function openEditor(onClose) {
         edSelect('Gare', c, 'ritorno', [['true', 'andata e ritorno'], ['false', 'solo andata']], () => { c.ritorno = c.ritorno === 'true'; }),
         edSelect('Set', c, 'set', [[3, 'al meglio dei 3'], [5, 'al meglio dei 5'], [1, 'set unico']], () => { c.set = Number(c.set); }),
         edSelect('Categoria', c, 'categoria', edCatOptions()),
+        // logo: in ARCADE e PIXEL FOTO diventa pixel art, in HD e 3D resta liscio (compLogoTex)
+        edEl('div', { style: 'display:flex;align-items:center;gap:8px;margin:6px 0' },
+          c.logo ? edEl('img', { src: c.logo, style: 'width:40px;height:40px;object-fit:contain' }) : edEl('span', { class: 'muted' }, 'nessun logo'),
+          edEl('button', { onclick: () => edPickImage(128, d => { c.logo = d; draw(); }) }, 'CARICA LOGO'),
+          c.logo ? edEl('button', { class: 'red small', onclick: () => { c.logo = null; draw(); } }, 'TOGLI') : null),
         edEl('button', { class: 'red', onclick: () => { D.campionati.splice(D.campionati.indexOf(c), 1); draw(); } }, 'ELIMINA'),
         edEl('div', { class: 'muted' }, `Squadre scelte: ${c.squadre.length} (almeno 2)`),
         edEl('div', { style: 'display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px' }, all.map(s => {

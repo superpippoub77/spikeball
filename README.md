@@ -218,6 +218,8 @@ Ogni squadra del campionato può avere anche `logo`, `colori` e `codice` (per co
 `"squadre": [{ "nome": "VALSESIA TEAM VOLLEY", "logo": "loghi/valsesia.png" }, ...]`. Anche `campionati.json` si può trascinare sulla finestra.
 Rigenerando un campionato con lo stesso `--id`, logo, colori e codice delle squadre restano.
 
+Anche il **campionato** può avere il suo logo: `"logo": "loghi/serie-a.png"` accanto a `"nome"` in `campionati.json`, oppure **CARICA LOGO** nella scheda CAMPIONATI dell'editor. Si vede nella scelta del campionato, in classifica, tra un set e l'altro, nella presentazione del set e piccolo in alto a sinistra durante la partita, su una targa chiara. Il gioco lo trasforma per ogni versione: in **ARCADE** e **PIXEL FOTO** diventa pixel art (pochi colori, bordi netti), in **HD** e **3D** resta liscio ad alta risoluzione.
+
 Loghi disponibili in `loghi/`: Bellinzago, Koala Fontaneto, Pavic, Volley Novara (già collegati alla Prima Divisione), Salussola, Santhià, Vigliano Biellese, Volley Crescentino, Volley Vercelli.
 
 ### Categorie FIPAV (serie, comitati, promozioni)
