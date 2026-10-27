@@ -152,6 +152,8 @@ Nella 3D i giocatori sono fotogrammi presi da quattro fogli sprite generati con 
 - battuta da ferma (con l'attesa a palla in mano), battuta in salto, salto flottante;
 - esultanze e delusione.
 
+Le giocatrici hanno i loro fogli (`tools/photo/3d-femminile-A..D.jpg` → `photo-sprites-f.js`). Per ora dai fogli femminili mancano palleggio in salto, pallonetto, muro, salto flottante ed esultanze: usano pose simili della stessa giocatrice finché quelle righe non vengono rigenerate.
+
 I fotogrammi sono
 in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
 Anche i palloni della 3D vengono da un foglio sprite (`tools/photo/palloni.webp`): ruotano in 8 tempi con la luce ferma e si schiacciano a terra, sulle schiacciate e sui muri.
