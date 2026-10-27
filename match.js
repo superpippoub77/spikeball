@@ -90,6 +90,10 @@ class MatchScene extends Phaser.Scene {
     const bk = md ? md.ball : 'ball';
     this.ballKey = this.textures.exists('ballfx_' + bk) ? bk : null; this.squashT = 0;
     if (this.ballKey) this.ballSpr.setTexture('ballfx_' + bk, 'r0');
+    // con i giocatori fotorealistici (3D, PIXEL FOTO) il pallone ha la misura vera: 21 cm accanto a 1,95 m = ~5 unità invece di 8
+    this.ballK = usePhoto() ? 0.62 : 1;
+    if (this.ballK < 1 && !HIRES) this.ballSpr.setTexture(smallBallTex(this, this.ballSpr.texture.key));
+    else this.ballSpr.setScale(this.ballK);
     if (md && md.arena !== 'classic' && !md.sand) {
       // riflessi sul pavimento lucido
       this.ballRef = this.add.image(0, 0, md.ball).setDepth(-15).setAlpha(0.3).setFlipY(true);
@@ -1626,7 +1630,8 @@ class MatchScene extends Phaser.Scene {
       for (const t of this.teams) for (const p of t.players) {
         p.ref.setTexture(p.spr.texture.key, p.spr.frame.name); p.ref.x = p.spr.x; p.ref.y = FY + p.dep + p.z; p.ref.setFlipX(p.spr.flipX);
       }
-      this.ballRef.x = SX(b.x); this.ballRef.y = FY + 2 + b.h + 4; this.ballRef.setVisible(b.h < 120);
+      this.ballRef.x = SX(b.x); this.ballRef.y = FY + 2 + b.h + 4 * this.ballK; this.ballRef.setVisible(b.h < 120);
+      if (this.ballRef.scaleX !== this.ballK) this.ballRef.setScale(this.ballK, -this.ballK).setFlipY(false);
     }
     this.routeCameras();
     const g = this.shadowG; g.clear();
@@ -1681,15 +1686,15 @@ class MatchScene extends Phaser.Scene {
     // PHANTOM SERVE: la palla si sdoppia in tre mentre scende
     if (this.phantom && this.phantom.on && b.live && b.lastKind === 'serve' && b.vy < 0 && b.x * this.other(this.serving).side > 0 && b.h < 110 && b.h > 25) {
       const spread = 16 * Math.sin(Math.PI * (110 - b.h) / 85);
-      for (const o of [-spread, spread]) f.fillStyle(0xffffff, 0.9).fillCircle(SX(b.x + o), FY + 2 - b.h - 4, 3.5);
+      for (const o of [-spread, spread]) f.fillStyle(0xffffff, 0.9).fillCircle(SX(b.x + o), FY + 2 - b.h - 4 * this.ballK, 3.5 * this.ballK);
     }
     this.hitTxt.setVisible(showHit).setPosition(hx, hy);
     this.moveTxt.setVisible(showMove).setPosition(hx, hy);
     if (red) this.ballSpr.setTint(0xff4040); else this.ballSpr.clearTint();
     const sp = Math.hypot(b.vx, b.vy);
     if (b.live && sp > 260) { b.trail.unshift([b.x, b.h]); if (b.trail.length > 5) b.trail.pop(); } else if (b.trail.length) b.trail.pop();
-    b.trail.forEach((tp, i) => { if (i) f.fillStyle(0xffffff, 0.35 - i * 0.06).fillCircle(SX(tp[0]), FY + 2 - tp[1], 3 - i * 0.4); });
-    this.ballSpr.x = SX(b.x); this.ballSpr.y = FY + 2 - b.h - 4;
+    b.trail.forEach((tp, i) => { if (i) f.fillStyle(0xffffff, 0.35 - i * 0.06).fillCircle(SX(tp[0]), FY + 2 - tp[1], (3 - i * 0.4) * this.ballK); });
+    this.ballSpr.x = SX(b.x); this.ballSpr.y = FY + 2 - b.h - 4 * this.ballK;
     this.ballSpr.rotation = b.spin;
     if (this.ballKey) ballFrame(this, dt);
 

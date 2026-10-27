@@ -40,6 +40,20 @@ for (const fn of ['makeCommon', 'makeBalls', 'makeBeachBall']) {
   window[fn] = function (scene) { const r = orig.apply(this, arguments); pballInstall(scene); return r; };
 }
 
+// PIXEL FOTO: pallone pixel art piccolo (5x5) ricavato da quello da 8x8, per stare in proporzione con i giocatori
+function smallBallTex(scene, key) {
+  const k2 = key + '_s5';
+  if (scene.textures.exists(k2) || !scene.textures.exists(key)) return scene.textures.exists(k2) ? k2 : key;
+  const src = scene.textures.get(key).getSourceImage();
+  const { t, c } = canvasTex(scene, k2, 5, 5);
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.drawImage(src, 0, 0, src.width, src.height, 0, 0, 5, 5);
+  const img = c.getImageData(0, 0, 5, 5), d = img.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 90 ? 255 : 0;   // bordo netto, da pixel art
+  c.putImageData(img, 0, 0); texDone(t);
+  return k2;
+}
+
 // fotogramma del pallone in partita: rotazione (spin) e schiacciamento dopo un colpo forte o a terra
 function ballFrame(m, dt) {
   const spr = m.ballSpr, key = m.ballKey, b = m.ball;
@@ -52,6 +66,7 @@ function ballFrame(m, dt) {
     if (key === 'ball_pro') frame = 's' + Math.min(7, Math.floor(pr * 8));
     else { const k = Math.sin(pr * Math.PI); sx = 1 + 0.22 * k; sy = 1 - 0.28 * k; }
   }
-  spr.setFrame(frame).setScale(sx, sy);
+  const k = m.ballK || 1;   // misura vera con i giocatori fotorealistici
+  spr.setFrame(frame).setScale(sx * k, sy * k);
   spr.rotation = 0;   // la luce resta ferma: gira il disegno, non l'immagine
 }
