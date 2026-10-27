@@ -5,7 +5,8 @@
 // ============================================================
 // due serie di fotogrammi: giocatori (PHOTO_SPRITES, photo-sprites.js) e giocatrici (PHOTO_SPRITES_F, photo-sprites-f.js)
 const PHOTO = {
-  on: GFX === '3d',
+  on: GFX === '3d' || GFX === 'pixfoto',
+  pixel: GFX === 'pixfoto',      // PIXEL FOTO: stessi fotogrammi ridotti a pixel art (photoPixelate)
   sets: { m: null, f: null }
 };
 // serie in uso: quella delle giocatrici nella versione femminile (se c'è)
@@ -102,6 +103,7 @@ function makePhotoTex(scene, code) {
   const key = plKey(code, 0);   // 'ph_' + codice (+ '_b' con il look da spiaggia)
   if (scene.textures.exists(key)) return key;
   const ps = photoSet(), S = ps.S, src = photoRecolor(TEAMS[code], LOOK.beach);
+  if (PHOTO.pixel) return makePhotoPixelTex(scene, key, ps, src);
   // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m); giocatrici ~1,85 m
   const k = 43 * (ps.fem ? 0.95 : 1) / S.stand;
   const R = GR > 1 ? 1 / k : 1;                             // HD: risoluzione piena del foglio
@@ -115,6 +117,37 @@ function makePhotoTex(scene, code) {
   const ST = S.sheet === 3 ? PHOTO_STATIC3 : PHOTO_STATIC;
   POSES.forEach((p, i) => { const [an, j] = ST[p]; const A = S.anims[an]; frames.push([i, ...cell(A[Math.min(j, A.length - 1)])]); });
   texDone(t, frames, R);
+  return key;
+}
+
+// PIXEL FOTO: ogni fotogramma ridotto a pixel art come i giocatori ARCADE (in piedi ~40 px), in celle di misura intera:
+// riduzione in due passi (più nitida), trasparenza netta e colori ridotti a pochi livelli (senza contorno)
+function makePhotoPixelTex(scene, key, ps, src) {
+  const S = ps.S, k = 40 * (ps.fem ? 0.95 : 1) / S.stand;
+  const CW = Math.ceil(S.cw * k), CH = Math.ceil(S.ch * k);
+  const mid = document.createElement('canvas'); mid.width = CW * 2; mid.height = CH * 2;
+  const mg = mid.getContext('2d'); mg.imageSmoothingEnabled = true; mg.imageSmoothingQuality = 'high';
+  const t = scene.textures.createCanvas(key, CW * S.cols, CH * Math.ceil(S.n / S.cols)), c = t.getContext();
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  const q = v => Math.min(255, Math.round(v / 34) * 34 + 8);   // pochi livelli per canale: aspetto da 16 bit
+  for (let n = 0; n < S.n; n++) {
+    const sx = (n % S.cols) * S.cw, sy = Math.floor(n / S.cols) * S.ch, dx = (n % S.cols) * CW, dy = Math.floor(n / S.cols) * CH;
+    mg.clearRect(0, 0, mid.width, mid.height);
+    mg.drawImage(src, sx, sy, S.cw, S.ch, 0, 0, CW * 2, CH * 2);
+    c.drawImage(mid, 0, 0, CW * 2, CH * 2, dx, dy, CW, CH);
+    const img = c.getImageData(dx, dy, CW, CH), d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 110) { d[i] = q(d[i]); d[i + 1] = q(d[i + 1]); d[i + 2] = q(d[i + 2]); d[i + 3] = 255; }
+      else d[i + 3] = 0;
+    }
+    c.putImageData(img, dx, dy);
+  }
+  const cell = n => [(n % S.cols) * CW, Math.floor(n / S.cols) * CH, CW, CH];
+  const frames = [];
+  for (let n = 0; n < S.n; n++) frames.push(['a' + n, ...cell(n)]);
+  const ST = S.sheet === 3 ? PHOTO_STATIC3 : PHOTO_STATIC;
+  POSES.forEach((p, i) => { const [an, j] = ST[p]; const A = S.anims[an]; frames.push([i, ...cell(A[Math.min(j, A.length - 1)])]); });
+  texDone(t, frames, 1);
   return key;
 }
 
@@ -242,7 +275,7 @@ function photoFrame3(m, p, pose) {
 const _mainMenuCreatePhoto = MainMenuScene.prototype.create;
 MainMenuScene.prototype.create = function () {
   _mainMenuCreatePhoto.call(this);
-  this.add.text(314, 4, `GRAFICA: ${GFX_NAMES[GFX]}   (H: ARCADE / HD / 3D)`, UI.f(4.5, '#8aa0c8')).setOrigin(1, 0);
+  this.add.text(314, 4, `GRAFICA: ${GFX_NAMES[GFX]}   (H: ARCADE / PIXEL FOTO / HD / 3D)`, UI.f(4.5, '#8aa0c8')).setOrigin(1, 0);
   // autore e versione sempre visibili nella pagina iniziale
   this.add.text(6, 4, `by ${GAME_AUTHOR}  ·  v${GAME_VERSION}`, UI.f(5, '#ffd23a', true));
 };
