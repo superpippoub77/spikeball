@@ -382,7 +382,7 @@ class MatchScene extends Phaser.Scene {
     const s = this.serverOf(t);
     this.server = s;
     b.held = s; b.live = false; b.bouncing = false; b.lastTeam = t; b.lastPlayer = null; b.lastKind = null; b.ver++; b.trail = [];
-    this.servePhase = 'walk'; this.serveZone = false; this.serveKind = null; this.serveWhiff = false; this.count = CFG.SERVE_COUNT; this.countT = 0;
+    this.servePhase = 'walk'; this.serveZone = false; this.serveKind = null; this.serveWhiff = false; this.srvBuf = 0; this.count = CFG.SERVE_COUNT; this.countT = 0;
     this.netTouched = false;
     // come nell'originale: il battitore è già fuori dal campo con la palla in mano
     for (const tt of this.teams) for (const p of tt.players) p.x = tt.side * p.homeD;
@@ -438,14 +438,20 @@ class MatchScene extends Phaser.Scene {
       const lo = low ? 8 : 42, hi = low ? 38 : 66, mid = (lo + hi) / 2;
       const zoneOk = b.h > lo && b.h < hi;
       this.serveZone = zoneOk;
+      if (press) this.srvBuf = 0.22;
+      if (this.srvBuf > 0) this.srvBuf -= dt;
       if (hum) {
-        if (press && !this.serveWhiff) {
-          if (zoneOk) {
+        // il pulsante premuto poco prima che la palla entri nella zona resta valido per 0,22 s; colpo a vuoto solo
+        // se si preme quando la palla è già scesa sotto la zona
+        if (this.srvBuf > 0 && !this.serveWhiff) {
+          if (b.vy < 0 && b.h <= lo) { this.serveWhiff = true; this.srvBuf = 0; }
+          else if (zoneOk) {
+            this.srvBuf = 0;
             // la seconda direzione conferma la battuta speciale
             const u = this.up(t), d = this.down(t), dx = this.dirX(t);
             this.serveSpecial = (k === 'tower' && u) || (k === 'phantom' && d && dx > 0) || (k === 'thunder' && d && dx < 0);
             this.hitServe(s, clamp(1 - Math.abs(b.h - mid) / 18, 0, 1));
-          } else this.serveWhiff = true;
+          }
         }
       } else if (b.vy < 0 && b.h <= mid + 1) { this.serveSpecial = true; this.hitServe(s, clamp(t.skill + rnd(-0.25, 0.2), 0, 1)); }
       return;
@@ -475,6 +481,15 @@ class MatchScene extends Phaser.Scene {
   // pannello con volto del battitore, arbitro e conto alla rovescia (solo con ARCADE FX attivo)
   showServePanel(on) {
     const s = this.server;
+    // legenda delle battute per chi batte (anche senza ARCADE FX): frecce riferite alla rete del battitore
+    if (!this.srvHelp) this.srvHelp = [204, 211].map(y => this.add.text(160, y, '', UI.f(4.6, '#ffe890', true)).setOrigin(0.5).setStroke('#000000', 2).setScrollFactor(0).setDepth(2002));
+    const help = on && !!this.serving.human && this.mode !== 'demo' && this.mode !== 'practice';
+    if (help) {
+      const N = this.serving.side < 0 ? '→' : '←', B = this.serving.side < 0 ? '←' : '→', K = typeof TOUCH !== 'undefined' && TOUCH.on ? 'A' : 'Z';
+      this.srvHelp[0].setText(`${K}: DALL'ALTO   ${N}+${K}: IN SALTO   ${N}↓+${K}: SALTO FLOTTANTE`);
+      this.srvHelp[1].setText(`↑+${K}: ALTISSIMA   ↑${N}+${K}: PHANTOM   ↑${B}+${K}: THUNDER   ·   ${K} DI NUOVO QUANDO LA PALLA È IN ZONA`);
+    }
+    this.srvHelp.forEach(x => x.setVisible(help));
     if (!this.rules.fx) on = false;
     this.serveFace.setVisible(on); this.serveRef.setVisible(on); this.serveNum.setVisible(false);
     if (on) {
@@ -487,7 +502,7 @@ class MatchScene extends Phaser.Scene {
   // lancio della palla; kind = float, jump, tower, phantom, thunder
   toss(kind) {
     const t = this.serving, s = this.server, b = this.ball, side = t.side;
-    this.serveKind = kind; this.servePhase = 'toss'; s.served = false; this.serveZone = false;
+    this.serveKind = kind; this.servePhase = 'toss'; s.served = false; this.serveZone = false; this.srvBuf = 0;
     this.showServePanel(false);
     b.held = null; b.live = true; b.ver++; b.lastKind = 'serve';
     b.x = s.x - side * 5; b.h = 26; b.vx = 0;
