@@ -114,6 +114,11 @@ class MatchScene extends Phaser.Scene {
     // dissolvenza d'ingresso con "FINAL SET"
     this.introDark = this.add.rectangle(160, 112, 320, 224, 0x000000, 1).setScrollFactor(0).setDepth(1900);
     this.introTxt = this.add.text(160, 92, d.setLabel || 'FINAL SET', TXT(12, '#b0b0b0')).setOrigin(0.5).setScrollFactor(0).setDepth(1901);
+    // logo del campionato: grande nella presentazione del set, piccolo in alto a sinistra durante la partita
+    const clt = d.comp && typeof compLogoTex === 'function' ? compLogoTex(this, d.comp, 40, 40) : null;
+    if (clt) this.introLogo = this.add.image(160, 58, clt).setScrollFactor(0).setDepth(1901);
+    const cls = d.comp && typeof compLogoTex === 'function' ? compLogoTex(this, d.comp, 14, 14) : null;
+    if (cls) this.add.image(10, 10, cls).setScrollFactor(0).setDepth(2001).setAlpha(0.9);
     this.tweens.add({ targets: this.introDark, alpha: 0.55, duration: 900 });
     this.cameras.main.fadeIn(400);
   }
@@ -339,7 +344,7 @@ class MatchScene extends Phaser.Scene {
     if (b.ver !== this.lastVer) { this.lastVer = b.ver; this.verAge = 0; } else this.verAge += dt;
     this.stateT += dt;
     if (this.state === 'intro') {
-      if (this.stateT > (this.mode === 'practice' ? 0.8 : 2.4)) { this.introTxt.destroy(); this.tweens.add({ targets: this.introDark, alpha: 0, duration: 400 }); this.state = 'serve'; this.stateT = 0; if (this.mode === 'practice') this.practiceRestart(); else this.startServeAnnounce(); }
+      if (this.stateT > (this.mode === 'practice' ? 0.8 : 2.4)) { this.introTxt.destroy(); if (this.introLogo) this.introLogo.destroy(); this.tweens.add({ targets: this.introDark, alpha: 0, duration: 400 }); this.state = 'serve'; this.stateT = 0; if (this.mode === 'practice') this.practiceRestart(); else this.startServeAnnounce(); }
     }
     if ((this.state === 'serve' && this.servePhase !== 'walk') || this.state === 'rally') {
       if (this.timeLeft !== null && this.timeLeft > 0) {
@@ -373,7 +378,7 @@ class MatchScene extends Phaser.Scene {
   prepareServe() {
     const t = this.serving, b = this.ball;
     for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; tt.ctrlMoved = false; }
-    for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
+    for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.jset = false; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
     const s = this.serverOf(t);
     this.server = s;
     b.held = s; b.live = false; b.bouncing = false; b.lastTeam = t; b.lastPlayer = null; b.lastKind = null; b.ver++; b.trail = [];
@@ -696,7 +701,7 @@ class MatchScene extends Phaser.Scene {
         if (t.attacker === p && !p.decoy) p.hitWin = 0.16;
         if (t.plan && t.plan.kind === 'set' && t.plan.p === p && this.dirX(t) > 0) t.surprise = true;
       }
-      if (p.z <= 0) { this.sand(p.x, p.dep, 9, clamp(-p.vz * 0.45, 30, 80), 8); p.z = 0; p.vz = 0; p.vx = 0; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
+      if (p.z <= 0) { this.sand(p.x, p.dep, 9, clamp(-p.vz * 0.45, 30, 80), 8); p.z = 0; p.vz = 0; p.vx = 0; p.jset = false; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
       else if (p.animT <= 0) p.state = t.blockers.includes(p) && b.lastTeam !== t ? 'block' : (p.vz > 40 ? 'jump' : p.state === 'spike' || p.state === 'dump' ? p.state : 'jump');
       this.clampX(p); return;
     }
@@ -829,7 +834,7 @@ class MatchScene extends Phaser.Scene {
 
   // tempo per arrivare in cima al salto del battitore (salto flottante = salto più basso)
   jsPeak() { return CFG.TPEAK * (this.serveKind === 'jfloat' ? CFG.JFLOAT_K : 1); }
-  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; }
+  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; }
 
   // ------------------------------------------------ sabbia (beach): spruzzi che si alzano e impronte che restano
   // x = posizione in campo, dep = profondità, n = granelli, power = forza dello spruzzo, mark = larghezza dell'impronta (0 = nessuna)
@@ -1066,7 +1071,7 @@ class MatchScene extends Phaser.Scene {
       this.announce(`SURPRISE ATTACK! ${p.name}`); SFX.set(); t.surprise = false; t.combo = false; return;
     }
     this.touch(t, p, 'set');
-    p.state = 'set'; p.animT = 0.3; SFX.set();
+    p.state = 'set'; p.animT = 0.3; p.jset = p.z > 2; SFX.set();   // jset: palleggio in salto, fino a terra
     if (t.mishit) this.announce(`NOW ${p.name} SETS UP THE BALL.`);
     // attaccanti disponibili secondo la formazione: centrale (primo tempo), palla alta, seconda linea
     const mb = this.byPos(t, 'mb', p), back = this.byPos(t, 'def', p) || this.byPos(t, 'bk', p);
@@ -1531,7 +1536,9 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && this.server === p && (this.servePhase === 'walk' || this.servePhase === 'ready') && st === 'idle') return 'srvhold';
     // battute flottanti: il braccio si ferma dopo il colpo (niente frustata del polso)
     if (st === 'spike' && this.server === p && b.lastKind === 'serve' && b.lastPlayer === p && (this.serveKind === 'jfloat' || this.serveKind === 'float')) return p.animT > 0.08 ? 'spike' : 'spkfol';
-    // palleggio in salto, di profilo: spinta con le braccia distese, poi ricaduta
+    // palleggio in salto, di profilo: spinta con le braccia distese, poi ricaduta; fino a terra resta il palleggio
+    // (non il salto generico, che darebbe le braccia del muro), anche dopo che l'attaccante ha già colpito
+    if (p.jset && p.z > 0) return st === 'set' && p.animT > 0.12 ? 'jset' : 'land';
     if (st === 'set' && p.z > 2) return p.animT > 0.15 ? 'jset' : 'land';
     if (st === 'jump' && p.z > 0 && p.vz < 0 && b.lastPlayer === p && b.lastKind === 'set') return 'land';
     if (st === 'spike') return p.animT > 0.18 ? (b.lastKind === 'serve' ? 'spike' : this.atkOf(p).pose) : 'spkfol';

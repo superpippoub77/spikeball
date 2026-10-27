@@ -28,15 +28,16 @@ startGame = function () { loadPhoto().finally(_startGamePhoto); };
 
 const hexRGB = h => { const n = parseInt(String(h).replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 
-// atlante ricolorato per una squadra (a risoluzione piena del foglio)
+// atlante ricolorato per una squadra (a risoluzione piena del foglio, o ridotto di 'sc' per PIXEL FOTO:
+// meno memoria e più veloce, soprattutto sul telefono)
 // ricolora l'atlante: maglia (zona 80) e pantaloncini (160) con i colori della squadra mantenendo le pieghe, pelle (240) per tono
-function photoRecolor(P, beach) {
-  const ps = photoSet(), S = ps.S, W = ps.atlas.width, H = ps.atlas.height;
+function photoRecolor(P, beach, sc = 1) {
+  const ps = photoSet(), S = ps.S, W = Math.round(ps.atlas.width * sc), H = Math.round(ps.atlas.height * sc);
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'); g.drawImage(ps.atlas, 0, 0);
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(ps.atlas, 0, 0, W, H);
   const img = g.getImageData(0, 0, W, H), d = img.data;
   const rc = document.createElement('canvas'); rc.width = W; rc.height = H;
-  const rg = rc.getContext('2d'); rg.drawImage(ps.regions, 0, 0);
+  const rg = rc.getContext('2d'); rg.imageSmoothingEnabled = false; rg.drawImage(ps.regions, 0, 0, W, H);   // zone senza sfumature
   const R = rg.getImageData(0, 0, W, H).data;
   if (!ps.skinRef) {   // colore medio della pelle nel foglio
     let s = [0, 0, 0], n = 0;
@@ -58,15 +59,14 @@ function photoRecolor(P, beach) {
       d[i] = clamp(d[i] * sk[0] / ref[0], 0, 255); d[i + 1] = clamp(d[i + 1] * sk[1] / ref[1], 0, 255); d[i + 2] = clamp(d[i + 2] * sk[2] / ref[2], 0, 255);
     }
   }
-  if (beach) photoBeach(d, R, W, H, sk, ref);
+  if (beach) photoBeach(d, R, W, H, sk, ref, S.cw * sc, S.ch * sc);
   g.putImageData(img, 0, 0);
   return c;
 }
 
 // beach volley: niente scarpe, calzettoni e ginocchiere. In ogni cella, i pixel non ricolorati (bianchi/grigi)
 // della parte bassa della figura diventano pelle: piedi nudi e gambe scoperte.
-function photoBeach(d, R, W, H, sk, ref) {
-  const S = photoSet().S, cw = S.cw, ch = S.ch;
+function photoBeach(d, R, W, H, sk, ref, cw, ch) {
   for (let cy = 0; cy + ch <= H + 1; cy += ch) for (let cx = 0; cx + cw <= W + 1; cx += cw) {
     let top = -1, bot = -1;
     for (let y = cy; y < Math.min(H, cy + ch) && top < 0; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { top = y; break; }
@@ -102,8 +102,9 @@ const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pa
 function makePhotoTex(scene, code) {
   const key = plKey(code, 0);   // 'ph_' + codice (+ '_b' con il look da spiaggia)
   if (scene.textures.exists(key)) return key;
-  const ps = photoSet(), S = ps.S, src = photoRecolor(TEAMS[code], LOOK.beach);
-  if (PHOTO.pixel) return makePhotoPixelTex(scene, key, ps, src);
+  const ps = photoSet(), S = ps.S;
+  if (PHOTO.pixel) return makePhotoPixelTex(scene, key, ps, photoRecolor(TEAMS[code], LOOK.beach, PHOTO_PIX_SC));
+  const src = photoRecolor(TEAMS[code], LOOK.beach);
   // in piedi ~43 px: proporzione reale con la rete (1,95 m contro 2,43 m); giocatrici ~1,85 m
   const k = 43 * (ps.fem ? 0.95 : 1) / S.stand;
   const R = GR > 1 ? 1 / k : 1;                             // HD: risoluzione piena del foglio
@@ -122,8 +123,9 @@ function makePhotoTex(scene, code) {
 
 // PIXEL FOTO: ogni fotogramma ridotto a pixel art come i giocatori ARCADE (in piedi ~40 px), in celle di misura intera:
 // riduzione in due passi (più nitida), trasparenza netta e colori ridotti a pochi livelli (senza contorno)
+const PHOTO_PIX_SC = 0.4;   // PIXEL FOTO: atlante ricolorato già ridotto (in piedi ~90 px, poi 40 px)
 function makePhotoPixelTex(scene, key, ps, src) {
-  const S = ps.S, k = 40 * (ps.fem ? 0.95 : 1) / S.stand;
+  const S = ps.S, k = 40 * (ps.fem ? 0.95 : 1) / S.stand, z = src.width / ps.atlas.width;   // z: riduzione già fatta
   const CW = Math.ceil(S.cw * k), CH = Math.ceil(S.ch * k);
   const mid = document.createElement('canvas'); mid.width = CW * 2; mid.height = CH * 2;
   const mg = mid.getContext('2d'); mg.imageSmoothingEnabled = true; mg.imageSmoothingQuality = 'high';
@@ -131,9 +133,9 @@ function makePhotoPixelTex(scene, key, ps, src) {
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   const q = v => Math.min(255, Math.round(v / 34) * 34 + 8);   // pochi livelli per canale: aspetto da 16 bit
   for (let n = 0; n < S.n; n++) {
-    const sx = (n % S.cols) * S.cw, sy = Math.floor(n / S.cols) * S.ch, dx = (n % S.cols) * CW, dy = Math.floor(n / S.cols) * CH;
+    const sx = (n % S.cols) * S.cw * z, sy = Math.floor(n / S.cols) * S.ch * z, dx = (n % S.cols) * CW, dy = Math.floor(n / S.cols) * CH;
     mg.clearRect(0, 0, mid.width, mid.height);
-    mg.drawImage(src, sx, sy, S.cw, S.ch, 0, 0, CW * 2, CH * 2);
+    mg.drawImage(src, sx, sy, S.cw * z, S.ch * z, 0, 0, CW * 2, CH * 2);
     c.drawImage(mid, 0, 0, CW * 2, CH * 2, dx, dy, CW, CH);
     const img = c.getImageData(dx, dy, CW, CH), d = img.data;
     for (let i = 0; i < d.length; i += 4) {
@@ -233,8 +235,10 @@ function photoFrame3(m, p, pose) {
   if (st === 'pass' || pose === 'pass') return pick('bagher', 4 + prog(0.3) * 2.5);
   if (pose === 'passload') return pick('bagher', 2 + (now * 4) % 2);
   if (pose === 'jsetload') return pick('jset', 2 + (p.vz < 20 ? 1 : 0));
-  if (pose === 'jset') return pick('jset', 4);
-  if (pose === 'land') return pick('jset', p.z > 6 ? 5 : 6);
+  // palleggio in salto: mani a finestra sopra la fronte, spinta breve, poi in aria resta la stessa posa e
+  // vicino a terra si prepara all'atterraggio (niente braccia distese come a muro)
+  if (pose === 'jset') return pick('jset', p.animT > 0.2 ? 3 : 4);
+  if (pose === 'land') return pick('jset', p.z > 6 ? 3 : 5);
   if (st === 'set' || pose === 'set') return pick('set', 3 + prog(0.3) * 3);
   if (pose === 'setload') return pick('set', 1 + (now * 4) % 2);
   if (st === 'dump' || pose === 'dump' || pose === 'dumpfol') return pick('dump', 3 + prog(0.3) * 3);
