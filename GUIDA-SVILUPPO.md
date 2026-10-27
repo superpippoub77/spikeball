@@ -19,7 +19,7 @@ Poi apri l'indirizzo indicato (es. `http://localhost:3000`). Dopo ogni modifica 
 Strumenti utili:
 - **F12 → Console** del browser: qui compaiono gli errori JavaScript (file e numero di riga).
 - Dalla console si può ispezionare il gioco: `window.__game.scene.getScenes(true)` (scena attiva), `TEAMS.VTV`, `LEAGUES.list`, `GS.credits = 9`.
-- In partita: **T** mostra cosa premere, **P** pausa, **M** muto, **H** cambia versione grafica (ARCADE / HD / 3D).
+- In partita: **T** mostra cosa premere, **P** pausa, **M** muto, **H** cambia versione grafica (ARCADE / PIXEL FOTO / HD / 3D; anche dalla riga GRAFICA del menu principale).
 
 ---
 
@@ -45,6 +45,7 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `beach.js` | **Beach volley**: squadre da spiaggia, arene sulla sabbia, menu, partita al meglio dei 3 set |
 | `myplayer.js` | **I miei giocatori**: elenco, scheda, foto (telecamera o file), inserimento nella squadra, crescita delle statistiche a fine partita, salvataggio locale / file / server |
 | `i18n.js` | **Lingue**: dizionario a 5 lingue (`I18N_ROWS`, colonne it/en/fr/de/es), traduzione al volo di ogni testo (`T`, aggancio a `Text.setText`, `i18nDom` per le pagine HTML), riga LINGUA nel menu principale (↑ e poi ← →). Per un testo nuovo basta aggiungere una riga al dizionario |
+| `touch.js` | **Telefono e tablet**: joystick virtuale e pulsanti che mandano gli stessi tasti della tastiera (`touchKey`, `touchHold`), schermo intero (`touchFullscreen`), invito a ruotare il telefono. Con `manifest.json` e le icone `icona-*.png` il gioco si installa sulla schermata Home |
 | `cambi.js` | **Cambi in partita** (X / Q a palla ferma): pannello, scambio dei dati della rosa tra chi esce e chi entra (`doSub`); il libero è in match.js (`isLib`, `serverOf`) e gfx.js (`liberoKit`) |
 | `categorie.js` | **Categorie FIPAV**: piramide `FIPAV_LEVELS`, categoria/sesso di campionati e squadre dai JSON (`catOf`, `sexOf`), gruppi del SINGLE MATCH per categoria (`catBuildGroups`), spostamenti (`catMove`, `CAT_MOVES`), promosse/retrocesse a fine campionato |
 | `editor.js` | **Editor**: squadre (diventano club con `rosterTeam`), arbitri, sponsor, campionati (girone all'italiana in `LEAGUES`), profilo sul server (`PROF`) |

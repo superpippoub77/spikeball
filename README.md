@@ -264,7 +264,15 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 - **3D**: come HD, ma con i giocatori fotorealistici (vedi sotto).
 
-Si cambia con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D, ricarica la pagina) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
+Si cambia dal **menu principale**, nella riga **GRAFICA** sotto le schede (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
+
+### Telefono e tablet
+Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
+- **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;
+- **A** = Z (colpo / conferma), **START** = Invio, **ESC** = indietro, **II** = pausa; **⋯** apre gli altri tasti (X cambi, Q/E pagine, F formazione, T comandi, M audio, K CRT, H grafica);
+- **⛶ schermo intero**, che parte anche da solo al primo tocco, in orizzontale dove il browser lo permette; in verticale compare l'invito a ruotare il telefono.
+
+Su **iPhone** il browser non permette lo schermo intero a una pagina: apri il gioco in Safari, **Condividi → Aggiungi alla schermata Home**, e dall'icona si apre a tutto schermo (`manifest.json`, icone `icona-192.png` / `icona-512.png`). Su Android si può fare lo stesso da Chrome (**Installa app / Aggiungi a schermata Home**).
 
 ## Tasti
 | | Giocatore 1 | Giocatore 2 |

@@ -289,7 +289,6 @@ function photoFrame3(m, p, pose) {
 const _mainMenuCreatePhoto = MainMenuScene.prototype.create;
 MainMenuScene.prototype.create = function () {
   _mainMenuCreatePhoto.call(this);
-  this.add.text(314, 4, `GRAFICA: ${GFX_NAMES[GFX]}   (H: ARCADE / PIXEL FOTO / HD / 3D)`, UI.f(4.5, '#8aa0c8')).setOrigin(1, 0);
   // autore e versione sempre visibili nella pagina iniziale
   this.add.text(6, 4, `by ${GAME_AUTHOR}  ·  v${GAME_VERSION}`, UI.f(5, '#ffd23a', true));
 };

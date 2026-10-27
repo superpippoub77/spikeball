@@ -277,7 +277,14 @@ class MainMenuScene extends Base {
       return cont;
     });
     this.hint = this.add.text(160, 183, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
-    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    T: TEST', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    this.add.text(160, 212, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    ↓ GRAFICA', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    // riga della versione grafica, sotto le schede (↓ per arrivarci, ← → per cambiarla: la pagina si ricarica)
+    this.gfxSel = GFX_MODES.indexOf(GFX);
+    this.gfxBox = this.add.graphics();
+    this.add.text(116, 196, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.gfxTxt = this.add.text(166, 196, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
+    this.gfxArrows = [this.add.text(126, 196, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 196, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = 7; this.cycleGfx(1); });
     // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
     this.langBox = this.add.graphics();
@@ -286,7 +293,20 @@ class MainMenuScene extends Base {
     { const l = I18N.lang; I18N.lang = null; this.langTxt.setText(`${lg.name}`); I18N.lang = l; }
     this.langArrows = [this.add.text(118, 61, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(202, 61, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.langFlag.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.cycleLang(1));
-    this.sel = GS.menuSel === undefined ? 0 : GS.menuSel; this.refresh();
+    this.sel = GS.menuSel === undefined ? 0 : GS.menuSel;
+    try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = 7; } } catch (e) { /* */ }
+    this.refresh();
+  }
+  // versione grafica: si sceglie con ← → e si applica (ricaricando la pagina) dopo un attimo senza altre pressioni
+  cycleGfx(d) {
+    const n = GFX_MODES.length;
+    this.gfxSel = (this.gfxSel + d + n) % n; SFX.blip(); this.refresh();
+    if (this.gfxTimer) this.gfxTimer.remove();
+    if (GFX_MODES[this.gfxSel] === GFX) return;
+    this.gfxTimer = this.time.delayedCall(900, () => {
+      try { sessionStorage.setItem('sf91_menuGfx', '1'); } catch (e) { /* */ }
+      const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[this.gfxSel]); this.gone = true; location.href = u.href;
+    });
   }
   cycleLang(d) {
     const i = LANGS.findIndex(l => l.id === I18N.lang), n = LANGS.length;
@@ -303,11 +323,21 @@ class MainMenuScene extends Base {
     const L = this.sel < 0;
     this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
     this.langArrows.forEach(a => a.setVisible(L));
-    this.hint.setText(L ? '← → LINGUA' : this.cards[this.sel].hint);
+    const G = this.sel === 7, gm = GFX_MODES[this.gfxSel];
+    this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 189, 92, 14, 4).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 189, 92, 14, 4);
+    this.gfxTxt.setText(GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
+    this.gfxArrows.forEach(a => a.setVisible(G));
+    this.hint.setText(L ? '← → LINGUA' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
-    // righe: lingua (-1), schede 0-3, schede 4-6
+    // righe: lingua (-1), schede 0-3, schede 4-6, grafica (7)
+    if (this.sel === 7) {
+      if (this.jd('left')) this.cycleGfx(-1);
+      else if (this.jd('right') || this.btn()) this.cycleGfx(1);
+      else if (this.jd('up')) { this.sel = 5; this.refresh(); SFX.blip(); }
+      return;
+    }
     const row = this.sel < 0 ? -1 : this.sel < 4 ? 0 : 1;
     if (row < 0) {
       if (this.jd('left')) { this.cycleLang(-1); return; }
@@ -319,10 +349,11 @@ class MainMenuScene extends Base {
     if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
     if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
     if (this.jd('up')) { this.sel = row ? Math.min(3, Math.max(0, this.sel - 4 + (this.sel === 4 ? 0 : 1))) : -1; this.refresh(); SFX.blip(); }
-    if (this.jd('down') && !row) { this.sel = Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
+    if (this.jd('down')) { this.sel = row ? 7 : Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
+      if (this.gfxTimer) this.gfxTimer.remove();
       if (this.sel === 0) { GS.attract = -1; nextAttract(this); }
       else if (this.sel === 1) { GS.career = null; this.scene.start('TeamSelect'); }
       else if (this.sel === 2) this.scene.start('Practice');
