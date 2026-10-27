@@ -101,7 +101,7 @@ function touchFullscreen() {
 
   // joystick: compare dove si appoggia il pollice; direzione a 8 settori con una piccola zona morta
   let jid = null, ox = 0, oy = 0;
-  const MAXR = 50, DEAD = 14;
+  const MAXR = 50, DEAD = 22;   // zona morta ampia: con il pollice appoggiato non parte una direzione (es. battuta in salto)
   const dirs = (dx, dy) => {
     const out = new Set(), d = Math.hypot(dx, dy);
     if (d < DEAD) return out;
