@@ -1599,7 +1599,7 @@ class MatchScene extends Phaser.Scene {
     for (const t of this.teams) for (const p of t.players) {
       let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
-      p.spr.setFrame(usePhoto() ? photoFrame(this, p) : PF[st] !== undefined ? PF[st] : 0);
+      p.spr.setFrame(usePhoto() ? photoFrame(this, p, st) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza
       // (il molleggio dell'attesa è nelle pose idle / idle2: i piedi restano a terra)

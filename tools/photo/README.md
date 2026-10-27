@@ -1,6 +1,27 @@
 # Giocatori "foto": rigenerare photo-sprites.js
 
-## Foglio attuale: foglio-sprite-2.webp (generato con ChatGPT)
+## Fogli attuali: 3d-maschile-A..D.png (generati con ChatGPT, prompt in PROMPT-CHATGPT-3D.md)
+Sfondo magenta, maglia bianca, pantaloncini rossi, 4 righe x 8 fotogrammi per foglio:
+- A: attesa, corsa, rincorsa, schiacciata;
+- B: schiacciata con la palla davanti, bagher, bagher laterale, tuffo;
+- C: palleggio, palleggio in salto, pallonetto, muro;
+- D: battuta, battuta in salto, salto flottante, esultanze.
+
+```sh
+cd tools/photo
+python3 build_sheet3.py 3d-maschile ../../photo-sprites.js
+```
+
+`build_sheet3.py` lavora così:
+- toglie i palloni disegnati (giallo-blu nelle battute, bianco nel palleggio), lasciando le mani;
+- separa righe e figure, anche quelle che si toccano;
+- scarta i fotogrammi in `SKIP` (il batti cinque con due persone);
+- porta i fogli alla stessa scala, misurando maglia, pantaloncini e pelle;
+- scrive l'atlante con `sheet: 3`.
+
+In `photo.js` → `photoFrame3` la posa scelta da `match.js` (motion) indica la riga e lo stato del giocatore il fotogramma.
+
+## Foglio precedente: foglio-sprite-2.webp (generato con ChatGPT)
 Sfondo magenta (#FF00FF), maglia bianca, pantaloncini rossi, due pannelli da 6 righe x 8 fotogrammi:
 attesa, corsa, rincorsa, schiacciata, bagher, palleggio | muro, battuta in salto, battuta, tuffo, pallonetto, esultanze.
 
