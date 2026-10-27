@@ -214,7 +214,7 @@ MatchScene.prototype.buildBeachArena = function (md) {
 };
 
 // ---------------- impostazioni e partita su più set ----------------
-const BSET = { left: 'SUN', right: 'COC', leftAI: false, rightAI: true, arena: 0, fmt: 0, ball: 0, rebound: 0, target: 0, fx: 0, women: 0 };
+const BSET = { left: 'SUN', right: 'COC', leftAI: false, rightAI: true, arena: 0, fmt: 0, ball: 0, rebound: 0, target: 0, fx: 0, women: GS.women ? 1 : 0 };
 const BEACH_FORMATS = [
   { name: '2 SET SU 3 (21 - 21 - 15)', sets: 3, pts: 21 },
   { name: '1 SET A 21', sets: 1, pts: 21 },

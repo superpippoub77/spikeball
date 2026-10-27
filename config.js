@@ -15,7 +15,7 @@
 //   20 px = 1 metro (CFG.PPM). Tempi in secondi.
 const GAME_TITLE = ['SPIKE', "FEVER '91"];     // titolo mostrato (modificabile)
 const GAME_AUTHOR = 'SpikeCode AI';
-const GAME_VERSION = '2.22.0';                  // da aggiornare a ogni rilascio (anche ?v= degli script in index.html)
+const GAME_VERSION = '2.23.0';                  // da aggiornare a ogni rilascio (anche ?v= degli script in index.html)
 const PATTERN_TEXT = "S-FEVER'S Volleyball Simulator";
 
 // ---- COSTANTI DI GIOCO: il posto giusto per regolare fisica, velocità e regole ----
@@ -169,7 +169,8 @@ const DEFAULT_RANKING = [
 
 // ---------------- stato globale della partita arcade ----------------
 const GS = {
-  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1, women: false,
+  credits: 0, mode: '1p', p1: 'ITA', p2: 'FRA', stage: 0, score: 0, sets: 1,
+  women: (() => { try { return localStorage.getItem('sf91_women') === '1'; } catch (e) { return false; } })(),   // squadre femminili (menu principale)
   shake: (() => { try { return localStorage.getItem('sf91_shake') !== '0'; } catch (e) { return true; } })(),
   crt: (() => { try { return localStorage.getItem('sf91_crt') === '1'; } catch (e) { return false; } })(),   // effetto CRT (spento all'inizio)   // women: versione femminile (scelta in SELECT YOUR TEAM); shake: scossa dello schermo su schiacciate e muri
   ranking: null, attract: 0,
