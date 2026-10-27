@@ -121,7 +121,7 @@ function makePhotoTex(scene, code) {
 }
 
 // PIXEL FOTO: ogni fotogramma ridotto a pixel art come i giocatori ARCADE (in piedi ~40 px), in celle di misura intera:
-// riduzione in due passi (più nitida), trasparenza netta, colori ridotti a pochi livelli e contorno scuro di 1 pixel
+// riduzione in due passi (più nitida), trasparenza netta e colori ridotti a pochi livelli (senza contorno)
 function makePhotoPixelTex(scene, key, ps, src) {
   const S = ps.S, k = 40 * (ps.fem ? 0.95 : 1) / S.stand;
   const CW = Math.ceil(S.cw * k), CH = Math.ceil(S.ch * k);
@@ -135,16 +135,10 @@ function makePhotoPixelTex(scene, key, ps, src) {
     mg.clearRect(0, 0, mid.width, mid.height);
     mg.drawImage(src, sx, sy, S.cw, S.ch, 0, 0, CW * 2, CH * 2);
     c.drawImage(mid, 0, 0, CW * 2, CH * 2, dx, dy, CW, CH);
-    const img = c.getImageData(dx, dy, CW, CH), d = img.data, solid = new Uint8Array(CW * CH);
-    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-      if (d[i + 3] > 110) { solid[p] = 1; d[i] = q(d[i]); d[i + 1] = q(d[i + 1]); d[i + 2] = q(d[i + 2]); d[i + 3] = 255; }
+    const img = c.getImageData(dx, dy, CW, CH), d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 110) { d[i] = q(d[i]); d[i + 1] = q(d[i + 1]); d[i + 2] = q(d[i + 2]); d[i + 3] = 255; }
       else d[i + 3] = 0;
-    }
-    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const p = y * CW + x; if (solid[p]) continue;
-      if ((x > 0 && solid[p - 1]) || (x < CW - 1 && solid[p + 1]) || (y > 0 && solid[p - CW]) || (y < CH - 1 && solid[p + CW])) {
-        d[p * 4] = 24; d[p * 4 + 1] = 16; d[p * 4 + 2] = 32; d[p * 4 + 3] = 255;
-      }
     }
     c.putImageData(img, dx, dy);
   }

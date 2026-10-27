@@ -257,7 +257,7 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 ### Grafica: ARCADE, PIXEL FOTO, HD o 3D
 - **ARCADE** (predefinita): la pixel art originale a 320×224.
 - **PIXEL FOTO:** tutto come l'ARCADE (campo, pubblico, testi, palloni), ma i giocatori sono quelli fotorealistici della 3D ridotti a pixel art.
-  Sono alti circa 40 pixel come i giocatori ARCADE, con pochi colori e il contorno scuro, nei colori di ogni squadra (giocatrici comprese).
+  Sono alti circa 40 pixel come i giocatori ARCADE, con pochi colori e senza contorno, nei colori di ogni squadra (giocatrici comprese).
 - **HD**: tutta la grafica a 1920 px, senza pixel art (`gfx-hd.js`): giocatori vettoriali con contorni netti e ombreggiatura, ritratti e arbitro disegnati, pallone, pubblico, bandiere, cartelloni e testi nitidi (carattere Russo One). Ogni texture è disegnata a 6× e mostrata alla misura originale, quindi regole e logica di gioco sono identiche.
 
 - **3D**: come HD, ma con i giocatori fotorealistici (vedi sotto).
