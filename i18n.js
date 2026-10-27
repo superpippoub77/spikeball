@@ -571,6 +571,12 @@ const I18N_ROWS = [
   ['LINGUA', 'LANGUAGE', 'LANGUE', 'SPRACHE', 'IDIOMA'],
   ['← → LINGUA', '← → LANGUAGE', '← → LANGUE', '← → SPRACHE', '← → IDIOMA'],
   ['↑ LINGUA', '↑ LANGUAGE', '↑ LANGUE', '↑ SPRACHE', '↑ IDIOMA'],
+  ['GRAFICA', 'GRAPHICS', 'GRAPHISMES', 'GRAFIK', 'GRÁFICOS'],
+  ['↓ GRAFICA', '↓ GRAPHICS', '↓ GRAPHISMES', '↓ GRAFIK', '↓ GRÁFICOS'],
+  ['← → GRAFICA', '← → GRAPHICS', '← → GRAPHISMES', '← → GRAFIK', '← → GRÁFICOS'],
+  ['CARICAMENTO DELLA GRAFICA...', 'LOADING GRAPHICS...', 'CHARGEMENT DES GRAPHISMES...', 'GRAFIK WIRD GELADEN...', 'CARGANDO GRÁFICOS...'],
+  ['RUOTA IL TELEFONO IN ORIZZONTALE', 'TURN YOUR PHONE SIDEWAYS', 'TOURNE TON TÉLÉPHONE EN PAYSAGE', 'DREHE DEIN HANDY INS QUERFORMAT', 'GIRA EL TELÉFONO EN HORIZONTAL'],
+  ['tocca per giocare a schermo intero', 'tap to play full screen', 'touche pour jouer en plein écran', 'tippen für Vollbild', 'toca para jugar a pantalla completa'],
   // ---- cambi in partita ----
   ['CAMBI - {0}', 'SUBSTITUTIONS - {0}', 'CHANGEMENTS - {0}', 'WECHSEL - {0}', 'CAMBIOS - {0}'],
   ['cambi fatti: {0}', 'substitutions made: {0}', 'changements faits : {0}', 'Wechsel: {0}', 'cambios hechos: {0}'],
