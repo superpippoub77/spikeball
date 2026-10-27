@@ -77,6 +77,13 @@ function photoBeach(d, R, W, H, sk, ref) {
   }
 }
 
+// fogli 3d-maschile-A..D (build_sheet3.py): righe idle, run, appr, spike / spikefr, bagher, lateral, dive /
+// set, jset, dump, block / serve, jserve, jfloat, cheer. Pose statiche per menu e schermate:
+const PHOTO_STATIC3 = { idle: ['idle', 0], idle2: ['idle', 4], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 4], passload: ['bagher', 3],
+  passside: ['lateral', 4], set: ['set', 4], setload: ['set', 2], jsetload: ['jset', 3], jset: ['jset', 4], land: ['jset', 6],
+  jump: ['block', 2], block: ['block', 4], spkload: ['spike', 1], spike: ['spike', 5], spikefr: ['spikefr', 5], spkfol: ['spike', 6],
+  dump: ['dump', 4], dumpfol: ['dump', 5], dive: ['dive', 2], down: ['dive', 4], cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2],
+  sad: ['cheer', 5], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 2], srvload: ['serve', 4], srvhold: ['serve', 0] };
 // pose statiche (menu, schermate) prese dalle animazioni del foglio (righe di tools/photo/foglio-sprite-2.webp)
 const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 3], set: ['set', 4], jump: ['block', 2],
   spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
@@ -98,14 +105,16 @@ function makePhotoTex(scene, code) {
   const cell = n => [(n % S.cols) * cw, Math.floor(n / S.cols) * ch, cw, ch];
   const frames = [];
   for (let n = 0; n < S.n; n++) frames.push(['a' + n, ...cell(n)]);
-  POSES.forEach((p, i) => { const [an, j] = PHOTO_STATIC[p]; frames.push([i, ...cell(S.anims[an][j])]); });
+  const ST = S.sheet === 3 ? PHOTO_STATIC3 : PHOTO_STATIC;
+  POSES.forEach((p, i) => { const [an, j] = ST[p]; const A = S.anims[an]; frames.push([i, ...cell(A[Math.min(j, A.length - 1)])]); });
   texDone(t, frames, R);
   return key;
 }
 
 // fotogramma animato secondo lo stato del giocatore: ogni riga del foglio è un movimento in 8 tempi
 // (attesa, corsa, rincorsa, schiacciata, bagher, palleggio, muro, battuta in salto, battuta, tuffo, pallonetto, esultanze)
-function photoFrame(m, p) {
+function photoFrame(m, p, pose) {
+  if (PHOTO_SPRITES.sheet === 3) return photoFrame3(m, p, pose);
   const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000, b = m.ball;
   const pick = (an, i) => 'a' + A[an][clamp(Math.floor(i), 0, A[an].length - 1)];
   const prog = dur => 1 - clamp(p.animT / dur, 0, 1);
@@ -151,6 +160,74 @@ function photoFrame(m, p) {
   if (m.state === 'rally' && t.plan && t.plan.p === p && t.plan.kind === 'set' && b.vy < 0) return pick('set', 1 + (now * 4 % 2));
   // posizione d'attesa molleggiata (in azione e durante la battuta), altrimenti attesa più calma
   if (m.state === 'rally' || m.state === 'serve') return pick('idle', (now * 8 + p.idx * 2) % A.idle.length);
+  return pick('idle', (now * 3 + p.idx * 2) % A.idle.length);
+}
+
+// fogli 3d-maschile-A..D: la posa scelta da match.js (motion) indica il movimento, lo stato e il tempo il fotogramma.
+// Righe di 8 tempi: idle (molleggio), run, appr (4 appoggi e stacco), spike (braccio caricato, colpo sopra la testa),
+// spikefr (palla presa davanti), bagher, lateral (bagher laterale di fronte), dive (tuffo, a terra, rialzarsi),
+// set, jset (palleggio in salto), dump, block, serve (in piedi), jserve (in salto), jfloat (salto flottante), cheer.
+function photoFrame3(m, p, pose) {
+  const A = PHOTO_SPRITES.anims, t = p.team, now = m.simT / 1000, b = m.ball;
+  const pick = (an, i) => { const L = A[an] || A.idle; return 'a' + L[clamp(Math.floor(i), 0, L.length - 1)]; };
+  const prog = dur => 1 - clamp(p.animT / dur, 0, 1);
+  const st = p.state, server = m.server === p, sk = m.serveKind;
+  const srvAnim = sk === 'jump' ? 'jserve' : sk === 'jfloat' ? 'jfloat' : 'serve';
+  // a terra dopo un tuffo, tuffo, bagher laterale
+  if (st === 'down' || pose === 'down') return pick('dive', p.downT > 0.25 ? 4 + Math.floor(now * 2) % 2 : 6);
+  if (st === 'dive' || pose === 'dive') return pick('dive', p.diveT > 0.14 ? 2 : 3);
+  if (st === 'passside' || pose === 'passside') return pick('lateral', 3 + prog(0.3) * 2);
+  // battuta: attesa con la palla, lancio, braccio caricato, colpo
+  if (pose === 'srvhold') return pick(srvAnim, 0);
+  if (st === 'toss') {
+    if (sk === 'jump' || sk === 'jfloat') return pick(srvAnim, 1);
+    return pick('serve', pose === 'srvload' ? 3 + (b.h > 70 ? 0 : 1) : 2);
+  }
+  if (st === 'spike' && server && b.lastKind === 'serve' && b.lastPlayer === p) {
+    if (sk === 'jump') return pick('jserve', 5 + prog(0.3) * 2);
+    if (sk === 'jfloat') return pick('jfloat', 4 + prog(0.3) * 2);
+    return pick('serve', 5 + prog(0.3) * 2);
+  }
+  // colpi
+  if (st === 'spike') return pose === 'spikefr' || (pose === 'spkfol' && m.atkOf(p).pose === 'spikefr') ? pick('spikefr', 4 + prog(0.3) * 2.5) : pick('spike', 4 + prog(0.3) * 2.5);
+  if (st === 'pass' || pose === 'pass') return pick('bagher', 4 + prog(0.3) * 2.5);
+  if (pose === 'passload') return pick('bagher', 2 + (now * 4) % 2);
+  if (pose === 'jsetload') return pick('jset', 2 + (p.vz < 20 ? 1 : 0));
+  if (pose === 'jset') return pick('jset', 4);
+  if (pose === 'land') return pick('jset', p.z > 6 ? 5 : 6);
+  if (st === 'set' || pose === 'set') return pick('set', 3 + prog(0.3) * 3);
+  if (pose === 'setload') return pick('set', 1 + (now * 4) % 2);
+  if (st === 'dump' || pose === 'dump' || pose === 'dumpfol') return pick('dump', 3 + prog(0.3) * 3);
+  // rincorsa (attacco o battuta in salto): passi, passo lungo con le braccia indietro, piedi pari
+  if (p.z <= 0 && (pose === 'appr' || pose === 'plant' || st === 'run')) {
+    const tj = m.takeoffIn(p);
+    if (tj !== null && tj < CFG.APPR_T + 0.25) {
+      const k = 1 - clamp(tj / (CFG.APPR_T + 0.25), 0, 1);
+      if (m.state === 'serve' && server) return pick(srvAnim, 2 + k * 1.9);
+      return pick('appr', 1 + k * 4);
+    }
+  }
+  if (st === 'run' || pose === 'run1' || pose === 'run2') return pick('run', (p.runT * 12) % A.run.length);
+  // in aria
+  if (p.z > 0 || st === 'jump' || st === 'block') {
+    const fall = p.vz < 0, low = p.z < 8;
+    if (st === 'block' || (t.blockers.includes(p) && b.lastTeam !== t)) return pick('block', p.vz > 80 ? 2 : p.vz > 0 ? 3 : low ? 6 : 5);
+    if (server && (sk === 'jump' || sk === 'jfloat') && b.lastKind !== 'serve') return pick(srvAnim, sk === 'jump' ? (p.vz > 40 ? 3 : 4) : 3);
+    if (t.attacker === p && !p.decoy) {
+      if (m.atkOf(p).pose === 'spikefr') return pick('spikefr', p.vz > 60 ? 1 : p.vz > 0 ? 2 : 3);
+      return pick('spike', p.vz > 90 ? 0 : p.vz > 30 ? 1 : p.vz > -20 ? 2 : 3);   // braccio caricato, gomito alto
+    }
+    if (fall && low) return pick(t.attacker === p ? 'spike' : 'block', 7);
+    if (p.decoy) return pick('appr', 7);
+    return pick('block', p.vz > 60 ? 2 : p.vz > -40 ? 3 : 5);
+  }
+  if (st === 'cheer' || st === 'cheer2' || st === 'cheer3') {
+    const base = st === 'cheer' ? 0 : st === 'cheer2' ? 1 : 2;
+    return pick('cheer', [base, 3, 4][(Math.floor(now * 1.5) + p.idx) % 3]);
+  }
+  if (st === 'sad') return pick('cheer', 5 + Math.floor(now * 0.7 + p.idx) % 2);
+  // attesa: molleggio sulle gambe (piedi a terra), più vivo durante il gioco
+  if (m.state === 'rally' || m.state === 'serve') return pick('idle', (now * 9 + p.idx * 2) % A.idle.length);
   return pick('idle', (now * 3 + p.idx * 2) % A.idle.length);
 }
 

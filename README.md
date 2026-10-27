@@ -144,7 +144,15 @@ Dal menu principale, ultima scheda. Si apre una pagina sopra il gioco, comoda an
 
 ### Versione 3D (giocatori fotorealistici)
 Tre versioni grafiche, si cambia col tasto **H** (o `index.html?gfx=pixel|hd|3d`): **ARCADE** (pixel art), **HD** (giocatori disegnati), **3D**.
-Nella 3D i giocatori sono fotogrammi presi da un foglio sprite (`tools/photo/foglio-sprite-2.webp`, 94 pose in 12 movimenti: attesa molleggiata, corsa, rincorsa, schiacciata con il braccio caricato, bagher, palleggio, muro, battuta in salto, battuta, tuffo, pallonetto dell'alzatore, esultanze),
+Nella 3D i giocatori sono fotogrammi presi da quattro fogli sprite generati con ChatGPT (`tools/photo/3d-maschile-A..D.png`, 127 pose in 16 movimenti):
+- attesa molleggiata con i piedi a terra, corsa, rincorsa a 4 appoggi;
+- schiacciata con il gomito alto e il colpo sopra la testa, oppure con la palla presa davanti (braccio veloce);
+- bagher, bagher laterale, tuffo con rialzata;
+- palleggio, palleggio in salto di profilo, pallonetto dell'alzatore, muro;
+- battuta da ferma (con l'attesa a palla in mano), battuta in salto, salto flottante;
+- esultanze e delusione.
+
+I fotogrammi sono
 in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
 Anche i palloni della 3D vengono da un foglio sprite (`tools/photo/palloni.webp`): ruotano in 8 tempi con la luce ferma e si schiacciano a terra, sulle schiacciate e sui muri.
 Per rigenerare i fotogrammi: `tools/photo/README.md`.
