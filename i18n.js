@@ -139,6 +139,9 @@ const I18N_ROWS = [
   ['{0}: IN QUALE CAMPO?', '{0}: WHICH SIDE?', '{0} : QUEL CÔTÉ ?', '{0}: WELCHE SEITE?', '{0}: ¿QUÉ CAMPO?'],
   ['BATTE PER PRIMA: {0}', 'SERVES FIRST: {0}', 'SERT EN PREMIER : {0}', 'SCHLÄGT ZUERST AUF: {0}', 'SACA PRIMERO: {0}'],
   ['{0} NEL CAMPO SINISTRO', '{0} ON THE LEFT SIDE', '{0} SUR LE TERRAIN GAUCHE', '{0} AUF DER LINKEN SEITE', '{0} EN EL CAMPO IZQUIERDO'],
+  ['{0} HA SCELTO {1}', '{0} CHOSE {1}', '{0} A CHOISI {1}', '{0} HAT {1} GEWÄHLT', '{0} ELIGIÓ {1}'],
+  ['CPU SCEGLIE: {0}', 'CPU CHOOSES: {0}', 'LE CPU CHOISIT : {0}', 'CPU WÄHLT: {0}', 'LA CPU ELIGE: {0}'],
+  ['{0} → {1}', '{0} → {1}', '{0} → {1}', '{0} → {1}', '{0} → {1}'],
   ['Z: VIA!', 'Z: GO!', 'Z : C\'EST PARTI !', 'Z: LOS!', 'Z: ¡VAMOS!'],
   // ---- formazione ----
   ['CENTRALE', 'MIDDLE BLOCKER', 'CENTRAL', 'MITTELBLOCKER', 'CENTRAL'],

@@ -88,6 +88,7 @@ function photoBeach(d, R, W, H, sk, ref, cw, ch) {
 // set, jset, dump, block / serve, jserve, jfloat, cheer. Pose statiche per menu e schermate:
 const PHOTO_STATIC3 = { idle: ['idle', 0], idle2: ['idle', 4], run1: ['run', 1], run2: ['run', 5], pass: ['bagher', 4], passload: ['bagher', 3],
   passside: ['lateral', 4], set: ['set', 4], setload: ['set', 2], jsetload: ['jset', 3], jset: ['jset', 4], land: ['jset', 6],
+  jsetloadF: ['jset', 3], jsetF: ['jset', 4], landF: ['jset', 5], jsetloadB: ['jset', 3], jsetB: ['jset', 4], landB: ['jset', 5],
   jump: ['block', 2], block: ['block', 4], spkload: ['spike', 1], spike: ['spike', 5], spikefr: ['spikefr', 5], spkfol: ['spike', 6],
   dump: ['dump', 4], dumpfol: ['dump', 5], dive: ['dive', 2], down: ['dive', 4], cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2],
   sad: ['cheer', 5], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 2], srvload: ['serve', 4], srvhold: ['serve', 0] };
@@ -96,7 +97,8 @@ const PHOTO_STATIC = { idle: ['idle', 0], run1: ['run', 1], run2: ['run', 5], pa
   spkload: ['spike', 3], spkfol: ['spike', 5], passload: ['bagher', 1], setload: ['set', 2], dump: ['dump', 3], dumpfol: ['dump', 5],
   passside: ['dive', 0], srvload: ['serve', 3], spike: ['spike', 4], block: ['block', 4], dive: ['dive', 3], down: ['down', 0],
   cheer: ['cheer', 0], cheer2: ['cheer', 1], cheer3: ['cheer', 2], appr: ['appr', 3], plant: ['appr', 4], toss: ['serve', 1], sad: ['cheer', 6],
-  spikefr: ['spike', 4], idle2: ['idle', 4], srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6] };
+  spikefr: ['spike', 4], idle2: ['idle', 4], srvhold: ['serve', 0], jsetload: ['set', 2], jset: ['set', 4], land: ['block', 6],
+  jsetloadF: ['set', 2], jsetF: ['set', 4], landF: ['set', 2], jsetloadB: ['set', 2], jsetB: ['set', 4], landB: ['set', 2] };
 
 // una texture per squadra: tutti i fotogrammi, piedi in basso al centro di ogni cella
 function makePhotoTex(scene, code) {
@@ -234,6 +236,13 @@ function photoFrame3(m, p, pose) {
   if (st === 'spike') return pose === 'spikefr' || (pose === 'spkfol' && m.atkOf(p).pose === 'spikefr') ? pick('spikefr', 4 + prog(0.3) * 2.5) : pick('spike', 4 + prog(0.3) * 2.5);
   if (st === 'pass' || pose === 'pass') return pick('bagher', 4 + prog(0.3) * 2.5);
   if (pose === 'passload') return pick('bagher', 2 + (now * 4) % 2);
+  // palleggio in salto girato (pose ...F di fronte nel campo destro, ...B di spalle nel sinistro): righe jsetfr / jsetbk
+  // del foglio E se ci sono, altrimenti il palleggio in salto di profilo
+  if (/^(jsetload|jset|land)[FB]$/.test(pose)) {
+    const row = pose.endsWith('F') ? 'jsetfr' : 'jsetbk', base = pose.slice(0, -1);
+    if (A[row]) return pick(row, base === 'jsetload' ? 2 + (p.vz < 20 ? 1 : 0) : base === 'jset' ? (p.animT > 0.2 ? 3 : 4) : (p.z > 6 ? 5 : 6));
+    pose = base;
+  }
   if (pose === 'jsetload') return pick('jset', 2 + (p.vz < 20 ? 1 : 0));
   // palleggio in salto: mani a finestra sopra la fronte, spinta breve, poi in aria resta la stessa posa e
   // vicino a terra si prepara all'atterraggio (niente braccia distese come a muro)
@@ -255,8 +264,9 @@ function photoFrame3(m, p, pose) {
   // in aria
   if (p.z > 0 || st === 'jump' || st === 'block') {
     const fall = p.vz < 0, low = p.z < 8;
+    if (p.srvAir) return pick(srvAnim, fall && low ? 7 : 6);   // dopo la battuta in salto: accompagnamento e atterraggio
     if (st === 'block' || (t.blockers.includes(p) && b.lastTeam !== t)) return pick('block', p.vz > 80 ? 2 : p.vz > 0 ? 3 : low ? 6 : 5);
-    if (server && (sk === 'jump' || sk === 'jfloat') && b.lastKind !== 'serve') return pick(srvAnim, sk === 'jump' ? (p.vz > 40 ? 3 : 4) : 3);
+    if (server && (sk === 'jump' || sk === 'jfloat') && !p.served && m.state === 'serve') return pick(srvAnim, sk === 'jump' ? (p.vz > 40 ? 3 : 4) : 3);
     if (t.attacker === p && !p.decoy) {
       if (m.atkOf(p).pose === 'spikefr') return pick('spikefr', p.vz > 60 ? 1 : p.vz > 0 ? 2 : 3);
       return pick('spike', p.vz > 90 ? 0 : p.vz > 30 ? 1 : p.vz > -20 ? 2 : 3);   // braccio caricato, gomito alto

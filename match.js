@@ -378,7 +378,7 @@ class MatchScene extends Phaser.Scene {
   prepareServe() {
     const t = this.serving, b = this.ball;
     for (const tt of this.teams) { tt.touches = 0; tt.plan = null; tt.planCache = null; tt.attacker = null; tt.attackType = null; tt.blockers = []; tt.mishit = false; tt.open = false; tt.quickReq = false; tt.surprise = false; tt.recvAnn = false; tt.jumpSet = false; tt.combo = false; tt.blockedVer = -1; tt.ctrl = null; tt.ctrlMoved = false; }
-    for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.jset = false; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
+    for (const tt of this.teams) for (const p of tt.players) { p.z = 0; p.vz = 0; p.vx = 0; p.diveT = 0; p.downT = 0; p.state = 'idle'; p.jset = false; p.srvAir = false; p.decoy = false; p.hitWin = 0; p.jumpedVer = -1; p.role = null; }
     const s = this.serverOf(t);
     this.server = s;
     b.held = s; b.live = false; b.bouncing = false; b.lastTeam = t; b.lastPlayer = null; b.lastKind = null; b.ver++; b.trail = [];
@@ -521,7 +521,7 @@ class MatchScene extends Phaser.Scene {
   // colpo di battuta: q = qualità 0-1 (tempismo). q basso = possibile errore (rete o fuori)
   hitServe(s, q) {
     const t = s.team, b = this.ball, side = t.side, k = this.serveKind;
-    s.served = true;
+    s.served = true; s.srvAir = s.z > 0;   // srvAir: ancora in aria dopo la battuta in salto (fino a terra)
     const aim = t.human ? this.dirX(t) : 0;
     const K = this.courtK();
     let d = (aim > 0 ? rnd(7.6, 8.5) : aim < 0 ? rnd(3.2, 4.2) : rnd(3.5, 8.5)) * K;
@@ -701,7 +701,7 @@ class MatchScene extends Phaser.Scene {
         if (t.attacker === p && !p.decoy) p.hitWin = 0.16;
         if (t.plan && t.plan.kind === 'set' && t.plan.p === p && this.dirX(t) > 0) t.surprise = true;
       }
-      if (p.z <= 0) { this.sand(p.x, p.dep, 9, clamp(-p.vz * 0.45, 30, 80), 8); p.z = 0; p.vz = 0; p.vx = 0; p.jset = false; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
+      if (p.z <= 0) { this.sand(p.x, p.dep, 9, clamp(-p.vz * 0.45, 30, 80), 8); p.z = 0; p.vz = 0; p.vx = 0; p.jset = false; p.srvAir = false; if (p.animT <= 0) p.state = 'idle'; p.decoy = false; }
       else if (p.animT <= 0) p.state = t.blockers.includes(p) && b.lastTeam !== t ? 'block' : (p.vz > 40 ? 'jump' : p.state === 'spike' || p.state === 'dump' ? p.state : 'jump');
       this.clampX(p); return;
     }
@@ -834,7 +834,7 @@ class MatchScene extends Phaser.Scene {
 
   // tempo per arrivare in cima al salto del battitore (salto flottante = salto più basso)
   jsPeak() { return CFG.TPEAK * (this.serveKind === 'jfloat' ? CFG.JFLOAT_K : 1); }
-  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; }
+  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; p.srvAir = false; }
 
   // ------------------------------------------------ sabbia (beach): spruzzi che si alzano e impronte che restano
   // x = posizione in campo, dep = profondità, n = granelli, power = forza dello spruzzo, mark = larghezza dell'impronta (0 = nessuna)
@@ -1539,6 +1539,8 @@ class MatchScene extends Phaser.Scene {
     // palleggio in salto, di profilo: spinta con le braccia distese, poi ricaduta; fino a terra resta il palleggio
     // (non il salto generico, che darebbe le braccia del muro), anche dopo che l'attaccante ha già colpito
     if (p.jset && p.z > 0) return st === 'set' && p.animT > 0.12 ? 'jset' : 'land';
+    // dopo la battuta in salto: braccio che accompagna in avanti fino a terra (non il salto generico)
+    if (p.srvAir && p.z > 0 && st !== 'spike') return 'spkfol';
     if (st === 'set' && p.z > 2) return p.animT > 0.15 ? 'jset' : 'land';
     if (st === 'jump' && p.z > 0 && p.vz < 0 && b.lastPlayer === p && b.lastKind === 'set') return 'land';
     if (st === 'spike') return p.animT > 0.18 ? (b.lastKind === 'serve' ? 'spike' : this.atkOf(p).pose) : 'spkfol';
@@ -1610,6 +1612,8 @@ class MatchScene extends Phaser.Scene {
     for (const t of this.teams) for (const p of t.players) {
       let st = this.motion(p, p.state);
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
+      // palleggio in salto: in volo l'alzatore è girato del tutto, di fronte (si vede il viso) nel campo destro, di spalle nel sinistro
+      if (p.z > 0 && (st === 'jsetload' || st === 'jset' || st === 'land') && (st !== 'land' || p.jset)) st += t.side === 1 ? 'F' : 'B';
       p.spr.setFrame(usePhoto() ? photoFrame(this, p, st) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza

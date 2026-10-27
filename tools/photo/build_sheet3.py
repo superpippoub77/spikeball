@@ -21,6 +21,8 @@ SHEETS = {
     'C': ['set', 'jset', 'dump', 'block'],
     'D': ['serve', 'jserve', 'jfloat', 'cheer'],
 }
+# foglio E (facoltativo): palleggio in salto girato in volo, di fronte (campo destro) e di spalle (campo sinistro)
+if any(os.path.exists(f'{prefix}-E.{x}') for x in ('png', 'jpg', 'webp')): SHEETS['E'] = ['jsetfr', 'jsetbk']
 SKIP = {('D', 3, 4)}                       # foglio, riga, colonna (da 0): il batti cinque ha due persone
 STAND = [('D', 0, 0), ('D', 0, 7), ('D', 2, 0)]   # fotogrammi in piedi dritti: altezza di riferimento
 SKIPROWS = set()                           # righe da non usare (foglio, riga)
@@ -181,9 +183,9 @@ for L, names in SHEETS.items():
     a = np.asarray(Image.open(path).convert('RGB')).copy()
     if L == 'D': a = remove_colored_balls(a)
     al = fg_alpha(a); fg = al > 0.5
-    cuts = bands(fg)
+    cuts = bands(fg, len(names))
     shorts, shirt, skin = [], [], []
-    for row in range(4):
+    for row in range(len(names)):
         if (L, row) in SKIPROWS: continue
         figs = figures_in_band(fg, cuts[row], cuts[row + 1])
         assert len(figs) == 8, (L, row, len(figs))
@@ -195,7 +197,7 @@ for L, names in SHEETS.items():
             if n > 1:
                 sizes = nd.sum(fa > 0.5, lab, range(1, n + 1)); keep = 1 + int(np.argmax(sizes))
                 fa = np.where(lab == keep, fa, 0)
-            if L == 'C': rgb, fa = remove_white_ball(rgb, fa)
+            if L in ('C', 'E'): rgb, fa = remove_white_ball(rgb, fa)
             # pezzetti rimasti staccati dal corpo (bordi del pallone tolto): via
             lab, n = nd.label(fa > 0.3)
             if n > 1:

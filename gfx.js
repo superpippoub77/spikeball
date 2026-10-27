@@ -20,7 +20,9 @@ const POSES = ['idle', 'run1', 'run2', 'pass', 'set', 'jump', 'spike', 'block', 
                'srvhold',                         // battitore in attesa: in piedi con la palla tra le mani
                'jsetload', 'jset', 'land',
                'spikefr',                         // schiacciata con la palla presa davanti
-               'idle2'];                          // attesa: ginocchia più piegate (si alterna con idle, piedi fermi)       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
+               'idle2',
+               'jsetloadF', 'jsetF', 'landF',     // palleggio in salto in volo, girato: di fronte (campo destro)
+               'jsetloadB', 'jsetB', 'landB'];    // ... e di spalle (campo sinistro)                          // attesa: ginocchia più piegate (si alterna con idle, piedi fermi)       // palleggio in salto di profilo: mani a finestra, spinta, ricaduta
 const PF = {}; POSES.forEach((p, i) => PF[p] = i);
 
 // Ogni posa: coordinate (x, y) nella cella 32x48 di anca, collo, testa, gamba dietro (bl) e davanti (fl: ginocchio, piede),
@@ -117,7 +119,17 @@ const FRONTS = {
   // bagher laterale: di fronte, affondo verso la palla (a destra = verso la rete; specchiato se la palla è dietro)
   passside: { dy: 5, hands: [[27, 31], [27.5, 30]], elbows: [[21, 26], [23, 25]],
     hipL: [13, 36], hipR: [19, 36], kneeL: [8, 40], kneeR: [25, 39], footL: [3, 46], footR: [26, 46] },
+  // palleggio in salto in volo, girato del tutto: ginocchia raccolte e mani a finestra sopra la fronte (jsetloadF),
+  // spinta con braccia e corpo distesi (jsetF), ricaduta con le braccia che scendono e le gambe pronte (landF).
+  // Le pose ...B sono le stesse viste di spalle (campo sinistro): capelli al posto del viso, numero grande sulla schiena.
+  jsetloadF: { dy: 0, hands: [[13, 4], [19, 4]], elbows: [[7, 11], [25, 11]],
+    hipL: [13, 32], hipR: [19, 32], kneeL: [10.5, 38], kneeR: [21.5, 38], footL: [12, 44], footR: [20, 44] },
+  jsetF: { dy: -1, hands: [[14, 0], [18, 0]], elbows: [[11, 7], [21, 7]],
+    hipL: [13, 31], hipR: [19, 31], kneeL: [12.5, 38], kneeR: [19.5, 38], footL: [13, 45], footR: [19, 45] },
+  landF: { dy: 1, hands: [[8, 25], [24, 25]], elbows: [[8, 19], [24, 19]],
+    hipL: [13, 33], hipR: [19, 33], kneeL: [11, 39], kneeR: [21, 39], footL: [12, 45], footR: [20, 45] },
 };
+for (const k of ['jsetloadF', 'jsetF', 'landF']) FRONTS[k.slice(0, -1) + 'B'] = { ...FRONTS[k], back: true };
 const frontOf = pose => { const f = FRONTS[pose], d = f.dy;
   return { ...f, head: [16, 10 + d], sh: [[10, 17 + d], [22, 17 + d]] }; };
 function drawPlayerFront(ctx, ox, P, hair, pose) {
@@ -143,8 +155,9 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   if (BK) poly(ctx, ox, U([[10.5, 18], [21.5, 18], [21, 22.2], [16.5, 21.5], [15.5, 21.5], [11, 22.2]]), topC);   // top del costume
   if (W && P.pat === 1) { ctx.fillStyle = P.tr; if (BK) { ctx.fillRect(ox + 11, 21.6 + d, 10, 0.8); ctx.fillRect(ox + 11.5, 27.6 + d, 9, 0.8); } else { ctx.fillRect(ox + 11, 23 + d, 10, 1.2); } }   // bordi
   if (W && P.pat === 2 && !BK) { ctx.fillStyle = P.tr; ctx.fillRect(ox + 10.5, 16 + d, 11, 3); }   // spalle nel secondo colore
-  if (W) { ctx.fillStyle = shade(P.sh, 0.78); ctx.fillRect(ox + 12.5, 22 + d, 3, 0.8); ctx.fillRect(ox + 16.5, 22 + d, 3, 0.8); }   // seno
-  if (P.num && !BK) { ctx.fillStyle = P.tr; ctx.font = 'bold 6px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, 25 + d); ctx.textAlign = 'left'; }
+  const BACK = !!F.back;   // di spalle: niente viso, numero grande sulla schiena
+  if (W && !BACK) { ctx.fillStyle = shade(P.sh, 0.78); ctx.fillRect(ox + 12.5, 22 + d, 3, 0.8); ctx.fillRect(ox + 16.5, 22 + d, 3, 0.8); }   // seno
+  if (P.num && !BK) { ctx.fillStyle = P.tr; ctx.font = `bold ${BACK ? 8 : 6}px Arial, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(P.num, ox + 16.5, (BACK ? 26 : 25) + d); ctx.textAlign = 'left'; }
   // braccia verso il pallone
   for (let i = 0; i < 2; i++) {
     limb(ctx, ox, F.sh[i], F.elbows[i], 4, 3.4, skin); limb(ctx, ox, F.elbows[i], F.hands[i], 3.4, 2.8, skin);
@@ -159,6 +172,12 @@ function drawPlayerFront(ctx, ox, P, hair, pose) {
   const hl = !W ? 4 : P.hs === 2 ? 4 : P.hs === 3 ? 6 : 8;   // giocatrici: capelli lunghi, caschetto o raccolti
   ctx.fillRect(ox + hx - 4.6, hy - 3, 1.4, hl); ctx.fillRect(ox + hx + 3.2, hy - 3, 1.4, hl);
   if (W && P.hs === 2) { ctx.beginPath(); ctx.ellipse(ox + hx, hy - 6.2, 2.2, 1.8, 0, 0, 7); ctx.fill(); }   // chignon
+  if (BACK) {   // nuca: capelli su tutta la testa (lunghi sulla schiena per le giocatrici), orecchie ai lati
+    ctx.fillStyle = skinD; ctx.fillRect(ox + hx - 4.8, hy - 0.5, 1.2, 2); ctx.fillRect(ox + hx + 3.6, hy - 0.5, 1.2, 2);
+    ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(ox + hx, hy - 0.6, 4.4, 4.6, 0, 0, 7); ctx.fill();
+    if (W && P.hs !== 2) ctx.fillRect(ox + hx - (P.hs === 1 || !P.hs ? 1.2 : 4), hy, P.hs === 1 || !P.hs ? 2.4 : 8, P.hs === 3 ? 5 : 9);   // coda, treccia o caschetto
+    return;
+  }
   if (W) { ctx.fillStyle = '#c03848'; ctx.fillRect(ox + hx - 1, hy + 2.5, 2, 1); }
   if (B) { ctx.fillStyle = '#101018'; ctx.fillRect(ox + hx - 3.5, hy - 1, 7, 2); }
   else { ctx.fillStyle = '#201010'; ctx.fillRect(ox + hx - 2.5, hy - 1, 1, 1.4); ctx.fillRect(ox + hx + 1.5, hy - 1, 1, 1.4); }

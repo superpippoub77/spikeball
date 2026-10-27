@@ -97,13 +97,20 @@ function drawPlayerFrontHD(P, hair, R, pose) {
       g.strokeStyle = P.tr; g.lineWidth = 0.8; g.beginPath(); g.moveTo(13.5, 16); g.quadraticCurveTo(16, 18.5, 18.5, 16); g.stroke();
     }
     if (W && !BK && P.pat) { g.fillStyle = P.tr; if (P.pat === 1) g.fillRect(11.2, 22.6, 9.6, 1.1); else g.fillRect(10.4, 15.8, 11.2, 2.6); }   // fascia o spalle
-    if (W) { g.strokeStyle = shade(P.sh, 0.62); g.lineWidth = 0.4; g.beginPath(); g.moveTo(12.6, 21.6); g.quadraticCurveTo(14.2, 22.6, 15.6, 21.6); g.moveTo(16.4, 21.6); g.quadraticCurveTo(17.8, 22.6, 19.4, 21.6); g.stroke(); }   // seno
-    if (P.num && !BK) { g.font = 'bold 5px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 16, 22.5); g.fillStyle = P.tr; g.fillText(P.num, 16, 22.5); }
+    const BACK = !!F.back;   // di spalle (campo sinistro): niente viso, numero grande sulla schiena
+    if (W && !BACK) { g.strokeStyle = shade(P.sh, 0.62); g.lineWidth = 0.4; g.beginPath(); g.moveTo(12.6, 21.6); g.quadraticCurveTo(14.2, 22.6, 15.6, 21.6); g.moveTo(16.4, 21.6); g.quadraticCurveTo(17.8, 22.6, 19.4, 21.6); g.stroke(); }   // seno
+    if (P.num && !BK) { const fs = BACK ? 7.5 : 5, ny = BACK ? 22 : 22.5; g.font = `bold ${fs}px Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 0.5; g.strokeStyle = shade(P.sh, 0.45); g.strokeText(P.num, 16, ny); g.fillStyle = P.tr; g.fillText(P.num, 16, ny); }
     const hx = F.head[0], hy = F.head[1] - d;
     hdCel(g, hdCapsule([16, 16], [16, 13], 1.9, 1.8), P.sk, 0.6, 0.4);
     const hl = P.hs === 3 ? 3.6 : 6.5;   // caschetto più corto; il chignon non ha capelli sulle spalle
     if (W && P.hs !== 2) hdCel(g, g2 => { g2.beginPath(); g2.moveTo(hx - 4.4, hy - 1); g2.quadraticCurveTo(hx - 5.6, hy + 4, hx - 4.6, hy + hl); g2.lineTo(hx + 4.6, hy + hl); g2.quadraticCurveTo(hx + 5.6, hy + 4, hx + 4.4, hy - 1); g2.closePath(); }, hair, 1, 0.7);   // capelli lunghi dietro
     if (W && P.hs === 2) hdCel(g, hdEllipse([hx, hy - 5.6], 2.3, 1.9), hair, 0.8, 0.5);   // chignon
+    if (BACK) {   // nuca: orecchie ai lati e capelli su tutta la testa (coda o treccia sulla schiena per le giocatrici)
+      hdCel(g, hdEllipse([hx - 4, hy + 0.6], 0.9, 1.3), P.sk, 0.5, 0.35); hdCel(g, hdEllipse([hx + 4, hy + 0.6], 0.9, 1.3), P.sk, 0.5, 0.35);
+      hdCel(g, hdEllipse([hx, hy - 0.4], 4.1, 4.5), hair, 1, 0.6);
+      if (W && (P.hs === 1 || !P.hs)) hdCel(g, hdCapsule([hx, hy + 2], [hx, hy + 9], 1.3, 1), hair, 0.8, 0.5);
+      return;
+    }
     hdCel(g, hdEllipse([hx, hy], 3.9, 4.4), P.sk, 0.9, 0.45);
     hdCel(g, g2 => { g2.beginPath(); g2.ellipse(hx, hy - 1.2, 4.3, 3.6, 0, Math.PI * 1.02, Math.PI * 1.98); g2.lineTo(hx + 4.2, hy + 0.5); g2.quadraticCurveTo(hx, hy - 2.6, hx - 4.2, hy + 0.5); g2.closePath(); }, hair, 1, 0.7);
     if (W) { g.fillStyle = '#c03848'; g.beginPath(); g.ellipse(hx, hy + 2.6, 0.9, 0.4, 0, 0, 7); g.fill(); }   // labbra
