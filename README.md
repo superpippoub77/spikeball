@@ -283,7 +283,9 @@ Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuff
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
 - **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;
 - **A** = Z (colpo / conferma), **START** = Invio, **ESC** = indietro, **II** = pausa; **⋯** apre gli altri tasti (X cambi, Q/E pagine, F formazione, T comandi, M audio, K CRT, H grafica);
-- **⛶ schermo intero**, che parte anche da solo al primo tocco, in orizzontale dove il browser lo permette; in verticale compare l'invito a ruotare il telefono.
+- **⛶ schermo intero**, che parte anche da solo al primo tocco, in orizzontale dove il browser lo permette; in verticale compare l'invito a ruotare il telefono;
+- **gesti** sullo schermo di gioco (fuori da joystick e pulsanti): un **tocco** vale A, una **strisciata** vale una freccia, così menu e partita si usano anche solo toccando;
+- **🎮** mostra o nasconde joystick e pulsanti (si ricorda); con una tastiera vera (tablet con tastiera, computer con schermo touch) si nascondono da soli e tornano al primo tocco. Sui tablet joystick e pulsanti sono più grandi, in proporzione allo schermo.
 
 Su **iPhone** il browser non permette lo schermo intero a una pagina: apri il gioco in Safari, **Condividi → Aggiungi alla schermata Home**, e dall'icona si apre a tutto schermo (`manifest.json`, icone `icona-192.png` / `icona-512.png`). Su Android si può fare lo stesso da Chrome (**Installa app / Aggiungi a schermata Home**).
 

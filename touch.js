@@ -7,6 +7,10 @@
 //     (X cambi, Q/E pagine, F formazione, T comandi, M audio, K CRT, H grafica)
 //   - ⛶ schermo intero (e orientamento orizzontale dove il browser lo permette); al primo tocco parte da solo
 //   - in verticale: invito a ruotare il telefono
+//   - gesti sullo schermo di gioco (fuori da joystick e pulsanti): tocco = A (Z), strisciata = freccia; così i menu
+//     si usano anche solo toccando e strisciando
+//   - 🎮 mostra / nasconde joystick e pulsanti (si ricorda); con una tastiera vera si nascondono da soli e tornano
+//     al primo tocco. Sui tablet joystick e pulsanti sono più grandi (in proporzione allo schermo)
 //  Su iPhone il browser non permette lo schermo intero: "Condividi > Aggiungi alla schermata Home" apre il gioco
 //  a tutto schermo (manifest.json e meta apple-mobile-web-app-capable in index.html).
 // ============================================================
@@ -48,14 +52,24 @@ function touchFullscreen() {
   #tpad { position: fixed; inset: 0; z-index: 30; pointer-events: none; font-family: "Arial Black", Arial, sans-serif; }
   #tpad .zone { position: absolute; left: 0; top: 0; bottom: 0; width: 46%; pointer-events: auto; touch-action: none; }
   #tpad .base, #tpad .knob { position: absolute; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
-  #tpad .base { width: 120px; height: 120px; background: rgba(255,255,255,0.10); border: 2px solid rgba(255,255,255,0.35); }
-  #tpad .knob { width: 54px; height: 54px; background: rgba(255,210,58,0.55); border: 2px solid rgba(255,255,255,0.7); }
+  body.touch.nopad #tpad > :not(.keep) { display: none !important; }
+  /* misure dei pulsanti in proporzione allo schermo (telefono e tablet) e posizioni calcolate da queste */
+  #tpad { --sz: clamp(44px, 7.5vmin, 64px); --az: clamp(78px, 14vmin, 130px); --gap: 10px; --r0: max(14px, env(safe-area-inset-right)); }
+  #tpad .p-a { right: var(--r0); bottom: 22px; }
+  #tpad .p-start { right: calc(var(--r0) + var(--az) + var(--gap)); bottom: 14px; }
+  #tpad .p-more { right: calc(var(--r0) + var(--az) + var(--gap)); bottom: calc(14px + var(--sz) + var(--gap)); font-size: 18px; }
+  #tpad .p-esc { right: var(--r0); top: 12px; }
+  #tpad .p-pause { right: calc(var(--r0) + var(--sz) + var(--gap)); top: 12px; font-size: 14px; }
+  #tpad .p-fs { right: calc(var(--r0) + 2 * (var(--sz) + var(--gap))); top: 12px; font-size: 18px; }
+  #tpad .p-pad { right: calc(var(--r0) + 3 * (var(--sz) + var(--gap))); top: 12px; font-size: 18px; }
+  #tpad .base { width: clamp(110px, 18vmin, 170px); height: clamp(110px, 18vmin, 170px); background: rgba(255,255,255,0.10); border: 2px solid rgba(255,255,255,0.35); }
+  #tpad .knob { width: clamp(50px, 8vmin, 78px); height: clamp(50px, 8vmin, 78px); background: rgba(255,210,58,0.55); border: 2px solid rgba(255,255,255,0.7); }
   #tpad .btn { position: absolute; pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center;
     border-radius: 50%; color: #fff; background: rgba(20,60,160,0.45); border: 2px solid rgba(255,255,255,0.55); font-size: 13px; text-shadow: 0 1px 2px #000; }
   #tpad .btn.on { background: rgba(255,210,58,0.75); color: #1a1a1a; }
-  #tpad .a { width: 84px; height: 84px; right: max(22px, env(safe-area-inset-right)); bottom: 34px; font-size: 30px; background: rgba(200,30,40,0.55); }
-  #tpad .sm { width: 46px; height: 46px; font-size: 10px; }
-  #tpad .more { display: none; position: absolute; right: max(118px, calc(env(safe-area-inset-right) + 96px)); bottom: 128px; pointer-events: auto;
+  #tpad .a { width: var(--az); height: var(--az); font-size: 30px; background: rgba(200,30,40,0.55); }
+  #tpad .sm { width: var(--sz); height: var(--sz); font-size: 10px; }
+  #tpad .more { display: none; position: absolute; right: calc(var(--r0) + var(--az) + var(--gap)); bottom: calc(14px + 2 * (var(--sz) + var(--gap))); pointer-events: auto;
     flex-wrap: wrap; gap: 6px; width: 170px; justify-content: flex-end; }
   #tpad .more.open { display: flex; }
   #tpad .more .btn { position: static; width: 40px; height: 40px; font-size: 13px; border-radius: 10px; }
@@ -79,25 +93,53 @@ function touchFullscreen() {
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
     pad.appendChild(b); return b;
   };
-  const R = 'max(22px, env(safe-area-inset-right))';
-  btn('a', 'A', 'z');
-  btn('sm', 'START', 'Enter', { right: 'max(118px, calc(env(safe-area-inset-right) + 96px))', bottom: '24px' });
-  btn('sm', 'ESC', 'Escape', { right: R, top: '14px' });
-  btn('sm', 'II', 'p', { right: 'max(76px, calc(env(safe-area-inset-right) + 54px))', top: '14px', fontSize: '14px' });
+  btn('a p-a', 'A', 'z');
+  btn('sm p-start', 'START', 'Enter');
+  btn('sm p-esc', 'ESC', 'Escape');
+  btn('sm p-pause', 'II', 'p');
   // altri tasti (cambi, pagine, formazione...)
   const more = document.createElement('div'); more.className = 'more'; pad.appendChild(more);
   for (const k of ['x', 'r', 'q', 'e', 'f', 't', 'm', 'k', 'h']) {   // R: time-out nel beach
     const b = btn('', k.toUpperCase(), k); more.appendChild(b);
   }
-  const mb = document.createElement('div'); mb.className = 'btn sm'; mb.textContent = '⋯';
-  Object.assign(mb.style, { right: 'max(118px, calc(env(safe-area-inset-right) + 96px))', bottom: '78px', fontSize: '18px' });
+  const mb = document.createElement('div'); mb.className = 'btn sm p-more'; mb.textContent = '⋯';
   mb.addEventListener('pointerdown', e => { e.preventDefault(); more.classList.toggle('open'); });
   pad.appendChild(mb);
-  const fs = document.createElement('div'); fs.className = 'btn sm'; fs.textContent = '⛶';
-  Object.assign(fs.style, { right: 'max(130px, calc(env(safe-area-inset-right) + 108px))', top: '14px', fontSize: '18px' });
+  const fs = document.createElement('div'); fs.className = 'btn sm p-fs'; fs.textContent = '⛶';
   fs.addEventListener('pointerdown', e => { e.preventDefault(); touchFullscreen(); });
   pad.appendChild(fs);
+  // mostra / nascondi joystick e pulsanti (resta sempre visibile)
+  const pv = document.createElement('div'); pv.className = 'btn sm keep p-pad'; pv.textContent = '🎮';
+  const setPad = on => { document.body.classList.toggle('nopad', !on); try { localStorage.setItem('sf91_pad', on ? '1' : '0'); } catch (e) { /* */ } };
+  pv.addEventListener('pointerdown', e => { e.preventDefault(); setPad(document.body.classList.contains('nopad')); });
+  pad.appendChild(pv);
+  try { if (localStorage.getItem('sf91_pad') === '0') document.body.classList.add('nopad'); } catch (e) { /* */ }
   document.body.appendChild(pad);
+  // tastiera vera (tablet con tastiera, computer con schermo touch): i comandi a schermo si nascondono da soli
+  let kbdHidden = false;
+  window.addEventListener('keydown', e => { if (e.isTrusted && !document.body.classList.contains('nopad')) { kbdHidden = true; document.body.classList.add('nopad'); } });
+
+  // gesti sullo schermo di gioco: tocco breve = A (Z), strisciata = una freccia
+  const press = key => { touchHold(key, true); setTimeout(() => touchHold(key, false), 90); };
+  let gs = null;
+  window.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || e.target.closest('#tpad .btn, #tpad .zone, #tpad .more, #editor, #photoCap, #tturn')) return;
+    if (kbdHidden) { kbdHidden = false; document.body.classList.remove('nopad'); }
+    gs = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  window.addEventListener('pointerup', e => {
+    if (!gs || e.pointerId !== gs.id) return;
+    const dx = e.clientX - gs.x, dy = e.clientY - gs.y, d = Math.hypot(dx, dy), dt = performance.now() - gs.t; gs = null;
+    if (d < 14 && dt < 450) {
+      // sopra un elemento che risponde già al tocco (bandiera della lingua, righe SQUADRE e GRAFICA...) niente A in più
+      const g = window.__game;
+      const hit = g && g.scene.getScenes(true).some(sc => sc.input && g.input.pointers.some(pt => sc.input.hitTestPointer(pt).length));
+      if (!hit) press('z');
+      return;
+    }
+    if (d >= 30) press(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft') : (dy > 0 ? 'ArrowDown' : 'ArrowUp'));
+  });
+  window.addEventListener('pointercancel', () => { gs = null; });
 
   // joystick: compare dove si appoggia il pollice; direzione a 8 settori con una piccola zona morta
   let jid = null, ox = 0, oy = 0;

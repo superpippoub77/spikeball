@@ -65,6 +65,7 @@ const GUIDE_TXT = {
     ['TELEFONO E 2 GIOCATORI', [
       'Telefono e tablet: appoggia il pollice a sinistra e compare il JOYSTICK; a destra A (= Z), START, ESC, II (pausa) e ⋯ per gli altri tasti.',
       'Gioca in orizzontale: al primo tocco il gioco va a schermo intero (c\'è anche il pulsante in alto a destra).',
+      'Senza joystick: nella metà destra un TOCCO vale A e una STRISCIATA vale una freccia (menu e partita). Il pulsante con il joystick mostra o nasconde i comandi.',
       'Su iPhone: Safari > Condividi > Aggiungi alla schermata Home, poi apri il gioco dall\'icona.',
       'Due giocatori sulla stessa tastiera: P2 usa W A S D e G, START con 2.']],
     ['CREDITI', [
@@ -123,6 +124,7 @@ const GUIDE_TXT = {
     ['PHONE AND 2 PLAYERS', [
       'Phone and tablet: put your thumb on the left and the JOYSTICK appears; on the right A (= Z), START, ESC, II (pause) and ⋯ for the other keys.',
       'Play in landscape: at the first touch the game goes full screen (there is also a button at the top right).',
+      'Without the joystick: on the right half a TAP is A and a SWIPE is an arrow (menus and match). The gamepad button shows or hides the controls.',
       'On iPhone: Safari > Share > Add to Home Screen, then open the game from the icon.',
       'Two players on one keyboard: P2 uses W A S D and G, START with 2.']],
     ['CREDITS', [
