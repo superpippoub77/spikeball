@@ -163,6 +163,7 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
+const MENU_SEX = 20, MENU_GFX = 21;   // menu principale: righe SQUADRE e GRAFICA (le schede sono 0-7, la lingua -1)
 const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
 // scelta maschile / femminile del menu principale: vale per tutte le modalità e resta salvata nel browser
 function setWomen(on) {
@@ -242,10 +243,11 @@ class MainMenuScene extends Base {
       { label: 'CAREER', sub: 'CAMPIONATI', hint: 'Campionati (campionati.json) o torneo contro le nazionali', icon: 'cup' },
       { label: 'BEACH', sub: 'SABBIA', hint: 'Beach volley 2 contro 2: sole, sabbia, set a 21 e regole da spiaggia', icon: 'sun' },
       { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea i tuoi giocatori: giocano nella loro squadra e migliorano partita dopo partita', icon: 'me' },
-      { label: 'EDITOR', sub: 'SQUADRE', hint: 'Squadre, arbitri, sponsor, campionati e profilo sul server', icon: 'ed' }
+      { label: 'EDITOR', sub: 'SQUADRE', hint: 'Squadre, arbitri, sponsor, campionati e profilo sul server', icon: 'ed' },
+      { label: 'COME SI GIOCA', sub: 'GUIDA', hint: 'Guida illustrata: comandi, battute, ricezione, alzata, attacco, muro, crediti', icon: 'help' }
     ];
-    // schede su due righe (4 + 3); sopra le schede la riga LINGUA (↑ per arrivarci, ← → per cambiare)
-    const POS = [[52, 96], [124, 96], [196, 96], [268, 96], [88, 150], [160, 150], [232, 150]];
+    // schede su due righe (4 + 4); sopra le schede la riga LINGUA, sotto le righe SQUADRE (MENU_SEX) e GRAFICA (MENU_GFX)
+    const POS = [[52, 96], [124, 96], [196, 96], [268, 96], [52, 150], [124, 150], [196, 150], [268, 150]];
     this.cardObjs = this.cards.map((cd, i) => {
       const [x, y] = POS[i];
       const cont = this.add.container(x, y);
@@ -276,6 +278,10 @@ class MainMenuScene extends Base {
         ic.fillStyle(0xffe040).fillCircle(6, -11, 4); ic.fillStyle(0x7a4a1a).fillRect(-9, -12, 2, 14); ic.fillStyle(0x2a9a3a).fillEllipse(-11, -13, 9, 3).fillEllipse(-5, -13, 9, 3);
         ik.add(this.add.image(2, 6, 'ballbig').setScale(0.7)); right(cd.sub, '#ffe0a0');
       }
+      else if (cd.icon === 'help') {
+        ic.fillStyle(0x2a8ae8).fillCircle(0, -6, 14); ic.lineStyle(2, 0xffffff).strokeCircle(0, -6, 14);
+        ik.add(this.add.text(0, -6, '?', UI.f(18, '#ffffff', true)).setOrigin(0.5)); right(cd.sub, '#7ad0ff');
+      }
       else { ic.fillStyle(0xf2c818).fillRect(-8, -16, 16, 12).fillRect(-3, -4, 6, 8).fillRect(-8, 4, 16, 3); ic.fillStyle(0xf2c818).fillCircle(-10, -12, 3).fillCircle(10, -12, 3); }
       const pct = i === 0 ? Math.min(100, (GS.bestStage || 0) * 20) : i === 2 ? 34 : i === 3 ? Math.round((GS.careerBest || 0) * 25) : null;
       if (pct !== null) { const pb = this.add.graphics(); pb.fillStyle(0x0a1a3a).fillRect(3, 10, 24, 3); pb.fillStyle(0xf2c818).fillRect(3, 10, 24 * pct / 100, 3); cont.add(pb); cont.add(this.add.text(15, 2, pct + '%', UI.f(6, '#ffffff', true)).setOrigin(0.5)); }
@@ -289,14 +295,14 @@ class MainMenuScene extends Base {
     this.add.text(116, 191.5, 'SQUADRE', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
     this.sexTxt = this.add.text(166, 191.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
     this.sexArrows = [this.add.text(126, 191.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 191.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
-    this.sexTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = 8; this.toggleSex(); });
+    this.sexTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_SEX; this.toggleSex(); });
     // riga della versione grafica, sotto le schede (↓ per arrivarci, ← → per cambiarla: la pagina si ricarica)
     this.gfxSel = GFX_MODES.indexOf(GFX);
     this.gfxBox = this.add.graphics();
     this.add.text(116, 204.5, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
     this.gfxTxt = this.add.text(166, 204.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
     this.gfxArrows = [this.add.text(126, 204.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 204.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
-    this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = 7; this.cycleGfx(1); });
+    this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_GFX; this.cycleGfx(1); });
     // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
     this.langBox = this.add.graphics();
@@ -306,7 +312,7 @@ class MainMenuScene extends Base {
     this.langArrows = [this.add.text(118, 61, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(202, 61, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.langFlag.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.cycleLang(1));
     this.sel = GS.menuSel === undefined ? 0 : GS.menuSel;
-    try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = 7; } } catch (e) { /* */ }
+    try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = MENU_GFX; } } catch (e) { /* */ }
     this.refresh();
   }
   // squadre maschili / femminili: vale per arcade, single match, beach e i miei giocatori nuovi
@@ -337,9 +343,9 @@ class MainMenuScene extends Base {
     const L = this.sel < 0;
     this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
     this.langArrows.forEach(a => a.setVisible(L));
-    const G = this.sel === 7, gm = GFX_MODES[this.gfxSel];
+    const G = this.sel === MENU_GFX, gm = GFX_MODES[this.gfxSel];
     this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 198, 92, 13, 4).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 198, 92, 13, 4);
-    const X = this.sel === 8;
+    const X = this.sel === MENU_SEX;
     this.sexBox.clear().fillStyle(X ? (GS.women ? 0xb83a7a : 0x1a5ad8) : 0x0e2a6a, 0.9).fillRoundedRect(120, 185, 92, 13, 4).lineStyle(X ? 2 : 1, X ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 185, 92, 13, 4);
     this.sexTxt.setText(GS.women ? 'FEMMINILI' : 'MASCHILI').setColor(GS.women ? '#ffb0d8' : '#ffffff');
     this.sexArrows.forEach(a => a.setVisible(X));
@@ -350,16 +356,16 @@ class MainMenuScene extends Base {
   update() {
     if (this.gone) return;
     // righe: lingua (-1), schede 0-3, schede 4-6, grafica (7)
-    if (this.sel === 7) {
+    if (this.sel === MENU_GFX) {
       if (this.jd('left')) this.cycleGfx(-1);
       else if (this.jd('right') || this.btn()) this.cycleGfx(1);
-      else if (this.jd('up')) { this.sel = 8; this.refresh(); SFX.blip(); }
+      else if (this.jd('up')) { this.sel = MENU_SEX; this.refresh(); SFX.blip(); }
       return;
     }
-    if (this.sel === 8) {
+    if (this.sel === MENU_SEX) {
       if (this.jd('left') || this.jd('right') || this.btn()) this.toggleSex();
-      else if (this.jd('up')) { this.sel = 5; this.refresh(); SFX.blip(); }
-      else if (this.jd('down')) { this.sel = 7; this.refresh(); SFX.blip(); }
+      else if (this.jd('up')) { this.sel = this.lastCard >= 4 ? this.lastCard : 5; this.refresh(); SFX.blip(); }
+      else if (this.jd('down')) { this.sel = MENU_GFX; this.refresh(); SFX.blip(); }
       return;
     }
     const row = this.sel < 0 ? -1 : this.sel < 4 ? 0 : 1;
@@ -369,11 +375,11 @@ class MainMenuScene extends Base {
       if (this.jd('down')) { this.sel = 0; this.refresh(); SFX.blip(); }
       return;
     }
-    const lo = row ? 4 : 0, hi = row ? 6 : 3;
+    const lo = row ? 4 : 0, hi = row ? 7 : 3;
     if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
     if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
-    if (this.jd('up')) { this.sel = row ? Math.min(3, Math.max(0, this.sel - 4 + (this.sel === 4 ? 0 : 1))) : -1; this.refresh(); SFX.blip(); }
-    if (this.jd('down')) { this.sel = row ? 8 : Math.min(6, Math.max(4, this.sel + 4 - (this.sel >= 2 ? 1 : 0))); this.refresh(); SFX.blip(); }
+    if (this.jd('up')) { this.sel = row ? this.sel - 4 : -1; this.refresh(); SFX.blip(); }
+    if (this.jd('down')) { if (row) this.lastCard = this.sel; this.sel = row ? MENU_SEX : this.sel + 4; this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
@@ -384,7 +390,8 @@ class MainMenuScene extends Base {
       else if (this.sel === 3) this.scene.start('Leagues');
       else if (this.sel === 4) this.scene.start('BeachSelect');
       else if (this.sel === 5) this.scene.start('MyPlayers');
-      else this.scene.start('Editor');
+      else if (this.sel === 6) this.scene.start('Editor');
+      else this.scene.start('Guide');
     }
   }
 }
