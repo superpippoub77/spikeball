@@ -875,7 +875,8 @@ class MatchScene extends Phaser.Scene {
     for (const p of S.parts) {
       p.vz -= 300 * dt; p.z += p.vz * dt; p.x += p.vx * dt; p.life -= dt;
       if (p.z < 0) { p.z = 0; p.vz = 0; p.vx *= 0.3; }
-      f.fillStyle(p.c, clamp(p.life * 2, 0, 1)).fillRect(p.x - 0.5, p.y - p.z - 0.5, 1.2, 1.2);
+      const sz = p.s || 1.2;   // granelli e qualche zolla più grande
+      f.fillStyle(p.c, clamp(p.life * 2, 0, 1)).fillRect(p.x - sz / 2, p.y - p.z - sz / 2, sz, sz);
     }
     S.parts = S.parts.filter(p => p.life > 0);
   }

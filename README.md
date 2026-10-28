@@ -269,6 +269,9 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 Si cambia dal **menu principale**, nella riga **GRAFICA** in fondo (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
 
+### Sabbia e time-out (beach)
+Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuffo e quando il pallone cade: le buche e la sabbia smossa restano, così durante il set il campo diventa sempre più irregolare dove si gioca di più. A palla ferma ogni squadra può chiedere **un time-out per set** (**R** per il giocatore 1, **Y** per il giocatore 2; sul telefono ⋯ → R): il gioco si ferma ed entra il rastrello che spiana tutta la sabbia (`sabbia.js`).
+
 ### Come si gioca e crediti
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
 - I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).

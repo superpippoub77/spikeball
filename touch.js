@@ -15,7 +15,7 @@ const TOUCH = {
   held: new Set(),
 };
 // tasto finto: stesso evento della tastiera (Phaser legge keyCode, il resto del gioco key)
-const TOUCH_KEYS = { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, z: 90, Enter: 13, Escape: 27, p: 80, x: 88, q: 81, e: 69, f: 70, t: 84, m: 77, k: 75, h: 72 };
+const TOUCH_KEYS = { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, z: 90, Enter: 13, Escape: 27, p: 80, x: 88, q: 81, e: 69, f: 70, t: 84, m: 77, k: 75, h: 72, r: 82 };
 function touchKey(type, key) {
   const kc = TOUCH_KEYS[key], ev = new KeyboardEvent(type, { key, code: key.length === 1 ? 'Key' + key.toUpperCase() : key, bubbles: true, cancelable: true });
   Object.defineProperty(ev, 'keyCode', { get: () => kc }); Object.defineProperty(ev, 'which', { get: () => kc });
@@ -86,7 +86,7 @@ function touchFullscreen() {
   btn('sm', 'II', 'p', { right: 'max(76px, calc(env(safe-area-inset-right) + 54px))', top: '14px', fontSize: '14px' });
   // altri tasti (cambi, pagine, formazione...)
   const more = document.createElement('div'); more.className = 'more'; pad.appendChild(more);
-  for (const k of ['x', 'q', 'e', 'f', 't', 'm', 'k', 'h']) {
+  for (const k of ['x', 'r', 'q', 'e', 'f', 't', 'm', 'k', 'h']) {   // R: time-out nel beach
     const b = btn('', k.toUpperCase(), k); more.appendChild(b);
   }
   const mb = document.createElement('div'); mb.className = 'btn sm'; mb.textContent = '⋯';

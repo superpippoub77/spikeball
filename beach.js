@@ -184,6 +184,7 @@ MatchScene.prototype.buildBeachArena = function (md) {
   const W = CFG.OX * 2, FY = CFG.FLOOR_Y, A = BEACH_ARENAS.find(a => a.id === md.arena) || BEACH_ARENAS[0];
   this.add.image(0, ATOP, makeBeachArena(this, A.id)).setOrigin(0).setScrollFactor(0.82, 1).setDepth(-50);
   const g = this.add.graphics().setDepth(-20), sc = Phaser.Display.Color.IntegerToColor(A.sand);
+  this.sandColor = A.sand;   // colore della sabbia (manto che si deforma: sabbia.js)
   g.fillStyle(sc.clone().darken(10).color, 1).fillRect(0, 196, W, 6);
   g.fillGradientStyle(sc.clone().lighten(4).color, sc.clone().lighten(4).color, sc.clone().darken(14).color, sc.clone().darken(14).color, 1).fillRect(0, 202, W, 60);
   // granelli, impronte e piccole dune
