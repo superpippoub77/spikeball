@@ -163,7 +163,7 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MENU_SEX = 20, MENU_GFX = 21;   // menu principale: righe SQUADRE e GRAFICA (le schede sono 0-7, la lingua -1)
+const MENU_SEX = 20, MENU_GFX = 21, MENU_CTRL = 22;   // menu principale: righe SQUADRE, GRAFICA e COMANDI (le schede sono 0-7, la lingua -1)
 const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
 // scelta maschile / femminile del menu principale: vale per tutte le modalità e resta salvata nel browser
 function setWomen(on) {
@@ -288,21 +288,26 @@ class MainMenuScene extends Base {
       cont.bg = bg;
       return cont;
     });
-    this.hint = this.add.text(160, 181, '', UI.f(6, '#ffd23a')).setOrigin(0.5);
-    this.add.text(160, 218, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    ↓ SQUADRE E GRAFICA', UI.f(5, '#8aa0c8')).setOrigin(0.5);
+    this.hint = this.add.text(160, 179.5, '', UI.f(5.5, '#ffd23a')).setOrigin(0.5);
+    this.add.text(160, 219, 'FRECCE: SCEGLI    Z / INVIO: CONFERMA    ↑ LINGUA    ↓ SQUADRE, GRAFICA, COMANDI', UI.f(4.6, '#8aa0c8')).setOrigin(0.5);
     // riga SQUADRE: maschili o femminili, per tutte le modalità (si ricorda; si può cambiare anche nelle impostazioni)
     this.sexBox = this.add.graphics();
-    this.add.text(116, 191.5, 'SQUADRE', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
-    this.sexTxt = this.add.text(166, 191.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
-    this.sexArrows = [this.add.text(126, 191.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 191.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.add.text(116, 188.5, 'SQUADRE', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.sexTxt = this.add.text(166, 188.5, '', UI.f(5.5, '#ffffff', true)).setOrigin(0.5);
+    this.sexArrows = [this.add.text(126, 188.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 188.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.sexTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_SEX; this.toggleSex(); });
     // riga della versione grafica, sotto le schede (↓ per arrivarci, ← → per cambiarla: la pagina si ricarica)
     this.gfxSel = GFX_MODES.indexOf(GFX);
     this.gfxBox = this.add.graphics();
-    this.add.text(116, 204.5, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
-    this.gfxTxt = this.add.text(166, 204.5, '', UI.f(6, '#ffffff', true)).setOrigin(0.5);
-    this.gfxArrows = [this.add.text(126, 204.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 204.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.add.text(116, 198.5, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.gfxTxt = this.add.text(166, 198.5, '', UI.f(5.5, '#ffffff', true)).setOrigin(0.5);
+    this.gfxArrows = [this.add.text(126, 198.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 198.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_GFX; this.cycleGfx(1); });
+    // riga COMANDI: pannello per provare, cambiare e ripristinare tasti e pulsanti (anche del gamepad; controlli.js)
+    this.ctrlBox = this.add.graphics();
+    this.add.text(116, 208.5, 'COMANDI', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
+    this.ctrlTxt = this.add.text(166, 208.5, 'PROVA E CAMBIA TASTI', UI.f(4.8, '#ffffff', true)).setOrigin(0.5);
+    this.ctrlTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_CTRL; this.openCtrl(); });
     // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
     this.langBox = this.add.graphics();
@@ -315,6 +320,7 @@ class MainMenuScene extends Base {
     try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = MENU_GFX; } } catch (e) { /* */ }
     this.refresh();
   }
+  openCtrl() { this.gone = true; SFX.select(); GS.menuSel = MENU_CTRL; this.scene.start('Controls'); }
   // squadre maschili / femminili: vale per arcade, single match, beach e i miei giocatori nuovi
   toggleSex() { setWomen(!GS.women); SFX.blip(); this.refresh(); }
   // versione grafica: si sceglie con ← → e si applica (ricaricando la pagina) dopo un attimo senza altre pressioni
@@ -344,14 +350,16 @@ class MainMenuScene extends Base {
     this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
     this.langArrows.forEach(a => a.setVisible(L));
     const G = this.sel === MENU_GFX, gm = GFX_MODES[this.gfxSel];
-    this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 198, 92, 13, 4).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 198, 92, 13, 4);
+    this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 194, 92, 9, 3).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 194, 92, 9, 3);
+    const C = this.sel === MENU_CTRL;
+    this.ctrlBox.clear().fillStyle(C ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 204, 92, 9, 3).lineStyle(C ? 2 : 1, C ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 204, 92, 9, 3);
     const X = this.sel === MENU_SEX;
-    this.sexBox.clear().fillStyle(X ? (GS.women ? 0xb83a7a : 0x1a5ad8) : 0x0e2a6a, 0.9).fillRoundedRect(120, 185, 92, 13, 4).lineStyle(X ? 2 : 1, X ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 185, 92, 13, 4);
+    this.sexBox.clear().fillStyle(X ? (GS.women ? 0xb83a7a : 0x1a5ad8) : 0x0e2a6a, 0.9).fillRoundedRect(120, 184, 92, 9, 3).lineStyle(X ? 2 : 1, X ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 184, 92, 9, 3);
     this.sexTxt.setText(GS.women ? 'FEMMINILI' : 'MASCHILI').setColor(GS.women ? '#ffb0d8' : '#ffffff');
     this.sexArrows.forEach(a => a.setVisible(X));
     this.gfxTxt.setText(GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
     this.gfxArrows.forEach(a => a.setVisible(G));
-    this.hint.setText(L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
+    this.hint.setText(C ? 'Z: PROVA, CAMBIA O RIPRISTINA TASTI E PULSANTI (ANCHE GAMEPAD)' : L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
@@ -360,6 +368,12 @@ class MainMenuScene extends Base {
       if (this.jd('left')) this.cycleGfx(-1);
       else if (this.jd('right') || this.btn()) this.cycleGfx(1);
       else if (this.jd('up')) { this.sel = MENU_SEX; this.refresh(); SFX.blip(); }
+      else if (this.jd('down')) { this.sel = MENU_CTRL; this.refresh(); SFX.blip(); }
+      return;
+    }
+    if (this.sel === MENU_CTRL) {
+      if (this.btn() || this.startPressed() || this.jd('right')) this.openCtrl();
+      else if (this.jd('up')) { this.sel = MENU_GFX; this.refresh(); SFX.blip(); }
       return;
     }
     if (this.sel === MENU_SEX) {

@@ -679,7 +679,7 @@ function startGame() {
     pixelArt: true, antialias: false, roundPixels: false, backgroundColor: '#000000', fps: { target: 60, smoothStep: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [MainMenuScene, TeamSelectScene, MatchSettingsScene, MatchStatsScene, CoinTossScene, LeagueSelectScene, LeagueTeamScene, LeagueHubScene, LeagueSetScene, FormazioneScene, MyPlayersScene, EditorScene, BeachSelectScene, BeachSettingsScene, BeachSetScene, MyPlayerScene, LogoScene, MatchScene, EasyScene, ChallengeScene, RankingScene, SelectGameScene, SelectTeamScene, SelectSetsScene,
-            InfoScene, TechnicScene, PracticeScene, GuideScene, CreditsScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
+            InfoScene, TechnicScene, PracticeScene, GuideScene, CreditsScene, ControlsScene, MatchIntroScene, LineupScene, YouWonScene, ContinueScene, CongratsScene, NameEntryScene, GameOverScene, Winner2PScene]
   });
   // gettone: tasto 5 o C (ovunque)
   window.addEventListener('keydown', e => {

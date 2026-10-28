@@ -55,7 +55,7 @@ const GUIDE_TXT = {
       'Un muro pieno rimanda la palla di là e spesso fa punto; una palla solo sfiorata si può ancora difendere.',
       'Subito dopo torni in difesa: il difensore si muove con ← →.']],
     ['IN PARTITA', [
-      'P = pausa   M = audio sì / no   T = comandi in sovraimpressione   ESC = torna al menu.',
+      'P = pausa   M = audio sì / no   T = comandi in sovraimpressione   ESC = torna al menu. Tasti e gamepad si provano e si cambiano nel menu principale, riga COMANDI.',
       'X = CAMBI (a palla ferma, giocatore 1; Q per il giocatore 2): ↑↓ chi esce, ← → chi entra dalla panchina, Z conferma.',
       'STANCHEZZA: a palla ferma vedi la barra dell\'energia e la % di errori di ogni giocatore. Chi è stanco corre e salta meno e sbaglia di più: cambialo.',
       'Il LIBERO ha la maglia di un altro colore, difende e riceve meglio, e non va a rete.',
@@ -114,7 +114,7 @@ const GUIDE_TXT = {
       'A full block sends the ball back and often wins the point; a touched ball can still be defended.',
       'Then you are back in defence: move the defender with ← →.']],
     ['DURING THE MATCH', [
-      'P = pause   M = sound on / off   T = controls overlay   ESC = back to the menu.',
+      'P = pause   M = sound on / off   T = controls overlay   ESC = back to the menu. Keys and gamepads can be tested and remapped in the main menu, CONTROLS row.',
       'X = SUBSTITUTIONS (dead ball, player 1; Q for player 2): ↑↓ who leaves, ← → who comes in from the bench, Z confirms.',
       'FATIGUE: at a dead ball you see each player\'s energy bar and error %. A tired player runs and jumps less and makes more mistakes: sub him.',
       'The LIBERO wears a different colour, defends and receives better and never plays at the net.',
