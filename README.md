@@ -279,6 +279,9 @@ Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuff
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
 - I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).
 
+### Comandi: prova, rimappatura e gamepad
+Nel menu principale la riga **COMANDI** apre un pannello con un mini controller che si illumina quando premi un tasto o un pulsante (direzioni comprese), per il giocatore 1 e il giocatore 2. Per ogni azione (su, giù, sinistra, destra, A, START, indietro, pausa, cambi, time-out) puoi cambiare il **tasto** e il **pulsante del gamepad** (se era già usato, le due azioni si scambiano) e con **RIPRISTINA PREDEFINITI** torni ai tasti originali. I **gamepad** USB o Bluetooth funzionano in tutto il gioco: croce e levetta sinistra per le direzioni, il primo gamepad è del giocatore 1, il secondo del giocatore 2. Le scelte restano salvate nel browser (`controlli.js`).
+
 ### Telefono e tablet
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
 - **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;

@@ -123,7 +123,7 @@ function touchFullscreen() {
   const press = key => { touchHold(key, true); setTimeout(() => touchHold(key, false), 90); };
   let gs = null;
   window.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse' || e.target.closest('#tpad .btn, #tpad .zone, #tpad .more, #editor, #photoCap, #tturn')) return;
+    if (e.pointerType === 'mouse' || e.target.closest('#tpad .btn, #tpad .zone, #tpad .more, #editor, #photoCap, #tturn, #controls')) return;
     if (kbdHidden) { kbdHidden = false; document.body.classList.remove('nopad'); }
     gs = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
   });
