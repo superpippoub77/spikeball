@@ -158,7 +158,8 @@ Le giocatrici hanno i loro fogli (`tools/photo/3d-femminile-A..D.jpg` → `photo
 
 I fotogrammi sono
 in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
-Anche i palloni della 3D vengono da un foglio sprite (`tools/photo/palloni.webp`): ruotano in 8 tempi con la luce ferma e si schiacciano a terra, sulle schiacciate e sui muri.
+Anche i palloni della 3D vengono da un foglio sprite (`tools/photo/3d-palloni.png`): ruotano in 8 tempi con la luce ferma e si schiacciano a terra, sulle schiacciate e sui muri.
+In 3D sono fotorealistici anche l'**arbitro** del pannello della battuta e dei punti (7 gesti ufficiali: fischio, battuta a sinistra / destra, fuori, tocco del muro, rete, punto; `tools/photo/3d-arbitro.png`) e il **pubblico** sugli spalti di tutte le arene (32 persone sedute, che applaudono, con le braccia alzate o la sciarpa; `tools/photo/3d-spettatori.png`), con la maglia bianca ricolorata in tanti colori.
 Per rigenerare i fotogrammi: `tools/photo/README.md`.
 
 ### Squadre personalizzate (squadre.json)

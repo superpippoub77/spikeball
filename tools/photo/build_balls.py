@@ -1,8 +1,8 @@
-# Dal foglio dei palloni (palloni.webp: sfondo magenta, 4 righe x 8 fotogrammi) a ball-sprites.js.
+# Dal foglio dei palloni (3d-palloni.png, prima palloni.webp: sfondo magenta, 4 righe x 8 fotogrammi) a ball-sprites.js.
 # Righe: 0 moderno giallo-blu, 1 classico bianco, 2 beach, 3 moderno schiacciato all'impatto.
 # Ogni fotogramma va in una cella quadrata CELL x CELL con il pallone tondo di diametro DIAM, centrato
 # (stessa scala per tutti: i fotogrammi schiacciati restano più larghi e più bassi).
-# Uso:  python3 build_balls.py palloni.webp ../../ball-sprites.js
+# Uso:  python3 build_balls.py 3d-palloni.png ../../ball-sprites.js  [anteprima.png]
 import sys, json, base64, io
 import numpy as np
 from PIL import Image
@@ -44,9 +44,9 @@ for i, c in enumerate(cuts):
     if i >= 24: y = (i // 8) * CELL + (CELL + DIAM) // 2 - im.height   # schiacciato: appoggiato sotto
     atlas.paste(im, (x, y), im)
 bio = io.BytesIO(); atlas.save(bio, 'PNG', optimize=True)
-js = ('// Generato da tools/photo/build_balls.py dal foglio palloni.webp: non modificare a mano.\n'
+js = (f'// Generato da tools/photo/build_balls.py dal foglio {src.split("/")[-1]}: non modificare a mano.\n'
       f'const BALL_SPRITES = {json.dumps(dict(cell=CELL, diam=DIAM, rows=dict(pro=0, classic=1, beach=2, squash=3)))};\n'
       f"BALL_SPRITES.atlas = 'data:image/png;base64,{base64.b64encode(bio.getvalue()).decode()}';\n")
 open(out, 'w').write(js)
-atlas.save(out.replace('.js', '_preview.png'))
+if len(sys.argv) > 3: atlas.save(sys.argv[3])   # anteprima facoltativa (fuori dal repository)
 print('celle', CELL, 'diametro', DIAM, 'kB', len(js) // 1024)
