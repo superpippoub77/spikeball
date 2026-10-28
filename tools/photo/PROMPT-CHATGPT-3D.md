@@ -129,6 +129,22 @@ Outfit: plain pure white sports crop top in standard beach volleyball competitio
 
 Poi gli stessi fogli A-D, aggiungendo: `Barefoot on sand-like movements (no sand drawn), same outfit colors.`
 
+### Fogli beach femminili (3d-beach-femminile-A..D)
+
+Il foglio `3d-beach-femminile.jpg` è un riferimento (4 viste ferme, costume bordeaux su sfondo viola): non contiene i
+movimenti e i suoi colori non si possono ricolorare. Finché non ci sono i fogli A-D, in gioco le giocatrici beach usano le
+pose delle giocatrici indoor trasformate (top corto e slip nei colori della squadra, scalze, senza ginocchiere).
+Per i fogli veri: allega il riferimento e usa per ogni foglio il testo del foglio indoor (A, B, C, D) con questa aggiunta:
+
+```
+Use the attached woman only as reference for face, hair (ponytail) and sports sunglasses, with the athletic build of a
+professional beach volleyball player (same body proportions in every frame). Outfit for EVERY frame: plain pure WHITE
+sports crop top (competition style, no numbers or logos) and plain pure RED #E00000 bikini bottom, BAREFOOT, NO knee pads,
+NO socks, NO shoes. Background: solid flat magenta #FF00FF, no sand, no shadows, no text.
+```
+
+File: `3d-beach-femminile-A.png` … `3d-beach-femminile-D.png`.
+
 ## 7. Palloni
 
 ```

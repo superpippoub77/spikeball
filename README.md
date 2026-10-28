@@ -154,7 +154,7 @@ Nella 3D i giocatori sono fotogrammi presi da quattro fogli sprite generati con 
 - battuta da ferma (con l'attesa a palla in mano), battuta in salto, salto flottante;
 - esultanze e delusione.
 
-Le giocatrici hanno i loro fogli (`tools/photo/3d-femminile-A..D.jpg` → `photo-sprites-f.js`). Per ora dai fogli femminili mancano palleggio in salto, pallonetto, muro, salto flottante ed esultanze: usano pose simili della stessa giocatrice finché quelle righe non vengono rigenerate.
+Le giocatrici hanno i loro fogli (`tools/photo/3d-femminile-A..D.jpg` → `photo-sprites-f.js`). Nel **beach** (3D e PIXEL FOTO) giocatori e giocatrici sono scalzi e senza ginocchiere né calzettoni; le giocatrici hanno il costume da gara (top corto e slip nei colori della squadra), ricavato in ogni posa lungo l'asse del corpo (vale anche nei tuffi e a terra). Per ora dai fogli femminili mancano palleggio in salto, pallonetto, muro, salto flottante ed esultanze: usano pose simili della stessa giocatrice finché quelle righe non vengono rigenerate.
 
 I fotogrammi sono
 in proporzione reale con la rete e con la telecamera più vicina. Maglia, pantaloncini e pelle vengono ricolorati con i colori di ogni squadra; le divise scure restano quelle originali.
