@@ -41,6 +41,7 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `league.js` | **Campionati** da `campionati.json`: squadre generate, classifica FIPAV, simulazione, schermate del campionato |
 | `photo-sprites.js` | Atlante dei giocatori 3D (generato da `tools/photo`, non si modifica a mano) |
 | `photo.js` | Versione **3D**: ricolore per squadra e animazioni dei giocatori fotorealistici |
+| `scene3d.js` | Versione **3D**: arbitro fotorealistico nel pannello (`makeRefTex`) e pubblico fotorealistico sugli spalti (`fanPerson`, maglia ricolorata), da `scene3d-sprites.js` (`tools/photo/build_scene3d.py`) |
 | `lineup.js` | **Formazione**: rosa di ogni squadra, titolari automatici, scelta dei giocatori in ogni posto (scena `Formazione`) |
 | `beach.js` | **Beach volley**: squadre da spiaggia, arene sulla sabbia, menu, partita al meglio dei 3 set |
 | `myplayer.js` | **I miei giocatori**: elenco, scheda, foto (telecamera o file), inserimento nella squadra, crescita delle statistiche a fine partita, salvataggio locale / file / server |

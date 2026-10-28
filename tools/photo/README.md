@@ -48,15 +48,29 @@ python3 build_sheet2.py foglio-sprite-2.webp ../../photo-sprites.js
 (maglia bianca attaccata ai pantaloncini, pantaloncini rossi, pelle) e crea l'atlante. In `photo.js` → `photoFrame` ogni
 stato del giocatore sceglie il fotogramma della riga giusta. Un foglio nuovo con lo stesso schema si usa senza toccare il codice.
 
-## Palloni: palloni.webp
+## Palloni: 3d-palloni.png
 Sfondo magenta, 4 righe x 8 fotogrammi: pallone moderno giallo-blu (PRO), classico bianco (CLASSIC), beach, moderno schiacciato.
+(`palloni.webp` è il foglio precedente.)
 
 ```sh
-python3 build_balls.py palloni.webp ../../ball-sprites.js
+python3 build_balls.py 3d-palloni.png ../../ball-sprites.js
 ```
 
 Nella 3D `balls.js` usa questi fotogrammi: rotazione in 8 tempi con la luce ferma e schiacciamento all'impatto
 (a terra, schiacciata, muro). In ARCADE e HD restano i palloni disegnati.
+
+## Arbitro e spettatori: 3d-arbitro.png, 3d-spettatori.png
+Arbitro: 1 riga di 7 gesti (fischio, battuta a sinistra e a destra dello schermo, fuori, tocco del muro, rete, punto).
+Spettatori: 4 righe x 8 persone con la maglietta bianca (seduti, braccia alzate, applauso, sciarpa o bandierina).
+
+```sh
+python3 build_scene3d.py 3d-arbitro.png 3d-spettatori.png ../../scene3d-sprites.js
+```
+
+Lo script ritaglia le figure sul magenta (toglie anche il riflesso rosa sulle braccia un po' trasparenti), porta l'arbitro
+a una scala unica con il centro della testa per allinearlo nel pannello, e per gli spettatori salva la mappa della maglia
+bianca (zone bianche grandi nella metà bassa: occhi e denti restano bianchi). Nella 3D `scene3d.js` mette l'arbitro nel
+pannello (`makeRefTex`) e le persone sugli spalti (`fanPerson`), con la maglia ricolorata.
 
 ## Foglio precedente (divisa nera)
 
