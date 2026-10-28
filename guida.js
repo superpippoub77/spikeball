@@ -57,8 +57,9 @@ const GUIDE_TXT = {
     ['IN PARTITA', [
       'P = pausa   M = audio sì / no   T = comandi in sovraimpressione   ESC = torna al menu.',
       'X = CAMBI (a palla ferma, giocatore 1; Q per il giocatore 2): ↑↓ chi esce, ← → chi entra dalla panchina, Z conferma.',
+      'STANCHEZZA: a palla ferma vedi la barra dell\'energia e la % di errori di ogni giocatore. Chi è stanco corre e salta meno e sbaglia di più: cambialo.',
       'Il LIBERO ha la maglia di un altro colore, difende e riceve meglio, e non va a rete.',
-      'BEACH: la sabbia si deforma a ogni passo, salto e tuffo. R = TIME-OUT (uno per set, a palla ferma): il rastrello la spiana.',
+      'BEACH: la sabbia si deforma a ogni passo, salto e tuffo, e sulla sabbia smossa si corre e si salta meno. R = TIME-OUT (uno per set, a palla ferma): il rastrello la spiana.',
       'V = scossa dello schermo sì / no   K = effetto CRT   H = cambia grafica (ARCADE, PIXEL FOTO, HD, 3D).',
       'ARCADE: gettone con 5 o C, START con INVIO o 1. Squadre maschili o femminili e grafica si scelgono anche nel menu principale.']],
     ['TELEFONO E 2 GIOCATORI', [
@@ -114,8 +115,9 @@ const GUIDE_TXT = {
     ['DURING THE MATCH', [
       'P = pause   M = sound on / off   T = controls overlay   ESC = back to the menu.',
       'X = SUBSTITUTIONS (dead ball, player 1; Q for player 2): ↑↓ who leaves, ← → who comes in from the bench, Z confirms.',
+      'FATIGUE: at a dead ball you see each player\'s energy bar and error %. A tired player runs and jumps less and makes more mistakes: sub him.',
       'The LIBERO wears a different colour, defends and receives better and never plays at the net.',
-      'BEACH: the sand gets dug up by every step, jump and dive. R = TIME-OUT (one per set, dead ball): the rake smooths it.',
+      'BEACH: the sand gets dug up by every step, jump and dive, and on rough sand you run and jump less. R = TIME-OUT (one per set, dead ball): the rake smooths it.',
       'V = screen shake on / off   K = CRT effect   H = change graphics (ARCADE, PIXEL PHOTO, HD, 3D).',
       'ARCADE: coin with 5 or C, START with ENTER or 1. Men\'s / women\'s teams and graphics can also be chosen in the main menu.']],
     ['PHONE AND 2 PLAYERS', [

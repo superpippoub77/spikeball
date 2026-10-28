@@ -28,6 +28,21 @@ MatchScene.prototype.sandDig = function (x, y, w, k) {
   G.dirty = true;
 };
 
+// appoggi: quanto è smossa la sabbia sotto i piedi (media delle buche e dei bordi intorno, 0 = liscia, 1 = molto
+// smossa). Con la sabbia smossa si corre fino al 25% più piano, il salto è fino al 7% più basso e il tuffo fino al
+// 15% più corto (match.js: movePlayer, jump, startDive); dopo il time-out la sabbia è liscia e si torna al massimo.
+MatchScene.prototype.sandRough = function (p) {
+  const G = this.sandGrid; if (!G) return 0;
+  const cols = Math.ceil(CFG.OX * 2 / SAND_GRID.dx), cx = Math.round(SX(p.x) / SAND_GRID.dx), cy = Math.round((p.dep - SAND_GRID.y0) / SAND_GRID.dy);
+  let s = 0, n = 0;
+  for (let r = cy - 1; r <= cy + 1; r++) for (let c = cx - 3; c <= cx + 3; c++) {
+    if (r < 0 || r >= SAND_GRID.rows || c < 0 || c >= cols) continue;
+    s += Math.abs(G.h[r * cols + c]); n++;
+  }
+  return n ? clamp(s / n / 0.9, 0, 1) : 0;
+};
+MatchScene.prototype.footK = function (p) { return this.beach ? 1 - 0.25 * this.sandRough(p) : 1; };
+
 // spruzzi più evidenti (anche qualche zolla) e deformazione del manto a ogni impronta
 const _sandBeach = MatchScene.prototype.sand;
 MatchScene.prototype.sand = function (x, dep, n, power, mark) {

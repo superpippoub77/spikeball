@@ -269,8 +269,11 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 Si cambia dal **menu principale**, nella riga **GRAFICA** in fondo (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
 
+### Stanchezza
+Ogni giocatore ha un'**energia** (100% a inizio set) che cala a ogni punto giocato e con gli sforzi (corsa, salti, tuffi); chi è in panchina recupera. Con la stanchezza calano velocità, salto e precisione di ricezione, alzata, attacco e battuta, quindi crescono gli errori. A palla ferma un riquadro mostra per ogni giocatore della tua squadra la **barra dell'energia** e la **percentuale di errori** (palle fuori o in rete, ricezioni sbagliate, palle cadute nella sua zona); gli stessi dati, anche per chi è in panchina, sono nel pannello dei **cambi** (X / Q), per decidere chi sostituire (`fatica.js`).
+
 ### Sabbia e time-out (beach)
-Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuffo e quando il pallone cade: le buche e la sabbia smossa restano, così durante il set il campo diventa sempre più irregolare dove si gioca di più. A palla ferma ogni squadra può chiedere **un time-out per set** (**R** per il giocatore 1, **Y** per il giocatore 2; sul telefono ⋯ → R): il gioco si ferma ed entra il rastrello che spiana tutta la sabbia (`sabbia.js`).
+Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuffo e quando il pallone cade: le buche e la sabbia smossa restano, così durante il set il campo diventa sempre più irregolare dove si gioca di più. Il manto conta anche nel gioco: sulla sabbia smossa si corre fino al 25% più piano, si salta fino al 7% meno e il tuffo arriva fino al 15% meno lontano (si torna al massimo dopo il time-out). A palla ferma ogni squadra può chiedere **un time-out per set** (**R** per il giocatore 1, **Y** per il giocatore 2; sul telefono ⋯ → R): il gioco si ferma ed entra il rastrello che spiana tutta la sabbia (`sabbia.js`).
 
 ### Come si gioca e crediti
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
