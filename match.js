@@ -48,6 +48,8 @@ class MatchScene extends Phaser.Scene {
     this.simT = 0; this.serveMsg = null; this.phantom = null; this.thunder = null; this.aimD = 6;
     // la scena viene riusata: niente oggetti della partita precedente (modalità moderna)
     this.mSb = null; this.mSbT = null; this.mSetT = null; this.hudCam = null; this.ballRef = null; this.zoom = 0; this.camCx = undefined; this.camBot = undefined;
+    // (anche legenda delle battute, promemoria di cambi e time-out, sabbia del beach: altrimenti puntano a oggetti distrutti)
+    this.srvHelp = null; this.subHint = null; this.toHint = null; this.sandFx = null; this.sandGrid = null; this.sandTex = null; this.sandImg = null; this.timeoutFx = null; this.sub = null; this.fatObjs = null;
     const d = this.cfg;
     makeCommon(this); makeArena(this); makeBalls(this);
     // regole: arcade 1991 / rally point moderno (impostazioni di Thunder Spikes)
@@ -704,7 +706,7 @@ class MatchScene extends Phaser.Scene {
     if (p.animT > 0) p.animT -= dt;
     if (p.hitWin > 0 && !(this.state === 'serve' && p === this.server)) p.hitWin -= dt;
     if (p.diveT > 0) {
-      p.diveT -= dt; p.x += p.diveDir * CFG.DIVE_V * dt; p.state = 'dive';
+      p.diveT -= dt; p.x += p.diveDir * CFG.DIVE_V * (p.diveK || 1) * dt; p.state = 'dive';
       if (Math.random() < dt * 30) this.sand(p.x + p.diveDir * 6, p.dep, 2, 55, 0);
       if (p.diveT <= 0) { p.downT = 0.55; this.sand(p.x, p.dep, 12, 70, 18); }   // solco del tuffo
       this.clampX(p); return;
@@ -724,7 +726,7 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && p === this.server && this.servePhase !== 'walk') return;
 
     const plan = t.plan;
-    const sandK = this.beach ? CFG.SAND_K : 1;   // sulla sabbia si corre più piano
+    const sandK = this.beach ? CFG.SAND_K * this.footK(p) : 1;   // sulla sabbia si corre più piano (ancora di più dove è smossa: sabbia.js)
     const pSpd = this.trOf(p).spd;   // c'è chi è più rapido e chi meno
     let chase = 1;                  // scatto verso una palla lontana
     let target = side * p.homeD, speed = CFG.RUN * (t.human ? 1 : 0.85 + t.skill * 0.3) * (t.spdK || 1) * sandK * pSpd, human = false;
@@ -850,7 +852,9 @@ class MatchScene extends Phaser.Scene {
 
   // tempo per arrivare in cima al salto del battitore (salto flottante = salto più basso)
   jsPeak() { return CFG.TPEAK * (this.serveKind === 'jfloat' ? CFG.JFLOAT_K : 1); }
-  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k; p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; p.srvAir = false; }
+  // appoggi sulla sabbia (beach): 1 = sabbia liscia, meno dove il manto è smosso (sabbia.js); 1 sul parquet
+  footK() { return 1; }
+  jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k * (this.beach ? 0.72 + 0.28 * this.footK(p) : 1); p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; p.srvAir = false; }
 
   // ------------------------------------------------ sabbia (beach): spruzzi che si alzano e impronte che restano
   // x = posizione in campo, dep = profondità, n = granelli, power = forza dello spruzzo, mark = larghezza dell'impronta (0 = nessuna)
@@ -887,6 +891,7 @@ class MatchScene extends Phaser.Scene {
 
   startDive(p, dir, dist) {
     p.diveT = clamp((dist - 6) / CFG.DIVE_V, 0.08, 0.28); p.diveDir = dir; p.state = 'dive';
+    p.diveK = this.beach ? 0.4 + 0.6 * this.footK(p) : 1;   // dalla sabbia smossa ci si spinge meno: il tuffo arriva meno lontano
     SFX.tone(200, 0.08, 'triangle', 0.08, -80);
     if (p.team.human) this.popup(p, 'Go!');
   }
