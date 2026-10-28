@@ -268,6 +268,10 @@ Apri `index.html` nel browser (meglio con un server locale, es. `npx serve`). Ph
 
 Si cambia dal **menu principale**, nella riga **GRAFICA** in fondo (↓ per arrivarci, ← → per scegliere: dopo un attimo la pagina si ricarica con la nuova grafica), con il tasto **H** (ARCADE → PIXEL FOTO → HD → 3D) oppure dall'indirizzo: `index.html?gfx=pixel` / `pixfoto` / `hd` / `3d`. La scelta viene ricordata.
 
+### Come si gioca e crediti
+- Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
+- I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).
+
 ### Telefono e tablet
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
 - **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;
