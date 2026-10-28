@@ -85,6 +85,7 @@ class MatchScene extends Phaser.Scene {
     this.ball = { x: 0, h: 0, vx: 0, vy: 0, held: null, live: false, bouncing: false, ver: 0, lastTeam: null, lastPlayer: null, lastKind: null, spin: 0, trail: [] };
     this.shadowG = this.add.graphics().setDepth(5);
     this.fx = this.add.graphics().setDepth(990);
+    if (md && md.ball === 'ball_beach' && typeof makeBeachBall === 'function') makeBeachBall(this);   // anche senza passare dalle impostazioni beach
     this.ballSpr = this.add.image(0, 0, md ? md.ball : 'ball').setDepth(1000);
     // palloni del foglio sprite (balls.js, HD e 3D): fotogrammi di rotazione e di schiacciamento
     const bk = md ? md.ball : 'ball';

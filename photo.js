@@ -60,26 +60,79 @@ function photoRecolor(P, beach, sc = 1) {
     }
   }
   if (beach) photoBeach(d, R, W, H, sk, ref, S.cw * sc, S.ch * sc);
+  if (beach && ps.fem) photoBikini(d, R, W, H, sk, S.cw * sc, S.ch * sc);
   g.putImageData(img, 0, 0);
   return c;
 }
 
-// beach volley: niente scarpe, calzettoni e ginocchiere. In ogni cella, i pixel non ricolorati (bianchi/grigi)
-// della parte bassa della figura diventano pelle: piedi nudi e gambe scoperte.
-function photoBeach(d, R, W, H, sk, ref, cw, ch) {
+// asse del corpo in una cella dell'atlante: dal centro della maglia (zona 80) al centro dei pantaloncini (160),
+// con le mediane delle coordinate (i pixel sparsi lontani non spostano l'asse). null se manca una delle due zone.
+function photoAxis(R, W, x0, y0, x1, y1) {
+  const P = { 80: [[], []], 160: [[], []] };
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const r = R[(y * W + x) * 4]; if (r === 80 || r === 160) { P[r][0].push(x); P[r][1].push(y); } }
+  if (P[80][0].length < 30 || P[160][0].length < 20) return null;
+  const med = v => v.sort((p, q) => p - q)[v.length >> 1];
+  const ax = med(P[80][0]), ay = med(P[80][1]), bx = med(P[160][0]), by = med(P[160][1]);
+  const L = Math.hypot(bx - ax, by - ay) || 1;
+  return { ax, ay, ux: (bx - ax) / L, uy: (by - ay) / L, t: (x, y) => (x - ax) * (bx - ax) / L + (y - ay) * (by - ay) / L, L };
+}
+const cellBounds = (cx, cy, cw, ch, W, H) => [Math.round(cx), Math.round(cy), Math.min(W, Math.round(cx + cw)), Math.min(H, Math.round(cy + ch))];
+
+// beach volley femminile: costume da gara sulle pose delle giocatrici. Lungo l'asse del corpo (funziona anche nei tuffi
+// e a terra) la parte bassa della maglia diventa pelle (top corto) e la parte dei pantaloncini verso le cosce diventa
+// pelle (slip); la pelle nuova ha ombre attenuate.
+function photoBikini(d, R, W, H, sk, cw, ch) {
   for (let cy = 0; cy + ch <= H + 1; cy += ch) for (let cx = 0; cx + cw <= W + 1; cx += cw) {
-    let top = -1, bot = -1;
-    for (let y = cy; y < Math.min(H, cy + ch) && top < 0; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { top = y; break; }
-    for (let y = Math.min(H, cy + ch) - 1; y >= cy && bot < 0; y--) for (let x = cx; x < Math.min(W, cx + cw); x++) if (d[(y * W + x) * 4 + 3] > 128) { bot = y; break; }
-    if (top < 0 || bot - top < 20) continue;
-    const y0 = Math.round(top + (bot - top) * 0.58);
-    for (let y = y0; y <= bot; y++) for (let x = cx; x < Math.min(W, cx + cw); x++) {
-      const i = (y * W + x) * 4;
-      if (d[i + 3] < 30 || R[i]) continue;
-      const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), lum = r * 0.299 + g * 0.587 + b * 0.114;
-      if (mx - mn > 60) continue;                        // le zone colorate restano
-      const f = clamp(0.6 + lum / 420, 0.6, 1.12);        // ginocchiere nere, calzettoni e scarpe diventano pelle
+    const [x0, y0, x1, y1] = cellBounds(cx, cy, cw, ch, W, H), A = photoAxis(R, W, x0, y0, x1, y1);
+    if (!A) continue;
+    const ts = { 80: [], 160: [] };
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const r = R[(y * W + x) * 4]; if (r === 80 || r === 160) ts[r].push(A.t(x, y)); }
+    const ext = {};
+    for (const r of [80, 160]) { const v = ts[r].sort((p, q) => p - q); ext[r] = [v[Math.floor(v.length * 0.05)], v[Math.floor(v.length * 0.95)]]; }
+    const topCut = ext[80][0] + (ext[80][1] - ext[80][0]) * 0.56, botCut = ext[160][0] + (ext[160][1] - ext[160][0]) * 0.5;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * W + x) * 4, r = R[i]; if ((r !== 80 && r !== 160) || d[i + 3] === 0) continue;
+      if (A.t(x, y) <= (r === 80 ? topCut : botCut)) continue;
+      const f = clamp(0.94 + (R[i + 1] / 32 * 0.8 - 0.94) * 0.45, 0.7, 1.08);
       d[i] = clamp(sk[0] * f, 0, 255); d[i + 1] = clamp(sk[1] * f, 0, 255); d[i + 2] = clamp(sk[2] * f, 0, 255);
+    }
+  }
+}
+
+// beach volley: piedi nudi e gambe scoperte. In ogni cella i pixel non ricolorati e poco colorati (ginocchiere bianche o
+// nere, calzettoni, scarpe) oltre il bacino, lungo l'asse del corpo, diventano pelle: vale anche nei tuffi e a terra.
+// Senza maglia o pantaloncini visibili si usa la parte bassa della figura.
+function photoBeach(d, R, W, H, sk, ref, cw, ch) {
+  const skinAt = (i, lum) => { const f = 0.8 + 0.2 * lum / 255; d[i] = clamp(sk[0] * f, 0, 255); d[i + 1] = clamp(sk[1] * f, 0, 255); d[i + 2] = clamp(sk[2] * f, 0, 255); };
+  for (let cy = 0; cy + ch <= H + 1; cy += ch) for (let cx = 0; cx + cw <= W + 1; cx += cw) {
+    const [x0, y0, x1, y1] = cellBounds(cx, cy, cw, ch, W, H), A = photoAxis(R, W, x0, y0, x1, y1);
+    let cut = null, cutLeg = null;   // cutLeg: oltre qui un pezzo "di maglia" è una ginocchiera bianca sulla gamba
+    if (A) {   // dal bacino in poi lungo l'asse (10% più vicino alla maglia dei pantaloncini): gambe, ginocchia e piedi
+      const v = [];
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (R[(y * W + x) * 4] === 160) v.push(A.t(x, y));
+      v.sort((p, q) => p - q); cut = v[Math.floor(v.length * 0.1)]; cutLeg = v[Math.floor(v.length * 0.7)];
+    }
+    // ginocchiere bianche nelle zone pelle o senza zona: basta che siano oltre il centro della maglia (la testa, con il
+    // bianco degli occhi, sta dall'altra parte)
+    const cutW = A ? 0 : null;
+    let top = -1, bot = -1;
+    if (!A) {
+      for (let y = y0; y < y1 && top < 0; y++) for (let x = x0; x < x1; x++) if (d[(y * W + x) * 4 + 3] > 128) { top = y; break; }
+      for (let y = y1 - 1; y >= y0 && bot < 0; y--) for (let x = x0; x < x1; x++) if (d[(y * W + x) * 4 + 3] > 128) { bot = y; break; }
+      if (top < 0 || bot - top < 20) continue;
+    }
+    const yStart = A ? y0 : Math.round(top + (bot - top) * 0.55);
+    for (let y = yStart; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * W + x) * 4, reg = R[i];
+      if (d[i + 3] < 12 || reg === 160) continue;
+      if (reg === 80) { if (A && A.t(x, y) > cutLeg) skinAt(i, Math.min(R[i + 1] * 5, 200)); continue; }
+      const r = d[i], g = d[i + 1], b = d[i + 2], sat = Math.max(r, g, b) - Math.min(r, g, b), lum = r * 0.299 + g * 0.587 + b * 0.114;
+      const whiteFree = reg !== 80 && lum > 120 && sat < 50;   // bianco e grigio chiaro (anche i bordi sfumati)
+      if (A && A.t(x, y) <= (whiteFree ? cutW : cut)) continue;
+      // zone senza colore: tutto ciò che è grigio o nero; nelle zone pelle e maglia solo il bianco (ginocchiere bianche
+      // finite nella zona sbagliata), la pelle vera resta
+      if (reg ? !whiteFree : sat > 60) continue;
+      skinAt(i, Math.min(lum, 200));
     }
   }
 }
