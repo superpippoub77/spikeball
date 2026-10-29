@@ -313,13 +313,10 @@ function photoFrame3(m, p, pose) {
   // rincorsa (attacco o battuta in salto): passi, passo lungo con le braccia indietro, piedi pari
   if (p.z <= 0 && (pose === 'appr0' || pose === 'appr' || pose === 'plant' || st === 'run')) {
     const tj = m.takeoffIn(p);
-    // la riga 'appr' (passi, passo lungo con le braccia indietro, piedi pari, stacco) dura quanto la rincorsa vera:
-    // APPR_RUN per l'attacco, un po' di più per la battuta in salto (che parte da più lontano)
-    const srvA = m.state === 'serve' && server, win = srvA ? CFG.APPR_T + 0.35 : CFG.APPR_RUN;
-    if (tj !== null && tj < win) {
-      const k = 1 - clamp(tj / win, 0, 1);
-      return pick('appr', k * 5.4);
-    }
+    // rincorsa come in Power Spikes (attacco e battuta in salto): passi di corsa veri (riga 'run', al ritmo della
+    // distanza percorsa), poi negli ultimi APPR_T secondi passo lungo con le braccia indietro, piedi pari e stacco
+    if (tj !== null && tj < CFG.APPR_T) return pick('appr', 3 + (1 - clamp(tj / CFG.APPR_T, 0, 1)) * 2.9);
+    if (tj !== null && tj < CFG.APPR_RUN + 0.6 && (st === 'run' || pose === 'appr0')) return pick('run', (p.runT * 12) % A.run.length);
   }
   if (st === 'run' || pose === 'run1' || pose === 'run2') return pick('run', (p.runT * 12) % A.run.length);
   // in aria

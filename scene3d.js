@@ -19,7 +19,10 @@ startGame = function () {
 // ---------------- arbitro ----------------
 const _makeRefTex3d = makeRefTex;
 makeRefTex = function (scene, pose) {
-  const fr = S3D.ref && SCENE3D.ref.frames.find(f => f.name === pose);
+  // battuta / punto a destra: nel foglio il braccio attraversa il petto; si usa il gesto a sinistra specchiato,
+  // come nelle altre versioni (braccio teso verso il lato della squadra)
+  const mirror = pose === 'pointR';
+  const fr = S3D.ref && SCENE3D.ref.frames.find(f => f.name === (mirror ? 'pointL' : pose));
   if (!fr) return _makeRefTex3d(scene, pose);
   const key = 'ref_' + pose;
   if (scene.textures.exists(key)) return key;
@@ -33,7 +36,9 @@ makeRefTex = function (scene, pose) {
   // tutto nel pannello); testa al centro del pannello
   const k = 54 / SCENE3D.ref.h;
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  if (mirror) { c.save(); c.translate(W, 0); c.scale(-1, 1); }
   c.drawImage(S3D.ref, fr.x, 0, fr.w, fr.h, W / 2 - fr.hx * k, 2, fr.w * k, fr.h * k);
+  if (mirror) c.restore();
   texDone(t); return key;
 };
 

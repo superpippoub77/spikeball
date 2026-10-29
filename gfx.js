@@ -398,7 +398,11 @@ function dropTeamTex(scene, code) {
 
 function makePlayerTex(scene, code, i) {
   if (usePhoto()) return makePhotoTex(scene, code);
-  const key = plKey(code, i);
+  return makeDrawnPlayerTex(scene, code, i, plKey(code, i));
+}
+// giocatore disegnato (ARCADE / HD) in tutte le pose; in PIXEL FOTO serve per le pose di fronte e di spalle
+// del palleggio in salto, che nel foglio foto non ci sono (chiave 'pld_...')
+function makeDrawnPlayerTex(scene, code, i, key) {
   if (scene.textures.exists(key)) return key;
   const P = playerPal(code, i), hair = P.ha[i % P.ha.length];
   // pose su righe da 12: in HD una riga sola sarebbe larga oltre 7000 px, più della texture massima di molti telefoni

@@ -329,6 +329,8 @@ const I18N_ROWS = [
   ['nessuna = dall\'alto', 'none = overhand', 'aucune = smashé', 'keine = von oben', 'ninguna = de arriba'],
   ['{0} (verso rete) = IN SALTO', '{0} (towards the net) = JUMP', '{0} (vers le filet) = SAUTÉ', '{0} (zum Netz) = SPRUNG', '{0} (hacia la red) = EN SALTO'],
   ['{0}+GIU = SALTO FLOTTANTE', '{0}+DOWN = JUMP FLOAT', '{0}+BAS = FLOTTANT SAUTÉ', '{0}+UNTEN = SPRUNG-FLATTER', '{0}+ABAJO = FLOTANTE EN SALTO'],
+  ['{0} (verso rete) = IN SALTO (jump spin)', '{0} (towards the net) = JUMP SPIN', '{0} (vers le filet) = SAUTÉ (jump spin)', '{0} (zum Netz) = SPRUNG (jump spin)', '{0} (hacia la red) = EN SALTO (jump spin)'],
+  ['GIU = SALTO FLOTTANTE (jump float)', 'DOWN = JUMP FLOAT', 'BAS = FLOTTANT SAUTÉ (jump float)', 'UNTEN = SPRUNG-FLATTER (jump float)', 'ABAJO = FLOTANTE EN SALTO (jump float)'],
   ['SU = TOWERING (poi SU+Z)', 'UP = TOWERING (then UP+Z)', 'HAUT = CHANDELLE (puis HAUT+Z)', 'OBEN = TURMHOCH (dann OBEN+Z)', 'ARRIBA = ALTÍSIMO (luego ARRIBA+Z)'],
   ['SU+{0} = PHANTOM (poi GIU+{1}+Z)', 'UP+{0} = PHANTOM (then DOWN+{1}+Z)', 'HAUT+{0} = FANTÔME (puis BAS+{1}+Z)', 'OBEN+{0} = PHANTOM (dann UNTEN+{1}+Z)', 'ARRIBA+{0} = FANTASMA (luego ABAJO+{1}+Z)'],
   ['SU+{0} = THUNDER (poi GIU+{1}+Z)', 'UP+{0} = THUNDER (then DOWN+{1}+Z)', 'HAUT+{0} = TONNERRE (puis BAS+{1}+Z)', 'OBEN+{0} = DONNER (dann UNTEN+{1}+Z)', 'ARRIBA+{0} = TRUENO (luego ABAJO+{1}+Z)'],
