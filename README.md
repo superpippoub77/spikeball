@@ -305,8 +305,8 @@ Su **iPhone** il browser non permette lo schermo intero a una pagina: apri il gi
 ## Come si gioca (dal manuale)
 - **Battuta:** il battitore è già fuori dal campo con la palla in mano. Pulsante per lanciare, pulsante per colpire quando la palla diventa rossa ("HIT! PRESS BUTTON!"). Frecce riferite al battitore rivolto verso la rete:
   - neutro + Z, Z = battuta dall'alto
-  - avanti + Z = battuta in salto (rincorsa e stacco automatici dietro la linea, Z in cima al salto)
-  - GIÙ-avanti + Z = **salto flottante** (due passi, piccolo salto, colpo secco a mano aperta: la palla va tesa, balla in volo e cade di colpo; anche l'IA la usa)
+  - avanti + Z = battuta in salto **jump spin** (rincorsa lunga e stacco automatici dietro la linea, Z in cima al salto)
+  - GIÙ + Z (anche GIÙ-avanti) = **salto flottante / jump float** (rincorsa corta di due passi che parte più indietro, piccolo salto, colpo secco a mano aperta: la palla va tesa, balla in volo e cade di colpo; la usano tutte le squadre, anche l'IA)
   - in attesa del fischio il battitore sta in piedi con la palla tra le mani; nella battuta dall'alto lancia la palla e porta il braccio caricato in alto
   - SU + Z, SU + Z = **TOWERING SERVE** (circa 5 s in aria)
   - SU-avanti + Z, GIÙ-avanti + Z = **PHANTOM SERVE** (la palla si sdoppia in 3 scendendo)

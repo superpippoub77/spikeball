@@ -422,7 +422,8 @@ class MatchScene extends Phaser.Scene {
       if (hum) {
         if (this.pressed(t) && this.panelT > 0.3) {
           const u = this.up(t), dx = this.dirX(t);
-          this.toss(u && dx > 0 ? 'phantom' : u && dx < 0 ? 'thunder' : u ? 'tower' : dx > 0 ? (this.down(t) ? 'jfloat' : 'jump') : 'float');
+          // ↓ (o ↓ + avanti) = salto flottante, avanti = salto in rotazione (jump spin)
+          this.toss(u && dx > 0 ? 'phantom' : u && dx < 0 ? 'thunder' : u ? 'tower' : this.down(t) ? 'jfloat' : dx > 0 ? 'jump' : 'float');
         }
         else if (this.count === 0) this.toss('float');
       } else if (this.panelT > 1.3 + rnd(0, 0.02)) {
@@ -462,10 +463,11 @@ class MatchScene extends Phaser.Scene {
     // battuta in salto (come nel video): rincorsa e stacco automatici, sempre dietro la linea di fondo.
     // Il joystick non muove il battitore; il pulsante colpisce in cima al salto.
     if (s.z <= 0 && s.vz <= 0 && !s.served && !s.jsJumped) {
-      const takeoff = side * CFG.JS_TAKEOFF;
+      const takeoff = side * this.jsTakeoff();
       const tLeft = this.jsHitT - this.jsT - this.jsPeak();
       const dx = takeoff - s.x;
-      if (tLeft > 0) { const sp = Math.abs(dx) / tLeft; s.x += clamp(dx, -sp * dt, sp * dt); s.state = Math.abs(dx) > 1 ? 'run' : 'idle'; s.runT += dt * 1.4; }
+      // passi al ritmo della corsa (rincorsa corta del salto flottante = passi più lenti, non scivolati)
+      if (tLeft > 0) { const sp = Math.abs(dx) / tLeft; s.x += clamp(dx, -sp * dt, sp * dt); s.state = Math.abs(dx) > 1 ? 'run' : 'idle'; s.runT += dt * clamp(sp / CFG.RUN, 0.45, 2); }
       if (tLeft <= 0) { s.x = takeoff; if (k === 'jfloat') this.jump(s, -side * 6, CFG.JFLOAT_K); else this.jump(s, -side * 12); s.state = 'jump'; s.jsJumped = true; }
     }
     this.jsT += dt;
@@ -489,7 +491,7 @@ class MatchScene extends Phaser.Scene {
     const help = on && !!this.serving.human && this.mode !== 'demo' && this.mode !== 'practice';
     if (help) {
       const N = this.serving.side < 0 ? '→' : '←', B = this.serving.side < 0 ? '←' : '→', K = typeof TOUCH !== 'undefined' && TOUCH.on ? 'A' : 'Z';
-      this.srvHelp[0].setText(`${K}: DALL'ALTO   ${N}+${K}: IN SALTO   ${N}↓+${K}: SALTO FLOTTANTE`);
+      this.srvHelp[0].setText(`${K}: DALL'ALTO   ${N}+${K}: IN SALTO   ↓+${K}: SALTO FLOTTANTE`);
       this.srvHelp[1].setText(`↑+${K}: ALTISSIMA   ↑${N}+${K}: PHANTOM   ↑${B}+${K}: THUNDER   ·   ${K} DI NUOVO QUANDO LA PALLA È IN ZONA`);
     }
     this.srvHelp.forEach(x => x.setVisible(help));
@@ -518,7 +520,7 @@ class MatchScene extends Phaser.Scene {
       b.h = 32; b.vy = Math.sqrt(2 * CFG.G * (86 - 32));
       const pk = this.jsPeak(), hitH = CFG.PG * pk * pk / 2 + CFG.REACH_UP - 2;
       const tH = PHYS.timeToH(b.h, b.vy, hitH);
-      const hitX = side * (CFG.JS_TAKEOFF - 6 * pk - 5);
+      const hitX = side * (this.jsTakeoff('jfloat') - 6 * pk - 5);
       b.vx = (hitX - b.x) / tH;
       this.jsHitT = tH; this.jsT = 0; s.jsJumped = false;
       this.announce('JUMP FLOAT SERVE');
@@ -852,6 +854,8 @@ class MatchScene extends Phaser.Scene {
 
   // tempo per arrivare in cima al salto del battitore (salto flottante = salto più basso)
   jsPeak() { return CFG.TPEAK * (this.serveKind === 'jfloat' ? CFG.JFLOAT_K : 1); }
+  // punto di stacco della battuta in salto: il salto flottante parte più indietro, con una rincorsa corta di due passi
+  jsTakeoff(k = this.serveKind) { return CFG.JS_TAKEOFF + (k === 'jfloat' ? 26 : 0); }
   // appoggi sulla sabbia (beach): 1 = sabbia liscia, meno dove il manto è smosso (sabbia.js); 1 sul parquet
   footK() { return 1; }
   jump(p, vx, k = 1) { if (p.z <= 0) this.sand(p.x, p.dep, 7, 60, 6); p.vz = CFG.JUMP_V * k * (this.beach ? 0.72 + 0.28 * this.footK(p) : 1); p.z = 0.1; p.vx = vx; p.state = 'jump'; p.jset = false; p.srvAir = false; }
@@ -1450,7 +1454,7 @@ class MatchScene extends Phaser.Scene {
     if (this.state === 'serve' && this.serving === t) {
       if (this.servePhase !== 'toss') {
         L.push('BATTUTA - premi Z per lanciare. Direzione tenuta al lancio:');
-        L.push(`  nessuna = dall'alto   |   ${fwd} (verso rete) = IN SALTO   |   ${fwd}+GIU = SALTO FLOTTANTE`);
+        L.push(`  nessuna = dall'alto   |   ${fwd} (verso rete) = IN SALTO (jump spin)   |   GIU = SALTO FLOTTANTE (jump float)`);
         L.push(`  SU = TOWERING (poi SU+Z)   |   SU+${fwd} = PHANTOM (poi GIU+${fwd}+Z)   |   SU+${back} = THUNDER (poi GIU+${back}+Z)`);
       } else {
         const k = this.serveKind;
@@ -1639,11 +1643,14 @@ class MatchScene extends Phaser.Scene {
       if (st === 'run') st = Math.floor(p.runT * 8) % 2 ? 'run2' : 'run1';
       // palleggio in salto: in volo l'alzatore è girato del tutto, di fronte (si vede il viso) nel campo destro, di spalle nel sinistro
       if (p.z > 0 && (st === 'jsetload' || st === 'jset' || st === 'land') && (st !== 'land' || p.jset)) st += t.side === 1 ? 'F' : 'B';
-      p.spr.setFrame(usePhoto() ? photoFrame(this, p, st) : PF[st] !== undefined ? PF[st] : 0);
+      const turned = usePhoto() && PHOTO.pixel && /^(jsetload|jset|land)[FB]$/.test(st);   // PIXEL FOTO: palleggio in salto girato
+      const tk = turned ? makeDrawnPlayerTex(this, t.code, p.ni, `pld_${t.code}_${p.ni}${LOOK.beach ? '_b' : ''}${LOOK.fem ? '_w' : ''}`) : plKey(t.code, p.ni);
+      if (p.spr.texture.key !== tk) p.spr.setTexture(tk);
+      p.spr.setFrame(usePhoto() && !turned ? photoFrame(this, p, st) : PF[st] !== undefined ? PF[st] : 0);
       p.spr.setFlipX((t.side === 1) !== (st === 'passside' && !!p.latBack));
       let lift = st === 'cheer3' ? 4 * Math.abs(Math.sin(this.stateT * 9)) : 0;   // saltello dell'esultanza
       // (il molleggio dell'attesa è nelle pose idle / idle2: i piedi restano a terra)
-      if (st === 'appr') lift = 3 * Math.sin(Math.PI * clamp((CFG.APPR_T - this.takeoffIn(p)) / (CFG.APPR_T - CFG.PLANT_T), 0, 1));   // piccolo balzo della rincorsa
+      // (niente balzello nella rincorsa: i piedi restano a terra fino allo stacco, come in Power Spikes)
       p.spr.x = SX(p.x); p.spr.y = FY + p.dep - p.z - lift;
       p.spr.setDepth(FY + p.dep);
       // il ricevitore designato appare schiarito, come nell'originale

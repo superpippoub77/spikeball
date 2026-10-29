@@ -26,7 +26,7 @@ const GUIDE_TXT = {
       '1. Al fischio il battitore è dietro la linea di fondo, con la palla in mano.',
       '2. Tieni una direzione (o nessuna) e premi Z: la palla viene lanciata. La direzione sceglie la battuta (vedi la rosa a destra).',
       '3. Premi di nuovo Z quando la palla diventa ROSSA (è nella zona di colpo). Anche un attimo prima va bene.',
-      "NESSUNA = DALL'ALTO.  AVANTI = IN SALTO (rincorsa e stacco automatici, Z in cima al salto).  AVANTI+GIÙ = SALTO FLOTTANTE (palla tesa che balla).",
+      "NESSUNA = DALL'ALTO.  AVANTI = IN SALTO / JUMP SPIN (rincorsa lunga e stacco automatici, Z in cima al salto).  GIÙ = SALTO FLOTTANTE / JUMP FLOAT (due passi, salto basso, palla tesa che balla).",
       'SU = ALTISSIMA (poi SU+Z).  SU+AVANTI = PHANTOM (poi GIÙ+AVANTI+Z: la palla si sdoppia).  SU+INDIETRO = THUNDER (poi GIÙ+INDIETRO+Z).',
       'Al colpo: AVANTI = battuta lunga, INDIETRO = corta. Allo scadere del conto la palla viene lanciata comunque: devi solo colpirla.']],
     ['RICEZIONE E DIFESA', [
@@ -85,7 +85,7 @@ const GUIDE_TXT = {
       '1. At the whistle the server stands behind the baseline holding the ball.',
       '2. Hold a direction (or none) and press Z to toss: the direction picks the serve (see the rose on the right).',
       '3. Press Z again when the ball turns RED (hitting zone). A moment early is fine too.',
-      'NONE = OVERHAND.  FORWARD = JUMP SERVE (automatic run-up, Z at the top of the jump).  FORWARD+DOWN = JUMP FLOAT.',
+      'NONE = OVERHAND.  FORWARD = JUMP SPIN (long automatic run-up, Z at the top of the jump).  DOWN = JUMP FLOAT (two steps, low jump, floating ball).',
       'UP = SKY BALL (then UP+Z).  UP+FORWARD = PHANTOM (then DOWN+FORWARD+Z).  UP+BACK = THUNDER (then DOWN+BACK+Z).',
       'On contact: FORWARD = long serve, BACK = short. When the countdown ends the ball is tossed anyway: you only have to hit it.']],
     ['RECEPTION AND DEFENCE', [
@@ -213,14 +213,14 @@ class GuideScene extends Base {
       const cx = 238, cy = 54, R = 22;
       g.fillStyle(0x0a1e4a, 0.95).fillCircle(cx, cy, R); g.lineStyle(1, 0x3a7ae0, 1).strokeCircle(cx, cy, R);
       g.fillStyle(0xe02020, 1).fillCircle(cx, cy, 4);
-      const rose = [[1, 0, it ? 'IN SALTO' : 'JUMP'], [1, 1, it ? 'SALTO FLOTTANTE' : 'JUMP FLOAT'], [0, -1, it ? 'ALTISSIMA' : 'SKY BALL'], [1, -1, 'PHANTOM'], [-1, -1, 'THUNDER']];
+      const rose = [[1, 0, it ? 'IN SALTO' : 'JUMP'], [0, 1, it ? 'SALTO FLOTTANTE' : 'JUMP FLOAT'], [0, -1, it ? 'ALTISSIMA' : 'SKY BALL'], [1, -1, 'PHANTOM'], [-1, -1, 'THUNDER']];
       for (const [dx, dy, s] of rose) {
         const n = Math.hypot(dx, dy), ux = dx / n, uy = dy / n;
         guideArrow(g, cx + ux * 6, cy + uy * 6, cx + ux * 18, cy + uy * 18, 0xffd23a);
         this.label(cx + ux * 23 + (dx > 0 ? 1 : dx < 0 ? -1 : 0), cy + uy * 25, s, '#ffffff', 4.4, dx > 0 ? 0 : dx < 0 ? 1 : 0.5);
       }
-      this.label(cx, cy + R + 8, it ? "NESSUNA DIREZIONE = DALL'ALTO" : 'NO DIRECTION = OVERHAND', '#7ad0ff', 4.4);
-      this.label(cx, cy + R + 17, it ? '→ = verso la rete' : '→ = towards the net', '#9ab8f0', 4);
+      this.label(cx, cy + R + 12, it ? "NESSUNA DIREZIONE = DALL'ALTO" : 'NO DIRECTION = OVERHAND', '#7ad0ff', 4.4);
+      this.label(cx, cy + R + 20, it ? '→ = verso la rete' : '→ = towards the net', '#9ab8f0', 4);
     } else if (n === 2) {   // ricezione: palla in arrivo, quadratino blu, ricevitore schiarito con P1
       this.court(FY);
       this.pl(B, 0, 'spike', 296, FY, true, 18); this.ball(286, 46);
