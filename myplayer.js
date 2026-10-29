@@ -517,4 +517,4 @@ class MyPlayerScene extends Base {
 }
 
 // mentre si scrive un nome o è aperto il pannello della foto i tasti rapidi globali (K, H, C...) non valgono
-function myTyping() { const g = window.__game; return !!(document.getElementById('photoCap') || document.getElementById('editor') || (g && g.scene.isActive('MyPlayer'))); }
+function myTyping() { const g = window.__game; return !!(document.getElementById('photoCap') || document.getElementById('editor') || document.getElementById('online') || (g && g.scene.isActive('MyPlayer'))); }

@@ -163,7 +163,7 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MENU_SEX = 20, MENU_GFX = 21, MENU_CTRL = 22;   // menu principale: righe SQUADRE, GRAFICA e COMANDI (le schede sono 0-7, la lingua -1)
+const MENU_SEX = 20, MENU_GFX = 21, MENU_CTRL = 22, MENU_ONLINE = 23;   // menu principale: righe SQUADRE, GRAFICA e COMANDI, GIOCA ONLINE accanto alla lingua (le schede sono 0-7, la lingua -1)
 const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
 // scelta maschile / femminile del menu principale: vale per tutte le modalità e resta salvata nel browser
 function setWomen(on) {
@@ -311,15 +311,20 @@ class MainMenuScene extends Base {
     // riga della lingua (i18n.js): bandiera e nome, ← → per cambiarla
     const lg = LANGS.find(l => l.id === I18N.lang) || LANGS[0];
     this.langBox = this.add.graphics();
-    this.langFlag = this.add.image(140, 61, makeFlagTex(this, lg.flag, 15, 10));
-    this.langTxt = this.add.text(152, 61, '', UI.f(5.5, '#ffffff', true)).setOrigin(0, 0.5);
+    this.langFlag = this.add.image(90, 61, makeFlagTex(this, lg.flag, 15, 10));
+    this.langTxt = this.add.text(102, 61, '', UI.f(5.5, '#ffffff', true)).setOrigin(0, 0.5);
     { const l = I18N.lang; I18N.lang = null; this.langTxt.setText(`${lg.name}`); I18N.lang = l; }
-    this.langArrows = [this.add.text(118, 61, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(202, 61, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
+    this.langArrows = [this.add.text(68, 61, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(152, 61, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
     this.langFlag.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.cycleLang(1));
+    // GIOCA ONLINE (online.js): partita tra due giocatori su due computer o telefoni
+    this.onBox = this.add.graphics();
+    this.onTxt = this.add.text(215, 61, 'GIOCA ONLINE', UI.f(5.5, '#7ae0ff', true)).setOrigin(0.5);
+    this.onTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.openOnline());
     this.sel = GS.menuSel === undefined ? 0 : GS.menuSel;
     try { if (sessionStorage.getItem('sf91_menuGfx')) { sessionStorage.removeItem('sf91_menuGfx'); this.sel = MENU_GFX; } } catch (e) { /* */ }
     this.refresh();
   }
+  openOnline() { this.gone = true; SFX.select(); GS.menuSel = MENU_ONLINE; this.scene.start('Online'); }
   openCtrl() { this.gone = true; SFX.select(); GS.menuSel = MENU_CTRL; this.scene.start('Controls'); }
   // squadre maschili / femminili: vale per arcade, single match, beach e i miei giocatori nuovi
   toggleSex() { setWomen(!GS.women); SFX.blip(); this.refresh(); }
@@ -347,7 +352,9 @@ class MainMenuScene extends Base {
       c.setScale(on ? 1.06 : 1);
     });
     const L = this.sel < 0;
-    this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(110, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(110, 54, 100, 14, 4);
+    this.langBox.clear().fillStyle(L ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(60, 54, 100, 14, 4).lineStyle(L ? 2 : 1, L ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(60, 54, 100, 14, 4);
+    const O = this.sel === MENU_ONLINE;
+    this.onBox.clear().fillStyle(O ? 0x1a8a5a : 0x0e2a6a, 0.9).fillRoundedRect(170, 54, 90, 14, 4).lineStyle(O ? 2 : 1, O ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(170, 54, 90, 14, 4);
     this.langArrows.forEach(a => a.setVisible(L));
     const G = this.sel === MENU_GFX, gm = GFX_MODES[this.gfxSel];
     this.gfxBox.clear().fillStyle(G ? 0x1a5ad8 : 0x0e2a6a, 0.9).fillRoundedRect(120, 194, 92, 9, 3).lineStyle(G ? 2 : 1, G ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 194, 92, 9, 3);
@@ -359,7 +366,7 @@ class MainMenuScene extends Base {
     this.sexArrows.forEach(a => a.setVisible(X));
     this.gfxTxt.setText(GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
     this.gfxArrows.forEach(a => a.setVisible(G));
-    this.hint.setText(C ? 'Z: PROVA, CAMBIA O RIPRISTINA TASTI E PULSANTI (ANCHE GAMEPAD)' : L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
+    this.hint.setText(O ? 'Z: PARTITA ONLINE CONTRO UN AMICO (CON UN CODICE)' : C ? 'Z: PROVA, CAMBIA O RIPRISTINA TASTI E PULSANTI (ANCHE GAMEPAD)' : L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
@@ -374,6 +381,12 @@ class MainMenuScene extends Base {
     if (this.sel === MENU_CTRL) {
       if (this.btn() || this.startPressed() || this.jd('right')) this.openCtrl();
       else if (this.jd('up')) { this.sel = MENU_GFX; this.refresh(); SFX.blip(); }
+      return;
+    }
+    if (this.sel === MENU_ONLINE) {
+      if (this.btn() || this.startPressed()) this.openOnline();
+      else if (this.jd('left')) { this.sel = -1; this.refresh(); SFX.blip(); }
+      else if (this.jd('down')) { this.sel = 2; this.refresh(); SFX.blip(); }
       return;
     }
     if (this.sel === MENU_SEX) {
@@ -392,7 +405,7 @@ class MainMenuScene extends Base {
     const lo = row ? 4 : 0, hi = row ? 7 : 3;
     if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
     if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
-    if (this.jd('up')) { this.sel = row ? this.sel - 4 : -1; this.refresh(); SFX.blip(); }
+    if (this.jd('up')) { this.sel = row ? this.sel - 4 : this.sel >= 2 ? MENU_ONLINE : -1; this.refresh(); SFX.blip(); }
     if (this.jd('down')) { if (row) this.lastCard = this.sel; this.sel = row ? MENU_SEX : this.sel + 4; this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
