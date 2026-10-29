@@ -51,10 +51,12 @@ L'ordine conta: `index.html` carica gli script in questa sequenza e ogni file us
 | `fatica.js` | **Stanchezza**: energia per giocatore (`energyOf`, `tire`, `fatigue`), effetti su velocità, salto e qualità dei colpi, errori (`pstats.err`, `errRate`), riquadro a palla ferma e dati nel pannello dei cambi |
 | `guida.js` | **Come si gioca** (scena `Guide`, 9 pagine illustrate con i giocatori del gioco, testi in `GUIDE_TXT` it/en) e **crediti** (scena `Credits`, nell'attract dopo la classifica; profilo dell'autore in `CREDITS_BIO`) |
 | `touch.js` | **Telefono e tablet**: joystick virtuale e pulsanti che mandano gli stessi tasti della tastiera (`touchKey`, `touchHold`), schermo intero (`touchFullscreen`), invito a ruotare il telefono. Con `manifest.json` e le icone `icona-*.png` il gioco si installa sulla schermata Home |
+| `online.js` | **Partite online** (caricato per ultimo): collegamento WebRTC con codice (`onHost`, `onJoin`, segnalazione via `api/online.php`), sala d'attesa HTML (scena `Online`, `onUi`), partita con l'host che calcola tutto (il giocatore 2 sono i tasti ricevuti, `ONLINE.remote`) e manda a ogni fotogramma le differenze dello stato (`onFlat`, `onHud`, `onDiff`) più effetti e suoni; il guest manda i tasti e fa solo `render` (`onGuestUpdate`, `onApply`). Battito ogni secondo, 6 s senza notizie = scollegato |
 | `cambi.js` | **Cambi in partita** (X / Q a palla ferma): pannello, scambio dei dati della rosa tra chi esce e chi entra (`doSub`); il libero è in match.js (`isLib`, `serverOf`) e gfx.js (`liberoKit`) |
 | `categorie.js` | **Categorie FIPAV**: piramide `FIPAV_LEVELS`, categoria/sesso di campionati e squadre dai JSON (`catOf`, `sexOf`), gruppi del SINGLE MATCH per categoria (`catBuildGroups`), spostamenti (`catMove`, `CAT_MOVES`), promosse/retrocesse a fine campionato |
 | `editor.js` | **Editor**: squadre (diventano club con `rosterTeam`), arbitri, sponsor, campionati (girone all'italiana in `LEAGUES`), profilo sul server (`PROF`) |
 | `api/profilo.php` | profili: registrazione/accesso con password (hash) e gettone, salvataggio di tutte le chiavi `sf91_` |
+| `api/online.php` | partite online: scambio offerta/risposta WebRTC con un codice di 5 lettere (file in `api/dati/online/`, cancellati appena collegati o dopo 20 minuti) |
 | `api/giocatori.php` | salvataggio dei giocatori creati sul server, protetto dalla chiave di `api/chiave.php` (solo sul server) |
 
 Dati e risorse:

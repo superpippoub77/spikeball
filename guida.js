@@ -67,7 +67,8 @@ const GUIDE_TXT = {
       'Gioca in orizzontale: al primo tocco il gioco va a schermo intero (c\'è anche il pulsante in alto a destra).',
       'Senza joystick: nella metà destra un TOCCO vale A e una STRISCIATA vale una freccia (menu e partita). Il pulsante con il joystick mostra o nasconde i comandi.',
       'Su iPhone: Safari > Condividi > Aggiungi alla schermata Home, poi apri il gioco dall\'icona.',
-      'Due giocatori sulla stessa tastiera: P2 usa W A S D e G, START con 2.']],
+      'Due giocatori sulla stessa tastiera: P2 usa W A S D e G, START con 2.',
+      'ONLINE (menu, accanto alla lingua): uno sceglie CREA PARTITA e dà il codice di 5 lettere all\'altro, che lo scrive in ENTRA CON IL CODICE. Ognuno gioca con i suoi tasti.']],
     ['CREDITI', [
       `Ideazione, game design e sviluppo: ${CREDITS_AUTHOR}, by SpikeCode AI.`,
       'Ispirato a Power Spikes (Video System, 1991). Motore: Phaser 3. Caratteri: Press Start 2P e Russo One.',
@@ -126,7 +127,8 @@ const GUIDE_TXT = {
       'Play in landscape: at the first touch the game goes full screen (there is also a button at the top right).',
       'Without the joystick: on the right half a TAP is A and a SWIPE is an arrow (menus and match). The gamepad button shows or hides the controls.',
       'On iPhone: Safari > Share > Add to Home Screen, then open the game from the icon.',
-      'Two players on one keyboard: P2 uses W A S D and G, START with 2.']],
+      'Two players on one keyboard: P2 uses W A S D and G, START with 2.',
+      'ONLINE (menu, next to the language): one picks CREATE MATCH and gives the 5-letter code to the other, who types it in JOIN WITH THE CODE. Each one plays with their own keys.']],
     ['CREDITS', [
       `Concept, game design and development: ${CREDITS_AUTHOR}, by SpikeCode AI.`,
       'Inspired by Power Spikes (Video System, 1991). Engine: Phaser 3. Fonts: Press Start 2P and Russo One.',

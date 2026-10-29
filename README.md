@@ -279,6 +279,14 @@ Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuff
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
 - I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).
 
+### Gioca online
+Nel menu principale, accanto alla lingua, **GIOCA ONLINE** fa giocare due persone su due computer o telefoni (`online.js`):
+- uno sceglie **CREA PARTITA** e riceve un **codice di 5 lettere**, che comunica all'altro; l'altro lo scrive e preme **ENTRA CON IL CODICE**;
+- collegati, ognuno sceglie la sua nazionale; chi ha creato la partita sceglie giocatori in campo, set a 25 o 15 punti e campo, poi **INIZIA LA PARTITA**. Chi crea gioca a sinistra, l'altro a destra, ognuno con i suoi tasti (tastiera, gamepad o comandi touch);
+- il gioco passa direttamente da un browser all'altro (WebRTC): il server (`api/online.php`) scambia solo i dati di collegamento e li cancella subito dopo (o dopo 20 minuti). La partita la calcola il browser di chi l'ha creata, l'altro riceve a ogni fotogramma lo stato e la disegna nella **sua** grafica (ARCADE, PIXEL FOTO, HD o 3D);
+- online niente cambi e time-out; se l'avversario si scollega la sua squadra la gioca il computer (chi era entrato torna al menu);
+- alcune reti (firewall aziendali, alcune reti mobili) bloccano i collegamenti diretti: lì la partita non parte (servirebbe un server TURN, non incluso).
+
 ### Comandi: prova, rimappatura e gamepad
 Nel menu principale la riga **COMANDI** apre un pannello con un mini controller che si illumina quando premi un tasto o un pulsante (direzioni comprese), per il giocatore 1 e il giocatore 2. Per ogni azione (su, giù, sinistra, destra, A, START, indietro, pausa, cambi, time-out) puoi cambiare il **tasto** e il **pulsante del gamepad** (se era già usato, le due azioni si scambiano) e con **RIPRISTINA PREDEFINITI** torni ai tasti originali. I **gamepad** USB o Bluetooth funzionano in tutto il gioco: croce e levetta sinistra per le direzioni, il primo gamepad è del giocatore 1, il secondo del giocatore 2. Le scelte restano salvate nel browser (`controlli.js`).
 
