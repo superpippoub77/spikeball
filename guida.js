@@ -61,6 +61,7 @@ const GUIDE_TXT = {
       'Il LIBERO ha la maglia di un altro colore, difende e riceve meglio, e non va a rete.',
       'BEACH: la sabbia si deforma a ogni passo, salto e tuffo, e sulla sabbia smossa si corre e si salta meno. R = TIME-OUT (uno per set, a palla ferma): il rastrello la spiana.',
       'V = scossa dello schermo sì / no   K = effetto CRT   H = cambia grafica (ARCADE, PIXEL FOTO, HD, 3D).',
+      'N = nomi dei giocatori sopra, sotto o spenti   B = riquadro statistiche (energia ed errori) sì / no.',
       'ARCADE: gettone con 5 o C, START con INVIO o 1. Squadre maschili o femminili e grafica si scelgono anche nel menu principale.']],
     ['TELEFONO E 2 GIOCATORI', [
       'Telefono e tablet: appoggia il pollice a sinistra e compare il JOYSTICK; a destra A (= Z), START, ESC, II (pausa) e ⋯ per gli altri tasti.',
@@ -121,6 +122,7 @@ const GUIDE_TXT = {
       'The LIBERO wears a different colour, defends and receives better and never plays at the net.',
       'BEACH: the sand gets dug up by every step, jump and dive, and on rough sand you run and jump less. R = TIME-OUT (one per set, dead ball): the rake smooths it.',
       'V = screen shake on / off   K = CRT effect   H = change graphics (ARCADE, PIXEL PHOTO, HD, 3D).',
+      'N = player names above, below or off   B = stats box (energy and errors) on / off.',
       'ARCADE: coin with 5 or C, START with ENTER or 1. Men\'s / women\'s teams and graphics can also be chosen in the main menu.']],
     ['PHONE AND 2 PLAYERS', [
       'Phone and tablet: put your thumb on the left and the JOYSTICK appears; on the right A (= Z), START, ESC, II (pause) and ⋯ for the other keys.',
@@ -267,7 +269,8 @@ class GuideScene extends Base {
       this.pl(A, 0, 'passload', 50, FY); this.label(50, FY - 44, it ? 'DIFESA: ← →' : 'DEFENCE: ← →', '#7ad0ff');
     } else if (n === 6) {   // in partita: tasti
       const keys = [['P', it ? 'PAUSA' : 'PAUSE'], ['M', 'AUDIO'], ['T', it ? 'COMANDI A VIDEO' : 'ON-SCREEN HELP'], ['ESC', 'MENU'], ['X', it ? 'CAMBI (P1)' : 'SUBS (P1)'], ['Q', it ? 'CAMBI (P2)' : 'SUBS (P2)'],
-                    ['V', it ? 'SCOSSA SCHERMO' : 'SCREEN SHAKE'], ['K', it ? 'EFFETTO CRT' : 'CRT EFFECT'], ['H', it ? 'GRAFICA' : 'GRAPHICS'], ['5', it ? 'GETTONE' : 'COIN']];
+                    ['V', it ? 'SCOSSA SCHERMO' : 'SCREEN SHAKE'], ['K', it ? 'EFFETTO CRT' : 'CRT EFFECT'], ['H', it ? 'GRAFICA' : 'GRAPHICS'], ['5', it ? 'GETTONE' : 'COIN'],
+                    ['N', it ? 'NOMI SOPRA/SOTTO' : 'NAMES ABOVE/BELOW'], ['B', it ? 'STATISTICHE SÌ/NO' : 'STATS ON/OFF']];
       keys.forEach(([k, d], i) => this.keycap(g, 16 + (i % 2) * 150, 22 + Math.floor(i / 2) * 17, k, d));
     } else if (n === 7) {   // telefono e 2 giocatori
       g.fillStyle(0x101018, 1).fillRoundedRect(14, 26, 170, 78, 10); g.lineStyle(1.5, 0x8a8a9a, 1).strokeRoundedRect(14, 26, 170, 78, 10);

@@ -4,7 +4,7 @@
 //  così funzionano in tutti i menu e in partita senza cambiare le schermate.
 //   - joystick "mobile" a sinistra: compare dove appoggi il pollice (8 direzioni)
 //   - a destra: A (= Z, colpo / conferma), START (= INVIO), ESC (indietro), PAUSA; ⋯ apre gli altri tasti
-//     (X cambi, Q/E pagine, F formazione, T comandi, M audio, K CRT, H grafica)
+//     (X cambi, Q/E pagine, F formazione, T comandi, N nomi, B statistiche, M audio, K CRT, H grafica)
 //   - ⛶ schermo intero (e orientamento orizzontale dove il browser lo permette); al primo tocco parte da solo
 //   - in verticale: invito a ruotare il telefono
 //   - gesti sullo schermo di gioco (fuori da joystick e pulsanti): tocco = A (Z), strisciata = freccia; così i menu
@@ -19,7 +19,7 @@ const TOUCH = {
   held: new Set(),
 };
 // tasto finto: stesso evento della tastiera (Phaser legge keyCode, il resto del gioco key)
-const TOUCH_KEYS = { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, z: 90, Enter: 13, Escape: 27, p: 80, x: 88, q: 81, e: 69, f: 70, t: 84, m: 77, k: 75, h: 72, r: 82 };
+const TOUCH_KEYS = { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, z: 90, Enter: 13, Escape: 27, p: 80, x: 88, q: 81, e: 69, f: 70, t: 84, m: 77, k: 75, h: 72, r: 82, n: 78, b: 66 };
 function touchKey(type, key) {
   const kc = TOUCH_KEYS[key], ev = new KeyboardEvent(type, { key, code: key.length === 1 ? 'Key' + key.toUpperCase() : key, bubbles: true, cancelable: true });
   Object.defineProperty(ev, 'keyCode', { get: () => kc }); Object.defineProperty(ev, 'which', { get: () => kc });
@@ -99,7 +99,7 @@ function touchFullscreen() {
   btn('sm p-pause', 'II', 'p');
   // altri tasti (cambi, pagine, formazione...)
   const more = document.createElement('div'); more.className = 'more'; pad.appendChild(more);
-  for (const k of ['x', 'r', 'q', 'e', 'f', 't', 'm', 'k', 'h']) {   // R: time-out nel beach
+  for (const k of ['x', 'r', 'q', 'e', 'f', 't', 'n', 'b', 'm', 'k', 'h']) {   // R: time-out nel beach
     const b = btn('', k.toUpperCase(), k); more.appendChild(b);
   }
   const mb = document.createElement('div'); mb.className = 'btn sm p-more'; mb.textContent = '⋯';
