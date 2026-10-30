@@ -22,16 +22,18 @@ const BEACH = new URLSearchParams(location.search).get('beach') === '1';
 const HALF = (BEACH ? CFG.BEACH_HALF : CFG.HALF) / PPM;   // 9 m (8 m nel beach)
 const CW = BEACH ? 4 : 4.5;               // metà larghezza del campo
 const NPL = BEACH ? 2 : 4;                // giocatori per squadra
+// FEMMINILE (?women=1, tasto F; dal menu segue la riga SQUADRE MASCHILI / FEMMINILI): rete 2,24 m, salto e altezze in proporzione
+const WOMEN = (() => { const q = new URLSearchParams(location.search).get('women'); if (q !== null) return q === '1'; try { return localStorage.getItem('sf91_women') === '1'; } catch (e) { return false; } })();
 const G = CFG.G / PPM;                    // 10 m/s²
-const NET = 2.43;
+const NET = WOMEN ? 2.24 : 2.43;
 const RUN = CFG.RUN / PPM * (BEACH ? CFG.SAND_K : 1);   // 4,4 m/s (3,8 sulla sabbia)
 const JUMP_T = CFG.JUMP_V / CFG.PG;       // 0,4 s per arrivare in cima al salto (come nel gioco)
-const JUMP_H = 0.85;
+const JUMP_H = WOMEN ? 0.62 : 0.85;
 const PG = 2 * JUMP_H / (JUMP_T * JUMP_T);
 const JUMP_V = PG * JUMP_T;
-const REACH_UP = 2.45;                    // mani alzate da fermo
+const REACH_UP = WOMEN ? 2.3 : 2.45;       // mani alzate da fermo
 const HIT_H = REACH_UP + JUMP_H + 0.05;   // 3,35 m
-const SET_H = 2.35, PASS_H = 0.8;
+const SET_H = WOMEN ? 2.2 : 2.35, PASS_H = 0.8;
 const REACH = CFG.REACH / PPM, LAT = CFG.LAT_REACH / PPM, DIVE = CFG.DIVE_REACH / PPM;
 const SPIKE_V = CFG.SPIKE_SPEED / PPM;    // 21,5 m/s
 const SETTER_D = CFG.SETTER_D / PPM;      // l'alzatore a 1,5 m dalla rete
@@ -41,6 +43,12 @@ const TARGET = BEACH ? 21 : 15;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
+// stanchezza (come fatica.js): energia 0-100 per giocatore della rosa; cala a ogni punto e con gli sforzi, chi è in
+// panchina recupera; sotto l'80% calano velocità (fino al 18%), salto (7%), precisione e potenza
+const FAT = { point: 0.4, bench: 1.4, jump: 0.35, dive: 0.9, run: 0.0045 * PPM, timeout: 6 };
+const fatigue = p => clamp((80 - p.team.en[p.ni]) / 80, 0, 1);
+function tire(p, v) { const T = p.team; T.en[p.ni] = clamp(T.en[p.ni] - v, 0, 100); }
+const MAX_SUBS = 6;
 
 // formule di PHYS (config.js) in 3D: arco con altezza massima e tiro teso a velocità data
 function arc3(x0, z0, h0, x1, z1, h1, apex) {
@@ -85,6 +93,7 @@ function canvasTex(w, h, draw) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 // beach: sabbia con increspature e impronte, righe blu (nastro), mare, palme e un piccolo spalto
+let SAND = null;   // manto di sabbia deformabile (solo beach), vedi più sotto
 if (BEACH) {
   const sandTex = (w, h, rep) => {
     const t = canvasTex(w, h, (c) => {
@@ -103,8 +112,12 @@ if (BEACH) {
     const X = m => (m + FW / 2) * S, Z = m => (m + FD / 2) * S;
     c.strokeStyle = '#1f55c8'; c.lineWidth = 0.06 * S; c.strokeRect(X(-HALF), Z(-CW), 2 * HALF * S, 2 * CW * S);
   });
-  const cm = new THREE.Mesh(new THREE.PlaneGeometry(FW, FD), new THREE.MeshStandardMaterial({ map: court, roughness: 1 }));
-  cm.rotation.x = -Math.PI / 2; cm.position.y = 0.004; cm.receiveShadow = true; scene.add(cm);
+  // il campo è una griglia di 20 cm che si deforma (impronte, salti, tuffi, pallone): come sabbia.js nel gioco
+  const NX = FW * 5, NZ = FD * 5, geo = new THREE.PlaneGeometry(FW, FD, NX, NZ); geo.rotateX(-Math.PI / 2);
+  const cm = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: court, roughness: 1 }));
+  cm.position.y = 0.006; cm.receiveShadow = true; scene.add(cm);
+  SAND = { geo, NX, NZ, W: FW, D: FD, h: new Float32Array((NX + 1) * (NZ + 1)), dirty: false, t: 0, rake: 0 };
+
   // mare all'orizzonte
   const sea = new THREE.Mesh(new THREE.PlaneGeometry(600, 160), new THREE.MeshStandardMaterial({ color: 0x2a86c8, roughness: 0.15, metalness: 0.3 }));
   sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.03, -110); scene.add(sea);
@@ -212,11 +225,83 @@ const ballTex = canvasTex(512, 256, (c, w, h) => {
 });
 const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 20), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, emissive: 0x000000 }));
 ballMesh.castShadow = true; scene.add(ballMesh);
+// PHANTOM: seconda palla (finta) che si separa dalla vera; THUNDER: scia luminosa
+const ghostMesh = new THREE.Mesh(ballMesh.geometry, new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, transparent: true, opacity: 0.85 }));
+ghostMesh.visible = false; scene.add(ghostMesh);
+const trail = [];
+for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(BALL_R * (1 - i / 16), 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe040, transparent: true, opacity: 0.6 * (1 - i / 14) })); m.visible = false; scene.add(m); trail.push(m); }
+const trailPos = [];
 // cerchio dove andare (blu) / momento di colpire (rosso)
 const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 40), new THREE.MeshBasicMaterial({ color: 0x3a9aff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
 ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; scene.add(ring);
 const landDot = new THREE.Mesh(new THREE.CircleGeometry(0.16, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
 landDot.rotation.x = -Math.PI / 2; landDot.position.y = 0.011; scene.add(landDot);
+
+// ---------------- sabbia (beach): il manto si deforma e si accumula ----------------
+// impronta / buca di raggio r e profondità d, con il bordo di sabbia spostata che si alza (rim)
+function sandStamp(x, z, r, d, rim = d * 0.4, ex = 1) {
+  if (!SAND) return;
+  const S2 = SAND, cs = S2.W / S2.NX, ix0 = Math.floor((x + S2.W / 2) / cs), iz0 = Math.floor((z + S2.D / 2) / cs), R = Math.ceil(r * 1.7 * ex / cs) + 1;
+  for (let iz = iz0 - R; iz <= iz0 + R; iz++) for (let ix = ix0 - R; ix <= ix0 + R; ix++) {
+    if (ix < 0 || iz < 0 || ix > S2.NX || iz > S2.NZ) continue;
+    const vx = -S2.W / 2 + ix * cs, vz = -S2.D / 2 + iz * cs, q = Math.hypot((vx - x) / ex, vz - z) / r;
+    const k = iz * (S2.NX + 1) + ix;
+    if (q < 1) S2.h[k] -= d * (1 - q * q);
+    else if (q < 1.7) S2.h[k] += rim * Math.sin((q - 1) / 0.7 * Math.PI);
+    else continue;
+    S2.h[k] = clamp(S2.h[k], -0.1, 0.07);
+  }
+  S2.dirty = true;
+}
+// irregolarità della sabbia intorno a un punto (0 = liscia): rallenta la corsa e accorcia un po' il salto
+function sandRough(x, z) {
+  if (!SAND) return 0;
+  const S2 = SAND, cs = S2.W / S2.NX; let sum = 0, n = 0;
+  for (const [dx, dz] of [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]) {
+    const ix = Math.round((x + dx + S2.W / 2) / cs), iz = Math.round((z + dz + S2.D / 2) / cs);
+    if (ix < 0 || iz < 0 || ix > S2.NX || iz > S2.NZ) continue;
+    sum += Math.abs(S2.h[iz * (S2.NX + 1) + ix]); n++;
+  }
+  return n ? sum / n : 0;
+}
+function sandUpdate(dt) {
+  if (!SAND) return;
+  const S2 = SAND;
+  if (S2.rake > 0) { S2.rake -= dt; const k = Math.min(1, dt * 2.2); for (let i = 0; i < S2.h.length; i++) S2.h[i] *= 1 - k; if (S2.rake <= 0) S2.h.fill(0); S2.dirty = true; }
+  S2.t += dt;
+  if (!S2.dirty || S2.t < 0.15) return;
+  S2.t = 0; S2.dirty = false;
+  const pos = S2.geo.attributes.position;
+  for (let i = 0; i < S2.h.length; i++) pos.setY(i, S2.h[i]);
+  pos.needsUpdate = true; S2.geo.computeVertexNormals();
+}
+// schizzi di sabbia
+const SPL = { n: 700, i: 0, pos: null, vel: null, life: null, pts: null };
+if (BEACH) {
+  SPL.pos = new Float32Array(SPL.n * 3); SPL.vel = new Float32Array(SPL.n * 3); SPL.life = new Float32Array(SPL.n);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(SPL.pos, 3));
+  SPL.pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xd8bc84, size: 0.045, transparent: true, opacity: 0.9 }));
+  SPL.pts.frustumCulled = false; scene.add(SPL.pts);
+  for (let i = 0; i < SPL.n; i++) SPL.pos[i * 3 + 1] = -5;
+}
+function splash(x, z, n, power = 1) {
+  if (!SPL.pts) return;
+  for (let k = 0; k < n; k++) {
+    const i = SPL.i = (SPL.i + 1) % SPL.n, a = Math.random() * Math.PI * 2, v = rnd(0.5, 2.2) * power;
+    SPL.pos[i * 3] = x + rnd(-0.1, 0.1); SPL.pos[i * 3 + 1] = 0.03; SPL.pos[i * 3 + 2] = z + rnd(-0.1, 0.1);
+    SPL.vel[i * 3] = Math.cos(a) * v; SPL.vel[i * 3 + 1] = rnd(1.2, 3.2) * power; SPL.vel[i * 3 + 2] = Math.sin(a) * v; SPL.life[i] = 1.2;
+  }
+}
+function splashUpdate(dt) {
+  if (!SPL.pts) return;
+  for (let i = 0; i < SPL.n; i++) {
+    if (SPL.life[i] <= 0) continue;
+    SPL.life[i] -= dt; SPL.vel[i * 3 + 1] -= 9.8 * dt;
+    for (let a = 0; a < 3; a++) SPL.pos[i * 3 + a] += SPL.vel[i * 3 + a] * dt;
+    if (SPL.pos[i * 3 + 1] < 0.01 || SPL.life[i] <= 0) { SPL.life[i] = 0; SPL.pos[i * 3 + 1] = -5; }
+  }
+  SPL.pts.geometry.attributes.position.needsUpdate = true;
+}
 
 // ---------------- manichini ----------------
 // Altezza 1,92 m. Asse locale: avanti = +Z, sinistra = +X. Articolazioni (gruppi): bacino, busto, testa,
@@ -238,14 +323,18 @@ function makeAthlete(kit, num, look) {
   const root = new THREE.Group(), J = {};
   const add = (parent, geo, m, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; parent.add(o); return o; };
   const joint = (parent, name, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); J[name] = g; return g; };
+  // femminile: spalle più strette, fianchi più larghi, coda di cavallo; nel beach top sportivo e slip (fisico atletico)
+  const F = !!look.fem, FB = F && look.beach;
   const pelvis = joint(root, 'pelvis', 0, 0.98, 0);
-  // pantaloncini
-  add(pelvis, GEO.cyl(0.165, 0.18, 0.2), M.shorts, 0, -0.02, 0, 1, 1, 0.78);
+  // pantaloncini (slip nel beach femminile)
+  if (FB) add(pelvis, GEO.cyl(0.162, 0.185, 0.12), M.shorts, 0, -0.045, 0, 1, 1, 0.8);
+  else if (F) add(pelvis, GEO.cyl(0.17, 0.195, 0.17), M.shorts, 0, -0.03, 0, 1, 1, 0.8);
+  else add(pelvis, GEO.cyl(0.165, 0.18, 0.2), M.shorts, 0, -0.02, 0, 1, 1, 0.78);
   const spine = joint(pelvis, 'spine', 0, 0.06, 0);
   // busto: addome e torace (maglia), spalle rotonde, numero davanti e dietro
-  add(spine, GEO.cap(0.15, 0.16), M.shirt, 0, 0.13, 0, 1.08, 1, 0.72);
-  add(spine, GEO.cap(0.17, 0.2), M.shirt, 0, 0.32, 0, 1.22, 1, 0.78);
-  add(spine, GEO.cyl(0.155, 0.17, 0.04), M.trim, 0, 0.005, 0, 1.06, 1, 0.74);   // bordo della maglia
+  add(spine, GEO.cap(0.15, 0.16), FB ? M.skin : M.shirt, 0, 0.13, 0, F ? 0.98 : 1.08, 1, 0.72);
+  add(spine, GEO.cap(0.17, 0.2), M.shirt, 0, 0.32, 0, F ? 1.06 : 1.22, F ? 0.96 : 1, F ? 0.82 : 0.78);
+  add(spine, GEO.cyl(0.155, 0.17, 0.04), M.trim, 0, FB ? 0.215 : 0.005, 0, F ? 0.95 : 1.06, 1, 0.74);   // bordo della maglia / del top
   const nt = numberTex(num, '#ffffff', kit.trimHex);
   const nm = new THREE.MeshBasicMaterial({ map: nt, transparent: true });
   const front = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.17), nm); front.position.set(0, 0.3, 0.142); spine.add(front);
@@ -257,6 +346,10 @@ function makeAthlete(kit, num, look) {
   add(hg, GEO.sph(0.112), M.skin, 0, 0.1, 0.005, 0.9, 1.08, 1);                       // cranio
   add(hg, GEO.sph(0.07), M.skin, 0, 0.035, 0.035, 0.95, 0.9, 1);                     // mascella e mento
   add(hg, GEO.sph(0.118), M.hair, 0, 0.13, -0.012, 0.92, 0.85, 1.0);                 // capelli
+  if (F) {   // coda di cavallo
+    add(hg, GEO.sph(0.05), M.hair, 0, 0.13, -0.11);
+    add(hg, GEO.cap(0.035, 0.16), M.hair, 0, 0.03, -0.135, 1, 1, 0.8).rotation.x = 0.25;
+  }
   add(hg, GEO.sph(0.022), M.skin, 0.098, 0.095, 0, 0.6, 1.1, 1);                     // orecchie
   add(hg, GEO.sph(0.022), M.skin, -0.098, 0.095, 0, 0.6, 1.1, 1);
   add(hg, GEO.sph(0.013), M.eye, 0.036, 0.11, 0.098); add(hg, GEO.sph(0.013), M.eye, -0.036, 0.11, 0.098);   // occhi
@@ -265,7 +358,7 @@ function makeAthlete(kit, num, look) {
   if (look.glasses) { const gm = mat(0x101820, 0.1, { metalness: 0.6 }); add(hg, new THREE.BoxGeometry(0.19, 0.035, 0.02), gm, 0, 0.112, 0.103); }   // occhiali da sole
   // braccia: spalla, manica, braccio, gomito, avambraccio, mano
   for (const s of [1, -1]) {
-    const sh = joint(spine, s > 0 ? 'shL' : 'shR', s * 0.215, 0.42, 0);
+    const sh = joint(spine, s > 0 ? 'shL' : 'shR', s * (F ? 0.19 : 0.215), 0.42, 0);
     add(sh, GEO.sph(0.072), M.shirt, 0, 0, 0, 1, 0.9, 0.95);
     if (!look.beach) add(sh, GEO.cyl(0.068, 0.058, 0.13), M.shirt, 0, -0.07, 0);          // manica (nel beach canottiera)
     add(sh, GEO.cyl(0.052, 0.042, 0.26), M.skin, 0, -0.15, 0);
@@ -278,8 +371,8 @@ function makeAthlete(kit, num, look) {
   }
   // gambe: coscia (pantaloncino), ginocchio con ginocchiera, polpaccio, calza, scarpa
   for (const s of [1, -1]) {
-    const hip = joint(pelvis, s > 0 ? 'hiL' : 'hiR', s * 0.095, -0.04, 0);
-    add(hip, GEO.cyl(0.092, 0.084, 0.16), M.shorts, 0, -0.06, 0);
+    const hip = joint(pelvis, s > 0 ? 'hiL' : 'hiR', s * (F ? 0.1 : 0.095), -0.04, 0);
+    if (!FB) add(hip, GEO.cyl(0.092, 0.084, F ? 0.09 : 0.16), M.shorts, 0, F ? -0.03 : -0.06, 0);
     add(hip, GEO.cyl(0.08, 0.06, 0.4), M.skin, 0, -0.2, 0);
     const kn = joint(hip, s > 0 ? 'knL' : 'knR', 0, -0.42, 0);
     if (!look.noPads) add(kn, GEO.cyl(0.066, 0.066, 0.1), kit.padDark ? M.dark : M.white, 0, -0.01, 0.006);
@@ -348,22 +441,35 @@ const HOME = BEACH ? {
   attack: [[SETTER_D, 0.8], [3.8, -3.1], [3.8, 3.1], [6.6, 0]],
   defend: [[0.55, 0.3], [0.55, -2.8], [5.4, 2.8], [6.6, -0.8]]
 };
+// rosa: 6 giocatori nel palazzetto (4 in campo + 2 in panchina per i cambi), 2 nel beach
 function makeTeam(code, side, human) {
   const P = TEAMS[code];
   const kit = { shirt: P.sh, trim: P.tr, trimHex: P.tr, shorts: BEACH ? P.tr === '#ffffff' ? P.sh : P.tr : P.so, padDark: P.sh === '#f4f4f4' };
-  const T = { code, side, name: P.name, players: [], score: 0, srvI: 0, touches: 0, plan: null, attacker: null, human };
-  const nums = BEACH ? [1, 2] : [3, 7, 11, 14];
+  const T = { code, side, name: P.name, kit, players: [], score: 0, srvI: 0, touches: 0, plan: null, attacker: null, human, subs: 0, to: 0, en: [], st: [], roster: [] };
+  const nums = BEACH ? [1, 2] : [3, 7, 11, 14, 9, 5];
+  for (let ni = 0; ni < nums.length; ni++) {
+    const isMe = human && ni === 1;
+    T.roster.push({ ni, num: nums[ni], name: isMe ? 'TU' : WOMEN ? femName(code, ni) : P.names[ni], hair: P.ha[ni % P.ha.length], sc: rnd(0.97, 1.04) });
+    T.en.push(100); T.st.push({ pts: 0, err: 0, t: 0, ace: 0, blk: 0, kill: 0 });
+  }
   for (let i = 0; i < NPL; i++) {
-    const look = { skin: P.sk, hair: P.ha[i % P.ha.length], beach: BEACH, noPads: BEACH, glasses: BEACH && i === 0 };
-    const body = makeAthlete(kit, nums[i], look);
-    const isMe = human && i === 1;
-    const p = { team: T, i, role: i, name: isMe ? 'TU' : P.names[i], num: nums[i], body, x: side * 5, z: 0, h: 0, vh: 0, air: false,
-      act: null, actT: 0, ph: Math.random() * 6, spd: 0, yaw: 0, cur: {}, human: isMe, label: nameSprite(isMe ? 'TU' : P.names[i], isMe) };
-    body.root.scale.setScalar(rnd(0.97, 1.04));
-    scene.add(body.root); scene.add(p.label);
+    const p = { team: T, i, role: i, ni: i, x: side * 5, z: 0, h: 0, vh: 0, air: false, act: null, actT: 0, ph: Math.random() * 6, spd: 0, yaw: 0, cur: {}, human: human && i === 1 };
+    dress(p);
     T.players.push(p);
   }
   return T;
+}
+// veste il giocatore p con il membro della rosa p.ni (anche dopo un cambio)
+function dress(p) {
+  const T = p.team, R = T.roster[p.ni], P = TEAMS[T.code];
+  if (p.body) scene.remove(p.body.root);
+  if (p.label) scene.remove(p.label);
+  const look = { skin: P.sk, hair: R.hair, beach: BEACH, noPads: BEACH, glasses: BEACH && p.i === 0, fem: WOMEN };
+  p.body = makeAthlete(T.kit, R.num, look); p.cur = {};
+  p.body.root.scale.setScalar(R.sc * (WOMEN ? 0.95 : 1));
+  p.name = R.name; p.num = R.num;
+  p.label = nameSprite(R.name, p.human);
+  scene.add(p.body.root); scene.add(p.label);
 }
 const teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
 const me = teams[0].players[1];
@@ -373,7 +479,7 @@ const hum = p => p.human && !window.__auto;
 
 // ---------------- stato della partita ----------------
 const ball = { x: 0, z: 0, h: 1, vx: 0, vz: 0, vy: 0, held: null, live: false, team: null, last: null, spin: 0, ver: 0 };
-const S = { count: {}, state: 'serve', t: 0, serving: teams[1], server: null, phase: 'walk', toss: false, hitWin: false, msg: '', msgT: 0, over: false, paused: false, cam: 0, names: 1 };
+const S = { count: {}, statsOn: true, state: 'serve', t: 0, serving: teams[1], server: null, phase: 'walk', toss: false, hitWin: false, msg: '', msgT: 0, over: false, paused: false, cam: 0, names: 1 };
 const keys = {}, pressed = new Set();
 const input = { l: false, r: false, u: false, d: false };
 
@@ -392,77 +498,145 @@ function phaseOf(T) {
 }
 function say(m, t = 1.6) { S.msg = m; S.msgT = t; }
 
+// ---------------- battute (come nel gioco: la direzione tenuta al lancio sceglie la battuta) ----------------
+// nessuna = dall'alto (flottante) · ↑ = in salto (jump spin) · ↓ = salto flottante (jump float)
+// ← = SKY BALL (altissima, dal basso) · → = PHANTOM (la palla si sdoppia) · ↑ + ← / → = THUNDER (fulmine)
+const SERVES = {
+  float: { name: 'BATTUTA DALL\'ALTO', toss: 5.4, fwd: 0.6, speed: 17, wob: 1.6, err: 0.05 },
+  jfloat: { name: 'SALTO FLOTTANTE', toss: 6.6, fwd: 1.0, speed: 18, wob: 2.6, err: 0.07, jump: 0.6, run: 0.35 },
+  jump: { name: 'BATTUTA IN SALTO', toss: 7.2, fwd: 1.3, speed: 22, top: 5, err: 0.1, jump: 1, run: 0.3 },
+  thunder: { name: 'THUNDER!', toss: 7.4, fwd: 1.3, speed: 27, top: 7, err: 0.15, jump: 1, run: 0.28 },
+  sky: { name: 'SKY BALL!', toss: 1.2, fwd: 0.1, sky: true, err: 0.04 },
+  phantom: { name: 'PHANTOM!', toss: 5.4, fwd: 0.6, speed: 17, wob: 1.2, ghost: true, err: 0.07 }
+};
+function serveKindFromInput() {
+  if (input.u && (input.l || input.r)) return 'thunder';
+  return input.u ? 'jump' : input.d ? 'jfloat' : input.l ? 'sky' : input.r ? 'phantom' : 'float';
+}
+function aiServeKind() {
+  const r = Math.random();
+  return r < 0.34 ? 'float' : r < 0.6 ? 'jfloat' : r < 0.84 ? 'jump' : r < 0.9 ? 'sky' : r < 0.95 ? 'phantom' : 'thunder';
+}
+
 function startServe() {
   const T = S.serving, sv = T.players[T.srvI];
-  S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false;
-  Object.assign(ball, { held: sv, live: false, team: null, last: null, vx: 0, vz: 0, vy: 0 });
+  S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false; S.kind = null; S.quickReq = false; S.receiverTouched = false;
+  Object.assign(ball, { held: sv, live: false, team: null, last: null, vx: 0, vz: 0, vy: 0, wob: 0, top: 0, ghost: 0, thunder: 0 });
   for (const t of teams) { t.touches = 0; t.plan = null; t.attacker = null; for (const p of t.players) { p.act = null; if (!p.human) { const h = homeOf(p, phaseOf(t)); p.x = h.x; p.z = h.z; } p.h = 0; p.vh = 0; p.air = false; } }
   sv.x = T.side * SERVE_X; sv.z = T.side * 1.2;
   if (me !== sv) { const h = homeOf(me, phaseOf(me.team)); me.x = h.x; me.z = h.z; }   // a ogni battuta torni al tuo posto
 }
-function point(T, why) {
+// fine dell'azione: punto, statistiche, stanchezza, cambi e time-out del computer
+function point(T, why, who, what) {
   if (S.state !== 'rally' && S.state !== 'serve') return;
-  T.score++; S.state = 'dead'; S.t = 0; ball.live = false;
+  if (who && what) who.team.st[who.ni][what]++;
+  if (who && (what === 'kill' || what === 'ace' || what === 'blk')) who.team.st[who.ni].pts++;
+  T.score++; S.state = 'dead'; S.t = 0; ball.live = false; S.hitWin = false;
+  for (const t of teams) { t.plan = null; t.attacker = null; }
+  S.streak = S.streak && S.streak.T === T ? { T, n: S.streak.n + 1 } : { T, n: 1 };
   say(why + (T === me.team ? ' - PUNTO ITALIA!' : ' - PUNTO ' + T.name));
   const won = T.score >= TARGET && T.score - other(T).score >= 2;
   if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % NPL; }
-  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); }
+  for (const t of teams) {
+    const onCourt = new Set(t.players.map(p => p.ni));
+    for (const p of t.players) tire(p, FAT.point);
+    for (let ni = 0; ni < t.roster.length; ni++) if (!onCourt.has(ni)) t.en[ni] = Math.min(100, t.en[ni] + FAT.bench);
+  }
+  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); showStats(true); }
   for (const t of teams) for (const p of t.players) { p.act = t === T ? 'cheer' : 'sad'; p.actT = 1.8; }
+  if (won) return;
+  // il computer: cambia chi è stanco e chiama time-out se l'altra squadra fa 4 punti di fila
+  for (const t of teams) if (!t.human) aiSubs(t);
+  const O = other(S.streak.T);
+  if (!O.human && S.streak.n >= 4 && O.to < 1) callTimeout(O);
 }
 
 // ---------------- colpi ----------------
 function touch(p, kind) {
   const T = p.team, b = ball;
   if (b.team === T) T.touches++; else { T.touches = 1; other(T).touches = 0; }
-  b.team = T; b.last = p; b.ver++; b.held = null;
+  if (b.team !== T && b.last === S.server) S.receiverTouched = true;
+  b.team = T; b.last = p; b.ver++; b.held = null; b.wob = 0; b.top = 0; b.ghost = 0; b.thunder = 0; b.kind = kind;
   S.count[kind] = (S.count[kind] || 0) + 1;   // conteggio dei colpi (prove)
-  if (T.touches > 3) { point(other(T), 'QUATTRO TOCCHI'); return; }
-  const side = T.side, spd = Math.hypot(b.vx, b.vy, b.vz);
+  T.st[p.ni].t++;
+  if (T.touches > 3) { point(other(T), 'QUATTRO TOCCHI', p, 'err'); return; }
+  const side = T.side, spd = Math.hypot(b.vx, b.vy, b.vz), F = fatigue(p);
   if (kind === 'pass') {
-    // ricezione / difesa verso l'alzatore (o verso chi è più vicino alla rete se ha ricevuto l'alzatore)
-    const err = (p.human ? 0.45 : 0.6) + spd / 22 * (p.human ? 1.0 : 1.4);
-    const sx = side * (SETTER_D + rnd(-0.2, 0.6) * err), sz = clamp(1.2 * -side + rnd(-1, 1) * err, -3.8, 3.8);
+    // ricezione / difesa verso chi alza: più errore con palle veloci e con la stanchezza
+    const err = ((p.human ? 0.45 : 0.6) + spd / 22 * (p.human ? 1.0 : 1.4)) * (1 + F * 0.8);
+    const setter = BEACH ? T.players.find(q => q !== p) : T.players[0] !== p ? T.players[0] : T.players[2];
+    const sx = side * (SETTER_D + rnd(-0.2, 0.6) * err), sz = clamp((BEACH ? setter.z * 0.3 : 1.2 * -side) + rnd(-1, 1) * err, -CW + 0.7, CW - 0.7);
     const v = arc3(b.x, b.z, b.h, sx, sz, SET_H, rnd(4.0, 5.2));
-    Object.assign(b, v); p.act = spd > 13 && Math.hypot(p.x - b.x, p.z - b.z) > REACH + LAT ? 'dive' : 'pass'; p.actT = 0.55;
+    Object.assign(b, v);
+    const dive = spd > 13 && Math.hypot(p.x - b.x, p.z - b.z) > REACH + LAT;
+    p.act = dive ? 'dive' : 'pass'; p.actT = 0.55;
+    if (dive) { tire(p, FAT.dive); sandStamp(p.x, p.z, 0.32, 0.04, 0.016, 1.8); splash(p.x, p.z, 30, 1.1); }
   } else if (kind === 'set') {
-    // alzata a uno schiacciatore: tu ricevi la palla una volta su due se sei in prima linea
-    // nel beach attacca il compagno di chi alza (di solito chi ha ricevuto)
+    // alzata: nel palazzetto a uno schiacciatore (tu una volta su due se sei in prima linea), nel beach al compagno
     const hit = BEACH ? T.players.filter(q => q !== p) : T.players.filter(q => q.role === 1 || q.role === 2).filter(q => q !== p);
     let a = hit[Math.floor(Math.random() * hit.length)];
-    if (T.human && hit.includes(me) && Math.random() < 0.6) a = me;
+    if (T.human && hit.includes(me) && (Math.random() < 0.6 || S.quickReq)) a = me;
     T.attacker = a;
-    const tz = clamp(a.z * 0.8 + (homeOf(a, 'attack').z) * 0.2, -3.7, 3.7), tx = side * 0.95;
-    const v = arc3(b.x, b.z, b.h, tx, tz, HIT_H - 0.05, HIT_H + rnd(1.0, 1.5));
+    // tipo di alzata: le tue richieste (↑ alta, ↓ veloce, Z durante la ricezione = primo tempo, oltre i 3 m = seconda linea)
+    let type = 'normal';
+    if (a === me && hum(me)) {
+      if (S.quickReq) type = 'quick'; else if (Math.abs(me.x) > 3.1 && !BEACH) type = 'back'; else if (input.u) type = 'high'; else if (input.d) type = 'fast';
+    } else { const r = Math.random(); type = r < 0.15 && !BEACH ? 'quick' : r < 0.3 ? 'high' : r < 0.4 ? 'fast' : r < 0.46 && !BEACH ? 'back' : 'normal'; }
+    S.quickReq = false;
+    let tz = clamp(a.z * 0.8 + (homeOf(a, 'attack').z) * 0.2, -CW + 0.8, CW - 0.8), tx = side * 0.95, apex = HIT_H + rnd(1.0, 1.5);
+    if (type === 'high') { apex = HIT_H + 2.3; tz = clamp(tz * 1.25, -CW + 0.5, CW - 0.5); }
+    if (type === 'fast') apex = HIT_H + 0.45;
+    if (type === 'quick') { tz = clamp(p.z + (a.z > p.z ? 0.9 : -0.9), -CW + 0.8, CW - 0.8); tx = side * 0.7; apex = HIT_H + 0.25; }
+    if (type === 'back') { tx = side * 3.7; apex = HIT_H + 1.3; }
+    a.setType = type;
+    const v = arc3(b.x, b.z, b.h, tx, tz, HIT_H - 0.05, apex);
     Object.assign(b, v); p.act = 'set'; p.actT = 0.5;
-    a.spikeX = tx; a.spikeZ = tz;
-    if (a === me) say('ALZATA PER TE! Vai sul cerchio', 1.4);
+    if (a === me) say({ quick: 'PRIMO TEMPO!', back: 'SECONDA LINEA!', high: 'PALLA ALTA PER TE', fast: 'PALLA VELOCE PER TE', normal: 'ALZATA PER TE!' }[type] + ' Vai sul cerchio', 1.4);
+  } else if (kind === 'dump') {
+    // SURPRISE ATTACK: l'alzatore in salto manda la palla di là al secondo tocco, appena oltre la rete
+    const v = arc3(b.x, b.z, b.h, -side * rnd(1.2, 2.6), clamp(b.z + rnd(-2, 2), -CW + 0.5, CW - 0.5), 0, Math.max(b.h, NET) + 0.45);
+    Object.assign(b, v); p.act = 'set'; p.actT = 0.4; T.attacker = null; say(p === me ? 'SURPRISE ATTACK!' : 'ATTACCO DI SECONDA!', 1.2);
   } else if (kind === 'over') {
     // palla facile di là
-    const v = arc3(b.x, b.z, b.h, -side * rnd(3, 7), rnd(-3.5, 3.5), 0, Math.max(b.h, NET) + rnd(1.2, 2));
+    const v = arc3(b.x, b.z, b.h, -side * rnd(3, HALF - 2), rnd(-CW + 0.8, CW - 0.8), 0, Math.max(b.h, NET) + rnd(1.2, 2));
     Object.assign(b, v); p.act = 'pass'; p.actT = 0.45;
   } else if (kind === 'spike') {
-    let tx = -side * rnd(2.5, 8.2), tz = rnd(-3.8, 3.8), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)), lob = false;
-    if (p.human) {
-      // ← → mira (a sinistra / a destra di chi schiaccia)
-      tz = input.l ? 3.4 * side : input.r ? -3.4 * side : rnd(-1.5, 1.5);
-      if (input.u) lob = true; if (input.d) { sp = SPIKE_V * 1.18; tx = -side * rnd(5, 8); }
-    } else if (Math.random() < 0.07) tx = -side * 9.6;   // ogni tanto fuori
+    let tx = -side * rnd(2.5, HALF - 0.8), tz = rnd(-CW + 0.7, CW - 0.7), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)) * (1 - 0.15 * F) * (WOMEN ? 0.88 : 1), lob = false;
+    if (hum(p)) {
+      // ← → mira (a sinistra / a destra di chi schiaccia), ↑ pallonetto, ↓ potente
+      tz = input.l ? (CW - 1.1) * side : input.r ? -(CW - 1.1) * side : rnd(-1.5, 1.5);
+      if (input.u) lob = true; if (input.d) { sp *= 1.18; tx = -side * rnd(5, HALF - 1); }
+    } else {
+      const r = Math.random();
+      if (r < 0.1) lob = true; else if (r < 0.2) sp *= 1.15;
+      if (Math.random() < 0.07 + F * 0.08) tx = -side * (HALF + 0.6);   // ogni tanto fuori (di più se stanco)
+    }
     let v = lob ? arc3(b.x, b.z, b.h, -side * rnd(2, 3.6), tz, 0, Math.max(b.h, NET) + 0.7) : shot3(b.x, b.z, b.h, tx, tz, 0, sp);
-    for (let i = 0; i < 8 && !clears(b, v, 0.05); i++) { tx -= side * 0.6; v = shot3(b.x, b.z, b.h, tx, tz, 0, sp * 0.95); }
+    for (let i = 0; i < 8 && !lob && !clears(b, v, 0.05); i++) { tx -= side * 0.6; v = shot3(b.x, b.z, b.h, tx, tz, 0, sp * 0.95); }
     Object.assign(b, v); p.act = 'hit'; p.actT = 0.35; T.attacker = null;
-    b.spin = 30;
+    b.spin = 30; b.top = lob ? 0 : 3;
+    if (!lob && sp > SPIKE_V * 1.05) shake(0.25);
   }
 }
 function serveHit(p) {
-  const T = p.team, side = T.side, b = ball;
-  let tx = -side * rnd(4.5, 8.3), tz = rnd(-3.6, 3.6);
-  if (p.human) { tx = -side * (input.u ? 8.2 : input.d ? 3.8 : 6.4); tz = input.l ? 3.3 * side : input.r ? -3.3 * side : rnd(-1, 1); }
-  else if (Math.random() < 0.06) tx = -side * 10;
+  const T = p.team, side = T.side, b = ball, K = SERVES[S.kind];
+  let tx = -side * rnd(4.5, HALF - 0.7), tz = rnd(-CW + 0.9, CW - 0.9);
+  if (hum(p)) { tx = -side * (input.u ? HALF - 0.8 : input.d ? 3.6 : HALF * 0.7); tz = input.l ? (CW - 1.2) * side : input.r ? -(CW - 1.2) * side : rnd(-1, 1); }
+  if (Math.random() < K.err * (hum(p) ? 0.5 : 1) + fatigue(p) * 0.06) tx = -side * (HALF + 1);   // battuta sbagliata (lunga)
   let v = null;
-  for (let sp = 17; sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, 0.25)) break; }
+  if (K.sky) v = arc3(b.x, b.z, b.h, tx, tz, 0, WOMEN ? 13 : 15);                 // SKY BALL: altissima, scende quasi verticale
+  else for (let sp = K.speed * (WOMEN ? 0.9 : 1); sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, K.top ? 0.12 : 0.25)) break; }
+  if (K.top) { // con la rotazione in avanti la palla scende prima: si tira un po' più su
+    v = shot3(b.x, b.z, b.h, tx, tz, 0, K.speed * (WOMEN ? 0.9 : 1));
+    v.vy += K.top * v.T / 2;
+    if (!clears(b, v, 0.1)) v.vy += 1.2;
+  }
   Object.assign(b, v); b.held = null; b.live = true; b.team = T; b.last = p; b.ver++; T.touches = 3;   // chi batte non può toccare di nuovo
+  b.wob = K.wob || 0; b.wobPh = rnd(0, 6); b.top = K.top || 0; b.ghost = K.ghost ? 1 : 0; b.ghostZ = 0; b.ghostDir = Math.random() < 0.5 ? -1 : 1; b.thunder = S.kind === 'thunder' ? 1 : 0; b.kind = 'serve';
   other(T).touches = 0;
-  S.state = 'rally'; S.t = 0; p.act = 'hit'; p.actT = 0.35; b.spin = 12;
+  S.state = 'rally'; S.t = 0; p.act = 'hit'; p.actT = 0.35; b.spin = K.top ? 30 : 3;
+  if (K.ghost || S.kind === 'thunder' || K.sky) say(K.name, 1.2);
+  if (S.kind === 'thunder') shake(0.4);
 }
 
 // ---------------- intelligenza (piani come in match.js: chi prende la palla, dove e quando) ----------------
@@ -488,17 +662,19 @@ function think(T) {
   }
   T.plan = { kind, p, xc, zc, tc, hc };
 }
+// velocità di corsa: stanchezza e sabbia rovinata rallentano
+function speedOf(p) { return RUN * (1 - 0.18 * fatigue(p)) * clamp(1 - sandRough(p.x, p.z) * 5, 0.82, 1); }
 function movePlayer(p, dt) {
-  const T = p.team;
-  let tx = p.x, tz = p.z, sp = RUN;
+  const T = p.team, x0 = p.x, z0 = p.z;
+  let tx = p.x, tz = p.z, sp = speedOf(p);
   if (hum(p)) {
     const mx = (input.u ? 1 : 0) - (input.d ? 1 : 0), mz = (input.r ? 1 : 0) - (input.l ? 1 : 0);   // ↑ = verso la rete
     let vx = mx * -T.side, vz = mz * -T.side;
     // durante la schiacciata la rincorsa è automatica (come nel gioco)
     if (S.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
     const n = Math.hypot(vx, vz) || 1;
-    if (!(p.air || (S.state === 'serve' && S.server === p && S.phase !== 'walk'))) { p.x += vx / n * RUN * dt * (vx || vz ? 1 : 0); p.z += vz / n * RUN * dt * (vx || vz ? 1 : 0); }
-    p.spd = (vx || vz) && !p.air ? RUN : 0;
+    if (!(p.air || (S.state === 'serve' && S.server === p && S.phase !== 'walk'))) { p.x += vx / n * sp * dt * (vx || vz ? 1 : 0); p.z += vz / n * sp * dt * (vx || vz ? 1 : 0); }
+    p.spd = (vx || vz) && !p.air ? sp : 0;
   } else {
     const pl = T.plan;
     if (S.state === 'serve' && S.server === p) { tx = T.side * SERVE_X; tz = T.side * 1.2; }
@@ -507,16 +683,16 @@ function movePlayer(p, dt) {
       if (pl.kind === 'spike') {
         // rincorsa: indietro di 2,5 m, poi corsa verso il punto di colpo e stacco quando mancano 0,4 s
         const back = pl.tc > 0.85 ? 2.4 : 0.2;
-        tx = pl.xc + T.side * back; tz = pl.zc; sp = pl.tc > 0.85 ? RUN : RUN * 1.6;
+        tx = pl.xc + T.side * back; tz = pl.zc; sp = pl.tc > 0.85 ? sp : sp * 1.6;
         if (!p.air && pl.tc <= JUMP_T + 0.02 && pl.tc > 0.2) jump(p, 'load');
-      } else { tx = pl.xc; tz = pl.zc; sp = RUN * 1.25; }
-    } else if (S.state === 'dead' || S.state === 'end') { tx = p.x; tz = p.z; }
+      } else { tx = pl.xc; tz = pl.zc; sp *= 1.25; }
+    } else if (S.state === 'dead' || S.state === 'end' || S.state === 'timeout') { tx = p.x; tz = p.z; }
     else {
       const h = homeOf(p, phaseOf(T)); tx = h.x; tz = h.z;
-      // muro: i giocatori a rete seguono lo schiacciatore avversario e saltano con lui
+      // muro: i giocatori a rete seguono lo schiacciatore avversario e saltano con lui (anche sulla finta)
       const O = other(T), a = O.attacker;
       if (a && ball.team === O && Math.abs(tx) < 1.2 && (p.role === 0 || p.role === 1)) {
-        tz = clamp(a.z + (p.role === 0 ? 0.35 : -0.35) * -T.side, -4, 4);
+        tz = clamp(a.z + (p.role === 0 ? 0.35 : -0.35) * -T.side, -CW + 0.3, CW - 0.3);
         if (!p.air && a.air && a.h > 0.12 && p.blockVer !== ball.ver) { p.blockVer = ball.ver; if (Math.random() < 0.75) jump(p, 'block'); }
       }
     }
@@ -526,14 +702,29 @@ function movePlayer(p, dt) {
   // ognuno nel suo campo (fino a sotto la rete)
   if (T.side < 0) p.x = clamp(p.x, -SERVE_X - 1, -0.25); else p.x = clamp(p.x, 0.25, SERVE_X + 1);
   p.z = clamp(p.z, -7, 7);
+  // fatica della corsa e impronte nella sabbia
+  const moved = Math.hypot(p.x - x0, p.z - z0);
+  if (moved > 0 && S.state === 'rally') tire(p, moved * FAT.run);
+  if (SAND && moved > 0 && !p.air) {
+    p.stepD = (p.stepD || 0) + moved;
+    if (p.stepD > 0.62) { p.stepD = 0; p.foot = -(p.foot || 1); const c = Math.cos(p.yaw), sn = Math.sin(p.yaw); sandStamp(p.x + c * 0.11 * p.foot, p.z - sn * 0.11 * p.foot, 0.1, 0.014, 0.006); if (p.spd > 3.5 && Math.random() < 0.4) splash(p.x, p.z, 3, 0.5); }
+  }
   // salto
   if (p.air) {
     p.vh -= PG * dt; p.h += p.vh * dt;
-    if (p.h <= 0) { p.h = 0; p.vh = 0; p.air = false; if (p.act === 'load' || p.act === 'block' || p.act === 'jump') p.act = null; }
+    if (p.h <= 0) {
+      p.h = 0; p.vh = 0; p.air = false; if (p.act === 'load' || p.act === 'block' || p.act === 'jump') p.act = null;
+      if (SAND) { sandStamp(p.x, p.z, 0.24, 0.03, 0.013); splash(p.x, p.z, 22, 0.9); }   // atterraggio
+    }
   }
   if (p.actT > 0) { p.actT -= dt; if (p.actT <= 0 && !p.air) p.act = null; }
 }
-function jump(p, act) { if (p.air) return; p.air = true; p.vh = JUMP_V; p.act = act; p.actT = 0.8; }
+function jump(p, act, k = 1) {
+  if (p.air) return;
+  p.air = true; p.vh = JUMP_V * k * (1 - 0.07 * fatigue(p)) * clamp(1 - sandRough(p.x, p.z) * 2, 0.93, 1); p.act = act; p.actT = 0.8;
+  tire(p, FAT.jump);
+  if (SAND) { sandStamp(p.x, p.z, 0.2, 0.025, 0.012); splash(p.x, p.z, 14, 0.8); }   // stacco
+}
 
 // contatti: tocchi automatici (ricezione, alzata, palla di là), schiacciata, muro
 function contacts() {
@@ -560,11 +751,24 @@ function contacts() {
         const spd = Math.hypot(b.vx, b.vy, b.vz);
         if (pl.kind === 'pass' && spd > 14 && p.tryVer !== b.ver) {
           p.tryVer = b.ver;
-          const ok = hum(p) ? (d <= REACH + LAT ? 1 : 0.6) : d <= REACH ? 0.88 : d <= REACH + LAT ? 0.62 : 0.32;
+          const ok = hum(p) ? (d <= REACH + LAT ? 1 : 0.6) : (d <= REACH ? 0.88 : d <= REACH + LAT ? 0.62 : 0.32) * (1 - 0.25 * fatigue(p));
           p.tryOk = Math.random() < ok;
         }
         if (pl.kind === 'pass' && spd > 14 && !p.tryOk) { p.act = 'dive'; p.actT = 0.6; continue; }
         if (!hum(p) && pl.kind === 'pass' && spd <= 14 && d > REACH + LAT && Math.random() < 0.35) continue;   // tuffo non riuscito
+        // battute flottanti e sky ball: ricezione più difficile
+        if (pl.kind === 'pass' && b.last === S.server && !S.receiverTouched && p.tryVer !== b.ver) {
+          p.tryVer = b.ver; const K = SERVES[S.kind] || {};
+          p.tryOk = Math.random() > (K.wob ? 0.05 + K.wob * 0.03 : 0) + (K.sky ? 0.15 : 0) + (K.top ? 0.08 : 0) - (hum(p) ? 0.1 : 0);
+        }
+        if (pl.kind === 'pass' && b.last === S.server && !S.receiverTouched && !p.tryOk) {
+          // ricezione sbagliata: la palla schizza via (conta come primo tocco, i compagni possono rincorrerla)
+          p.act = 'pass'; p.actT = 0.5; b.vx *= -0.25; b.vz += rnd(-2, 2); b.vy = Math.abs(b.vy) * 0.35 + 2; b.ver++; b.team = T; b.last = p; b.kind = 'pass'; T.touches = 1; other(T).touches = 0;
+          S.receiverTouched = true; T.st[p.ni].err++; T.st[p.ni].t++; say('RICEZIONE SBAGLIATA', 1); return;
+        }
+        // alzatore vicino alla rete: ogni tanto attacco di seconda (SURPRISE ATTACK); tu: Z mentre alzi
+        if (pl.kind === 'set' && Math.abs(p.x) < 1.6 && !BEACH && ((hum(p) && S.zPress) || (!hum(p) && Math.random() < 0.06))) { S.zPress = false; touch(p, 'dump'); return; }
+        if (pl.kind === 'set' && hum(p) && S.zPress) { S.zPress = false; touch(p, 'dump'); return; }
         touch(p, pl.kind); return;
       }
     }
@@ -580,18 +784,88 @@ function blockCheck(prevX) {
     const top = p.h + REACH_UP + 0.12;
     if (Math.abs(p.z - b.z) < 0.55 && b.h < top && b.h > NET - 0.2 && (p.human || Math.random() < 0.55)) {
       b.vx = -b.vx * 0.4; b.vz *= 0.5; b.vy = Math.abs(b.vy) * 0.2 + 1.2; b.x = -D.side * 0.25;
-      b.team = D; b.last = p; D.touches = 0; other(D).touches = 0; b.ver++;
-      p.act = 'block'; say(p === me ? 'MURO! BRAVO!' : 'MURO!', 1.2);
+      b.team = D; b.last = p; D.touches = 0; other(D).touches = 0; b.ver++; b.top = 0; b.kind = 'block';
+      p.act = 'block'; say(p === me ? 'MURO! BRAVO!' : 'MURO!', 1.2); S.blocker = p;
       return true;
     }
   }
   return false;
 }
 
+// ---------------- cambi (X) e time-out (R) a palla ferma ----------------
+function aiSubs(T) {
+  if (BEACH || T.subs >= MAX_SUBS) return;
+  for (const p of T.players) {
+    if (p.human || T.en[p.ni] > 50) continue;
+    const onCourt = new Set(T.players.map(q => q.ni));
+    let best = -1;
+    for (let ni = 0; ni < T.roster.length; ni++) if (!onCourt.has(ni) && T.en[ni] > T.en[p.ni] + 20 && (best < 0 || T.en[ni] > T.en[best])) best = ni;
+    if (best >= 0) { doSub(T, p, best); say('CAMBIO ' + T.name + ': ENTRA ' + T.roster[best].name, 1.6); }
+  }
+}
+function doSub(T, p, ni) { p.ni = ni; T.subs++; dress(p); }
+function callTimeout(T) {
+  if (T.to >= 1 || (S.state !== 'dead' && S.state !== 'serve')) return false;
+  T.to++; S.state = 'timeout'; S.t = 0;
+  for (const p of T.players) T.en[p.ni] = Math.min(100, T.en[p.ni] + FAT.timeout);
+  if (SAND) SAND.rake = 1.6;
+  say('TIME-OUT ' + (T === me.team ? 'ITALIA' : T.name) + (SAND ? ': SI SPIANA LA SABBIA' : ''), 3);
+  for (const t of teams) for (const p of t.players) { p.act = null; }
+  return true;
+}
+const SUB = { open: false, out: 0, inn: 0 };
+function subOpen() {
+  if (BEACH || (S.state !== 'dead' && S.state !== 'serve') || (S.state === 'serve' && S.phase === 'toss')) return;
+  const T = me.team;
+  if (T.subs >= MAX_SUBS) { say('CAMBI FINITI (' + MAX_SUBS + ' PER SET)', 1.5); return; }
+  SUB.open = true; SUB.out = T.players.findIndex(p => !p.human); SUB.inn = 0; subDraw();
+}
+function subKey(k) {
+  const T = me.team, bench = T.roster.filter(R => !T.players.some(p => p.ni === R.ni)), court = T.players.filter(p => !p.human);
+  if (k === 'up' || k === 'down') { let i = court.indexOf(T.players[SUB.out]); i = (i + (k === 'up' ? -1 : 1) + court.length) % court.length; SUB.out = T.players.indexOf(court[i]); }
+  if (k === 'left' || k === 'right') SUB.inn = (SUB.inn + (k === 'left' ? -1 : 1) + bench.length) % bench.length;
+  if (k === 'ok') { doSub(T, T.players[SUB.out], bench[SUB.inn].ni); say('CAMBIO: ENTRA ' + bench[SUB.inn].name, 1.5); SUB.open = false; }
+  if (k === 'close') SUB.open = false;
+  subDraw();
+}
+const bar = e => `<span class="bar"><i style="width:${e}%;background:${e > 60 ? '#3ad070' : e > 35 ? '#f0c030' : '#e04030'}"></i></span>`;
+const errPct = (T, ni) => { const s = T.st[ni]; return s.t ? Math.round(s.err / s.t * 100) : 0; };
+function subDraw() {
+  const el = $('subs'); el.style.display = SUB.open ? '' : 'none'; if (!SUB.open) return;
+  const T = me.team, bench = T.roster.filter(R => !T.players.some(p => p.ni === R.ni));
+  let h = `<h3>CAMBI (${T.subs}/${MAX_SUBS}) · ↑ ↓ chi esce · ← → chi entra · Z conferma · X chiudi</h3><table>`;
+  for (const p of T.players) { const sel = T.players[SUB.out] === p; h += `<tr class="${sel ? 'sel' : ''}${p.human ? ' me' : ''}"><td>${sel ? '▶' : ''}</td><td>${p.num}</td><td>${p.name}</td><td>${bar(Math.round(T.en[p.ni]))} ${Math.round(T.en[p.ni])}%</td><td>err ${errPct(T, p.ni)}%</td></tr>`; }
+  h += '</table><h3>PANCHINA</h3><table>';
+  bench.forEach((R, i) => { h += `<tr class="${i === SUB.inn ? 'sel' : ''}"><td>${i === SUB.inn ? '▶' : ''}</td><td>${R.num}</td><td>${R.name}</td><td>${bar(Math.round(T.en[R.ni]))} ${Math.round(T.en[R.ni])}%</td><td>err ${errPct(T, R.ni)}%</td></tr>`; });
+  el.innerHTML = h + '</table>';
+}
+// riquadro energia ed errori (a palla ferma, I per nasconderlo) e statistiche di fine set
+function showStats(end) {
+  const el = $('stats');
+  if (!end && (!S.statsOn || !(S.state === 'dead' || S.state === 'timeout' || (S.state === 'serve' && S.phase !== 'toss')))) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const team = T => {
+    let h = `<h3>${T === me.team ? 'ITALIA' : T.name}${end ? '' : ' · ENERGIA ED ERRORI'}</h3><table>`;
+    if (end) h += '<tr class="hd"><td></td><td>punti</td><td>attacchi</td><td>muri</td><td>ace</td><td>errori</td><td>energia</td></tr>';
+    for (const R of T.roster) {
+      const s = T.st[R.ni], on = T.players.some(p => p.ni === R.ni);
+      if (!end && !on) continue;
+      h += end ? `<tr><td>${R.num} ${R.name}</td><td>${s.pts}</td><td>${s.kill}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.err}</td><td>${Math.round(T.en[R.ni])}%</td></tr>`
+        : `<tr><td>${R.num} ${R.name}</td><td>${bar(Math.round(T.en[R.ni]))}</td><td>${Math.round(T.en[R.ni])}%</td><td>err ${errPct(T, R.ni)}%</td></tr>`;
+    }
+    return h + '</table>';
+  };
+  el.innerHTML = end ? team(teams[0]) + team(teams[1]) : team(me.team);
+  el.classList.toggle('end', !!end);
+}
+
 // ---------------- passo di simulazione (1/120 s come nel gioco) ----------------
 function step(dt) {
   S.t += dt;
   const b = ball;
+  sandUpdate(dt);
+  if (SUB.open) return;   // pannello dei cambi aperto: tutto fermo
+  if (S.state === 'timeout') { if (S.t > 3.2) startServe(); return; }
   if (S.state === 'serve') {
     const sv = S.server, T = sv.team;
     if (S.phase === 'walk') {
@@ -601,13 +875,31 @@ function step(dt) {
       if (d < 0.06 || hum(sv)) { S.phase = 'ready'; S.t = 0; }
     } else if (S.phase === 'ready') {
       if ((hum(sv) && S.zPress) || (!hum(sv) && S.t > 1.5)) {
-        S.zPress = false; S.phase = 'toss'; S.t = 0; b.held = null; b.vy = 5.4; b.vx = -T.side * 0.6; b.vz = 0; sv.act = 'toss'; sv.actT = 1.2;
+        S.zPress = false; S.phase = 'toss'; S.t = 0; S.kind = hum(sv) ? serveKindFromInput() : aiServeKind();
+        const K = SERVES[S.kind];
+        b.held = null; b.vy = K.toss; b.vx = -T.side * K.fwd; b.vz = 0; sv.act = 'toss'; sv.actT = K.jump ? 0.5 : 1.2;
+        if (K.sky) { b.h = 0.9; sv.act = 'pass'; }
+        if (hum(sv)) say(K.name, 1);
       }
     } else if (S.phase === 'toss') {
+      const K = SERVES[S.kind];
       b.vy -= G * dt; b.x += b.vx * dt; b.h += b.vy * dt;
-      S.hitWin = b.h > 2.55 && b.h < 3.45 && S.t > 0.3;
-      if (S.hitWin && ((hum(sv) && S.zPress) || (!hum(sv) && b.vy < rnd(-0.5, 1.5)))) { S.zPress = false; S.hitWin = false; serveHit(sv); }
-      else if (b.h < 1.4 && b.vy < 0) { S.hitWin = false; point(other(T), 'BATTUTA SBAGLIATA'); }
+      if (K.jump) {
+        // rincorsa e stacco automatici: il battitore va sotto la palla e salta per colpirla in cima al salto
+        const tHit = timeToH(b.h, b.vy, sv.h + REACH_UP + JUMP_H * K.jump + 0.05);
+        if (!sv.air && S.t > K.run) {
+          const tx = b.x + b.vx * (tHit || 0) + T.side * 0.25, d = tx - sv.x;
+          if (Math.abs(d) > 0.03) { const s = Math.min(Math.abs(d), RUN * 1.5 * dt); sv.x += Math.sign(d) * s; sv.spd = RUN * 1.4; }
+          sv.z = lerp(sv.z, b.z, dt * 4);
+          if (tHit !== null && tHit <= JUMP_T * Math.sqrt(K.jump) + 0.02) jump(sv, 'load', Math.sqrt(K.jump));
+        }
+        const hand = sv.h + REACH_UP + 0.1;
+        S.hitWin = sv.air && Math.abs(b.h - hand) < 0.42 && Math.abs(b.x - sv.x) < 0.9;
+      } else if (K.sky) S.hitWin = b.vy < 0 && b.h < 1.25 && b.h > 0.6;
+      else S.hitWin = b.h > 2.55 && b.h < 3.45 && S.t > 0.3;
+      if (S.hitWin && ((hum(sv) && S.zPress) || (!hum(sv) && (K.jump ? b.vy < 0.5 : K.sky ? b.h < 1.05 : b.vy < rnd(-0.5, 1.5))))) { S.zPress = false; S.hitWin = false; serveHit(sv); }
+      else if (b.h < (K.sky ? 0.4 : 1.2) && b.vy < 0) { S.hitWin = false; point(other(T), 'BATTUTA SBAGLIATA', sv, 'err'); }
+      if (!hum(sv) && (sv.air || sv.h > 0)) movePlayer(sv, dt);
     }
     if (b.held) { const h = b.held; b.x = h.x - h.team.side * 0.35; b.z = h.z - 0.2 * h.team.side; b.h = 1.15; }
     for (const t of teams) for (const p of t.players) if (p !== sv || hum(p)) movePlayer(p, dt);
@@ -621,27 +913,43 @@ function step(dt) {
     if (hum(me) && mp && mp.p === me && mp.kind === 'spike' && !me.air) {
       // rincorsa e stacco automatici se sei vicino al punto di colpo (come nel gioco)
       const d = Math.hypot(me.x - mp.xc, me.z - mp.zc);
-      if (d < 1.2 && mp.tc <= JUMP_T + 0.02 && mp.tc > 0.15) { const k = Math.min(1, dt * 8); me.x = lerp(me.x, mp.xc, k); me.z = lerp(me.z, mp.zc, k); jump(me, 'load'); }
-      else if (d < 4.6 && mp.tc < 1.0) { S.autoAppr = true; const s = Math.min(d, RUN * 1.7 * dt); if (d > 0.05) { me.x += (mp.xc - me.x) / d * s; me.z += (mp.zc - me.z) / d * s; me.spd = RUN; } }
+      // FINTA: Z prima della rincorsa = finto salto (il muro avversario salta), poi il salto vero
+      if (S.zPress && mp.tc > 0.85 && me.fakeVer !== ball.ver && !BEACH) { S.zPress = false; me.fakeVer = ball.ver; jump(me, 'load', 0.5); say('FINTA!', 1); }
+      else if (d < 1.2 && mp.tc <= JUMP_T + 0.02 && mp.tc > 0.15) { const k = Math.min(1, dt * 8); me.x = lerp(me.x, mp.xc, k); me.z = lerp(me.z, mp.zc, k); jump(me, 'load'); }
+      else if (d < 4.6 && mp.tc < 1.0) { S.autoAppr = true; const sp = speedOf(me) * 1.7, s = Math.min(d, sp * dt); if (d > 0.05) { me.x += (mp.xc - me.x) / d * s; me.z += (mp.zc - me.z) / d * s; me.spd = sp; } }
     }
+    // Z mentre i compagni ricevono = chiedi il PRIMO TEMPO (palla veloce vicino all'alzatore)
+    if (hum(me) && S.zPress && ball.team === me.team && me.team.touches === 1 && !(mp && mp.p === me) && !BEACH) { S.zPress = false; S.quickReq = true; say('PRIMO TEMPO!', 1); }
     for (const t of teams) for (const p of t.players) movePlayer(p, dt);
     // Z senza un colpo da fare: salto (muro vicino alla rete)
-    if (S.zPress && !(mp && mp.p === me && mp.kind === 'spike')) { S.zPress = false; jump(me, Math.abs(me.x) < 1.6 ? 'block' : 'jump'); }
+    if (S.zPress && !(mp && mp.p === me && (mp.kind === 'spike' || mp.kind === 'set'))) { S.zPress = false; jump(me, Math.abs(me.x) < 1.6 ? 'block' : 'jump'); }
     const px = b.x;
-    b.vy -= G * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
+    // flottante: la palla balla di lato; con la rotazione in avanti scende prima
+    if (b.wob) b.vz += Math.sin(S.t * 9 + b.wobPh) * b.wob * dt * 3;
+    if (b.ghost) b.ghostZ += b.ghostDir * dt * 1.8;   // PHANTOM: la seconda palla si allontana di lato
+    b.vy -= (G + (b.top || 0)) * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
     // rete e antenne
     if (Math.sign(px) !== Math.sign(b.x) && px !== 0) {
       if (!blockCheck(px)) {
-        if (Math.abs(b.z) > CW + 0.1) { point(other(b.team), 'FUORI DALLE ANTENNE'); return; }
-        if (b.h < NET + BALL_R) { b.vx = -b.vx * 0.2; b.x = px > 0 ? 0.2 : -0.2; b.vy = Math.min(b.vy, 0); say('RETE', 1); }
+        if (Math.abs(b.z) > CW + 0.1) { point(other(b.team), 'FUORI DALLE ANTENNE', b.last, 'err'); return; }
+        if (b.h < NET + BALL_R) { b.vx = -b.vx * 0.2; b.x = px > 0 ? 0.2 : -0.2; b.vy = Math.min(b.vy, 0); say('RETE', 1); S.netBy = b.last; }
       }
     }
     contacts();
     if (b.h <= BALL_R) {
       b.h = BALL_R;
+      if (SAND) { sandStamp(b.x, b.z, 0.17, 0.035, 0.014); splash(b.x, b.z, 36, 1.2); }
       const inside = Math.abs(b.x) <= HALF + BALL_R && Math.abs(b.z) <= CW + BALL_R;
-      if (inside) { const T = teams.find(t => t.side * b.x > 0) || teams[0]; point(other(T), 'PALLA A TERRA'); }
-      else point(b.team ? other(b.team) : teams[0], 'FUORI');
+      const L = b.last, lastSide = L ? L.team : null;
+      if (inside) {
+        const T = teams.find(t => t.side * b.x > 0) || teams[0], W = other(T);
+        // chi ha fatto il punto: ace (battuta mai toccata), muro, attacco
+        let what = null;
+        if (L && L.team === W) what = b.kind === 'serve' && !S.receiverTouched ? 'ace' : b.kind === 'block' ? 'blk' : b.kind === 'spike' || b.kind === 'dump' ? 'kill' : null;
+        else if (L) what = 'err';   // palla caduta nel proprio campo dopo il proprio tocco (rete, ricezione sbagliata)
+        point(W, what === 'ace' ? 'ACE!' : what === 'blk' ? 'MURO VINCENTE' : 'PALLA A TERRA', L, what);
+      } else point(lastSide ? other(lastSide) : teams[0], 'FUORI', L, 'err');
+      S.blocker = null;
     }
     return;
   }
@@ -650,9 +958,11 @@ function step(dt) {
     b.vy -= G * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
     if (b.h < BALL_R) { b.h = BALL_R; b.vy = Math.abs(b.vy) * 0.45; b.vx *= 0.7; b.vz *= 0.7; }
     for (const t of teams) for (const p of t.players) { if (p.air) movePlayer(p, dt); if (p.actT > 0) p.actT -= dt; }
-    if (S.state === 'dead' && S.t > 2.3) startServe();
+    if (S.state === 'dead' && S.t > 2.6) startServe();
   }
 }
+// scossa della telecamera (schiacciate potenti, thunder)
+function shake(t) { S.shakeT = Math.max(S.shakeT || 0, t); }
 
 // ---------------- visuali (V o i tasti 1-6) ----------------
 const CAMS = [
@@ -671,7 +981,14 @@ function draw(dt) {
   ballMesh.position.set(b.x, b.h, b.z);
   ballMesh.rotation.z -= (b.spin || 4) * dt; ballMesh.rotation.x += 2 * dt;
   const red = S.hitWin;
-  ballMesh.material.emissive.setHex(red ? 0xd01010 : 0x000000);
+  ballMesh.material.emissive.setHex(red ? 0xd01010 : b.thunder ? (Math.random() < 0.5 ? 0xffd020 : 0x806000) : 0x000000);
+  // PHANTOM: la palla finta sparisce quando la vera arriva nel campo di chi riceve
+  const rs = b.team ? -b.team.side : 0;
+  ghostMesh.visible = !!b.ghost && b.live && b.x * rs < 2.5;
+  if (ghostMesh.visible) { ghostMesh.position.set(b.x, b.h + Math.sin(S.t * 7) * 0.1, b.z + b.ghostZ); ghostMesh.material.opacity = clamp(0.85 - (b.x * rs + 6) / 12, 0.15, 0.85); }
+  trailPos.unshift([b.x, b.h, b.z]); trailPos.length = trail.length;
+  trail.forEach((m, i) => { const q = trailPos[i]; m.visible = !!b.thunder && b.live && !!q; if (m.visible) m.position.set(q[0], q[1], q[2]); });
+  splashUpdate(dt);
   // giocatori: posizione, direzione (verso la palla, di solito verso la rete) e posa
   for (const t of teams) for (const p of t.players) {
     const R = p.body.root;
@@ -756,6 +1073,7 @@ function draw(dt) {
     camPos.lerp(eye, Math.min(1, dt * 3)); camLook.lerp(look, Math.min(1, dt * 4));
   }
   camera.position.copy(camPos); camera.lookAt(camLook);
+  if (S.shakeT > 0) { S.shakeT -= dt; const k = S.shakeT * 0.12; camera.position.x += rnd(-k, k); camera.position.y += rnd(-k, k); }
   // pubblico: salta dopo i punti
   if (S.state === 'dead' || S.state === 'end') {
     const m = new THREE.Matrix4();
@@ -784,14 +1102,19 @@ function hud() {
   if (S.paused) h = 'PAUSA (P per riprendere)';
   else if (S.state === 'end') h = 'INVIO = nuova partita   ·   ESC = torna al gioco';
   else if (S.state === 'serve' && S.server === me) {
-    h = S.phase === 'toss' ? (S.hitWin ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : 'Z quando la palla diventa ROSSA') : 'BATTI TU: Z per lanciare la palla';
+    h = S.phase === 'toss' ? (S.hitWin ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : SERVES[S.kind].name + ': Z quando la palla diventa ROSSA')
+      : 'BATTI TU - Z lancia. Tieni: niente = dall\'alto · ↑ in salto · ↓ salto flottante · ← SKY BALL · → PHANTOM · ↑+←/→ THUNDER';
     now = S.hitWin;
   } else if (S.state === 'serve') h = S.serving === me.team ? 'Batte un compagno: preparati a difendere' : 'Ricezione: vai sul cerchio blu se la palla viene da te';
   else if (mp && mp.p === me) {
-    if (mp.kind === 'spike') { h = S.hitWin ? 'Z ADESSO! (← → mira, ↑ pallonetto, ↓ potente)' : 'SCHIACCIA TU: vai vicino al cerchio, salto automatico'; now = S.hitWin; }
-    else h = mp.kind === 'pass' ? 'RICEZIONE: mettiti sul cerchio blu (il bagher è automatico)' : 'Mettiti sotto la palla (cerchio blu)';
+    if (mp.kind === 'spike') { h = S.hitWin ? 'Z ADESSO! (← → mira, ↑ pallonetto, ↓ potente)' : 'SCHIACCIA TU: vai vicino al cerchio, salto automatico' + (BEACH ? '' : ' · Z subito = FINTA'); now = S.hitWin; }
+    else h = mp.kind === 'pass' ? 'RICEZIONE: mettiti sul cerchio blu (il bagher è automatico)' : 'ALZI TU: mettiti sotto la palla (cerchio blu) · Z = attacco di seconda';
+  } else if (S.state === 'rally' && ball.team === me.team && me.team.touches === 1 && !BEACH) {
+    h = 'ALZATA IN ARRIVO: tieni ↑ palla alta · ↓ veloce · Z = PRIMO TEMPO · oltre i 3 m = SECONDA LINEA';
+
   } else if (ball.team && ball.team !== me.team && other(me.team).attacker && Math.abs(me.x) < 1.6) h = 'MURO: Z quando lo schiacciatore salta';
   else h = '';
+  if (S.state === 'dead' && !h) h = (BEACH ? '' : 'X = cambi · ') + 'R = time-out · I = energia ed errori';
   const el = $('hint'); el.textContent = h; el.style.display = h ? '' : 'none'; el.classList.toggle('now', now);
   // mappa dall'alto
   const W = 360, H = 200, k = 17, ox = W / 2, oz = H / 2;
@@ -806,6 +1129,11 @@ function hud() {
 // ---------------- comandi: tastiera, gamepad, touch ----------------
 const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd' };
 addEventListener('keydown', e => {
+  // pannello dei cambi aperto: le frecce scelgono, Z conferma, X o ESC chiude
+  if (SUB.open) {
+    const m = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', z: 'ok', Z: 'ok', ' ': 'ok', Enter: 'ok', x: 'close', X: 'close', Escape: 'close' }[e.key];
+    if (m && !e.repeat) subKey(m); e.preventDefault(); return;
+  }
   if (KEYMAP[e.key]) { input[KEYMAP[e.key]] = true; e.preventDefault(); }
   if (e.repeat) return;
   const k = e.key.toLowerCase();
@@ -815,6 +1143,11 @@ addEventListener('keydown', e => {
   if (k === 'n') S.names = (S.names + 1) % 3;
   if (k === 'p') S.paused = !S.paused;
   if (k === 'b') { const u = new URL(location.href); if (BEACH) u.searchParams.delete('beach'); else u.searchParams.set('beach', '1'); location.href = u.href; }
+  if (k === 'x') subOpen();
+  if (k === 'r') { if (!callTimeout(me.team)) say(me.team.to >= 1 ? 'TIME-OUT GIÀ USATO IN QUESTO SET' : 'TIME-OUT SOLO A PALLA FERMA', 1.4); }
+  if (k === 'i') { S.statsOn = !S.statsOn; showStats(); }
+  if (k === 'l') { S.slow = !S.slow; say(S.slow ? 'AL RALLENTATORE' : 'VELOCITÀ NORMALE', 1.2); }
+  if (k === 'f') { const u = new URL(location.href); u.searchParams.set('women', WOMEN ? '0' : '1'); location.href = u.href; }
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
   if (k === 'enter' && S.state === 'end') newGame();
   if (k === 'escape') location.href = '../index.html';
@@ -843,14 +1176,21 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
   st.addEventListener('pointerup', () => { id = null; kn.style.left = kn.style.top = '40px'; input.l = input.r = input.u = input.d = false; });
   $('ta').addEventListener('pointerdown', e => { e.preventDefault(); S.zPress = true; S.zT = 0.25; });
   $('tv').addEventListener('pointerdown', e => { e.preventDefault(); nextCam(1); });
-  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (S.state === 'end') newGame(); else S.paused = !S.paused; });
+  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('ok'); else if (S.state === 'end') newGame(); else S.paused = !S.paused; });
+  $('tx').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('close'); else subOpen(); });
+  $('tr').addEventListener('pointerdown', e => { e.preventDefault(); callTimeout(me.team); });
 }
 
 function newGame() {
-  for (const t of teams) { t.score = 0; t.srvI = 0; }
+  for (const t of teams) {
+    t.score = 0; t.srvI = 0; t.subs = 0; t.to = 0; t.en = t.en.map(() => 100); t.st = t.st.map(() => ({ pts: 0, err: 0, t: 0, ace: 0, blk: 0, kill: 0 }));
+    for (const p of t.players) if (p.ni !== p.i) { p.ni = p.i; dress(p); }
+  }
+  if (SAND) { SAND.h.fill(0); SAND.dirty = true; }
+  $('stats').classList.remove('end'); S.statsOn = true; S.streak = null;
   S.over = false; S.serving = Math.random() < 0.5 ? teams[0] : teams[1];
   me.x = -5; me.z = -2;
-  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + 'ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
+  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + (WOMEN ? 'FEMMINILE  ·  ' : '') + 'ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
 }
 
 // ---------------- ciclo ----------------
@@ -860,13 +1200,14 @@ function frame(now) {
   pollPad();
   if (!S.paused) {
     if (S.zT > 0) { S.zT -= dt; if (S.zT <= 0) S.zPress = false; }   // una pressione di Z vale per 0,25 s
-    acc += dt;
+    acc += dt * (S.slow ? 0.45 : 1);
     while (acc >= CFG.STEP) { step(CFG.STEP); acc -= CFG.STEP; }
     trackMoves();
     if (S.msgT > 0 && S.state !== 'end') S.msgT -= dt;
   }
-  if (S.camT > 0) { S.camT -= dt;
-  }
+  if (S.camT > 0) S.camT -= dt;
+  S.statsT = (S.statsT || 0) + dt;
+  if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
   draw(S.paused ? 0 : dt);
   requestAnimationFrame(frame);
 }
