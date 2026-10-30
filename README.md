@@ -279,6 +279,9 @@ Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuff
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
 - I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).
 
+### Pratica lenta
+Nel menu **TUTORIAL / PRATICA** (anche con T dal menu) l'ultima riga **VELOCITÀ** sceglie NORMALE (come sempre) o **LENTA**. In LENTA il gioco va a meno di metà velocità e si **ferma a ogni passaggio** (battuta, lancio, momento di colpire, ricezione, alzata, schiacciata, muro) con le istruzioni scritte in grande: da fermo tieni la direzione giusta e premi **Z**, e l'azione parte esattamente in quel momento; **INVIO** (START) continua senza premere Z. Quando la palla non è ancora al punto giusto il gioco si ferma una seconda volta con **PREMI Z ADESSO!** (`lento.js`).
+
 ### Gioca online
 Nel menu principale, accanto alla lingua, **GIOCA ONLINE** fa giocare due persone su due computer o telefoni (`online.js`):
 - uno sceglie **CREA PARTITA** e riceve un **codice di 5 lettere**, che comunica all'altro; l'altro lo scrive e preme **ENTRA CON IL CODICE**;
