@@ -29,6 +29,16 @@
   #ts { right: 30px; bottom: 140px; width: 50px; height: 50px; font-size: 12px; background: rgba(60, 200, 90, 0.55); }
   #tx { right: 90px; bottom: 140px; width: 44px; height: 44px; font-size: 14px; background: rgba(200, 140, 40, 0.6); }
   #tr { right: 145px; bottom: 95px; width: 44px; height: 44px; font-size: 14px; background: rgba(160, 60, 200, 0.6); }
+  /* schermata iniziale */
+  #setup { position: fixed; inset: 0; z-index: 30; overflow-y: auto; background: rgba(4, 10, 32, 0.93); padding: 16px max(16px, env(safe-area-inset-left)); font: 14px Arial; }
+  #setup h2 { margin: 4px 0 10px; font: 24px "Arial Black", Arial; color: var(--gold); }
+  #setup .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+  #setup button { background: #1a5ad8; color: #fff; border: 1px solid #7ab0ff; border-radius: 6px; padding: 8px 14px; font: bold 14px Arial; cursor: pointer; }
+  #setup button.on { background: #ffd23a; color: #111; } #setup button.green { background: #1e8a3a; } #setup button.red { background: #a02028; } #setup button:disabled { opacity: 0.4; }
+  #setup select { font: bold 15px Arial; padding: 5px; border-radius: 6px; max-width: 80vw; } #setup label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  #setup .muted { color: #9ab8f0; font-size: 12px; } #setup .next { font-size: 16px; color: #7ad0ff; }
+  #setup .tab td { padding: 2px 8px; } #setup .tab tr.me { color: var(--gold); font-weight: bold; } #setup .tab tr:first-child td { color: #9ab8f0; font-size: 11px; }
+  #score img { height: 26px; vertical-align: middle; margin: 0 6px; }
   /* cambi e statistiche */
   #subs { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(5, 12, 36, 0.94); border: 2px solid var(--gold); border-radius: 10px; padding: 10px 16px; font: 14px Arial; min-width: 360px; }
   #subs h3, #stats h3 { margin: 4px 0; font: bold 13px Arial; color: var(--gold); }
@@ -54,16 +64,17 @@
     Battuta: tieni ↑ salto · ↓ salto flottante · ← sky ball · → phantom · ↑+←/→ thunder<br>
     Alzata: ↑ alta · ↓ veloce · <b>Z</b> mentre ricevono = primo tempo · <b>Z</b> presto = finta<br>
     <b>X</b> cambi · <b>R</b> time-out · <b>I</b> energia · <b>L</b> rallentatore · <b>F</b> maschile / femminile<br>
-    <b>V</b> (o <b>1-6</b>) visuale: occhi, occhi + corpo, volto, corpo intero, spalle, TV · <b>N</b> nomi · <b>H</b> istruzioni · <b>B</b> beach / palazzetto · <b>P</b> pausa · <b>INVIO</b> nuova partita · <b>ESC</b> torna al gioco
+    <b>M</b> squadre e campionato · <b>V</b> (o <b>1-6</b>) visuale: occhi, occhi + corpo, volto, corpo intero, spalle, TV · <b>N</b> nomi · <b>H</b> istruzioni · <b>B</b> beach / palazzetto · <b>P</b> pausa · <b>INVIO</b> nuova partita · <b>ESC</b> torna al gioco
   </div>
   <canvas id="map" width="360" height="200"></canvas>
   <div id="stats" style="display:none"></div>
   <div id="subs" style="display:none"></div>
   <div id="cross"></div>
 </div>
+<div id="setup" style="display:none"></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div><div class="tb" id="ta">Z</div><div class="tb" id="tv">V</div><div class="tb" id="ts">START</div><div class="tb" id="tx">X</div><div class="tb" id="tr">R</div></div>
 <script src="../config.js"></script>
 <script type="importmap">{ "imports": { "three": "./three.module.min.js" } }</script>
-<script type="module" src="gioco3d.js?v=4"></script>
+<script type="module" src="gioco3d.js?v=5"></script>
 </body>
 </html>
