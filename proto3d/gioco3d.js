@@ -17,11 +17,14 @@ import * as THREE from 'three';
 
 // ---------------- costanti (dal gioco) ----------------
 const PPM = CFG.PPM;
-const HALF = CFG.HALF / PPM;              // 9 m
-const CW = 4.5;                           // metà larghezza del campo
+// BEACH (?beach=1, tasto B): 2 contro 2 sulla sabbia all'aperto, campo 16 x 8 m, set a 21, corsa più lenta (CFG.SAND_K)
+const BEACH = new URLSearchParams(location.search).get('beach') === '1';
+const HALF = (BEACH ? CFG.BEACH_HALF : CFG.HALF) / PPM;   // 9 m (8 m nel beach)
+const CW = BEACH ? 4 : 4.5;               // metà larghezza del campo
+const NPL = BEACH ? 2 : 4;                // giocatori per squadra
 const G = CFG.G / PPM;                    // 10 m/s²
 const NET = 2.43;
-const RUN = CFG.RUN / PPM;                // 4,4 m/s
+const RUN = CFG.RUN / PPM * (BEACH ? CFG.SAND_K : 1);   // 4,4 m/s (3,8 sulla sabbia)
 const JUMP_T = CFG.JUMP_V / CFG.PG;       // 0,4 s per arrivare in cima al salto (come nel gioco)
 const JUMP_H = 0.85;
 const PG = 2 * JUMP_H / (JUMP_T * JUMP_T);
@@ -32,9 +35,9 @@ const SET_H = 2.35, PASS_H = 0.8;
 const REACH = CFG.REACH / PPM, LAT = CFG.LAT_REACH / PPM, DIVE = CFG.DIVE_REACH / PPM;
 const SPIKE_V = CFG.SPIKE_SPEED / PPM;    // 21,5 m/s
 const SETTER_D = CFG.SETTER_D / PPM;      // l'alzatore a 1,5 m dalla rete
-const SERVE_X = 10.4;
+const SERVE_X = HALF + 1.4;
 const BALL_R = 0.105;
-const TARGET = 15;
+const TARGET = BEACH ? 21 : 15;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -62,13 +65,13 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b1430);
-scene.fog = new THREE.Fog(0x0b1430, 30, 75);
+scene.background = new THREE.Color(BEACH ? 0x8ec8f0 : 0x0b1430);
+scene.fog = BEACH ? new THREE.Fog(0xcfe6f5, 70, 190) : new THREE.Fog(0x0b1430, 30, 75);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.06, 200);
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
-scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a2a20, 0.9));
-const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+scene.add(new THREE.HemisphereLight(BEACH ? 0xcfe8ff : 0xdfe8ff, BEACH ? 0xc8a870 : 0x3a2a20, BEACH ? 1.2 : 0.9));
+const sun = new THREE.DirectionalLight(BEACH ? 0xfff2d8 : 0xffffff, BEACH ? 2.8 : 2.2);
 sun.position.set(-6, 22, 9); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 9, bottom: -9, near: 1, far: 50 });
@@ -81,8 +84,46 @@ function canvasTex(w, h, draw) {
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
+// beach: sabbia con increspature e impronte, righe blu (nastro), mare, palme e un piccolo spalto
+if (BEACH) {
+  const sandTex = (w, h, rep) => {
+    const t = canvasTex(w, h, (c) => {
+      c.fillStyle = '#e6cc94'; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < w * h / 40; i++) { const v = Math.random(); c.fillStyle = v < 0.5 ? `rgba(255,248,225,${rnd(0.1, 0.35)})` : `rgba(150,110,60,${rnd(0.06, 0.2)})`; c.fillRect(Math.random() * w, Math.random() * h, rnd(1, 3), rnd(1, 3)); }
+      for (let i = 0; i < 160; i++) { c.strokeStyle = `rgba(160,120,70,${rnd(0.05, 0.12)})`; c.lineWidth = rnd(2, 6); c.beginPath(); const x = Math.random() * w, y = Math.random() * h; c.ellipse(x, y, rnd(10, 40), rnd(4, 14), rnd(0, 3), 0, 6.3); c.stroke(); }
+    });
+    if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); }
+    return t;
+  };
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), new THREE.MeshStandardMaterial({ map: sandTex(512, 512, 40), roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const FW = 26, FD = 16, S = 48;
+  const court = canvasTex(FW * S, FD * S, (c, w, h) => {
+    c.drawImage(sandTex(512, 512).image, 0, 0, w, h);
+    const X = m => (m + FW / 2) * S, Z = m => (m + FD / 2) * S;
+    c.strokeStyle = '#1f55c8'; c.lineWidth = 0.06 * S; c.strokeRect(X(-HALF), Z(-CW), 2 * HALF * S, 2 * CW * S);
+  });
+  const cm = new THREE.Mesh(new THREE.PlaneGeometry(FW, FD), new THREE.MeshStandardMaterial({ map: court, roughness: 1 }));
+  cm.rotation.x = -Math.PI / 2; cm.position.y = 0.004; cm.receiveShadow = true; scene.add(cm);
+  // mare all'orizzonte
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(600, 160), new THREE.MeshStandardMaterial({ color: 0x2a86c8, roughness: 0.15, metalness: 0.3 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.03, -110); scene.add(sea);
+  // palme
+  const trunkM = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 }), leafM = new THREE.MeshStandardMaterial({ color: 0x2f8a3a, roughness: 0.8, side: THREE.DoubleSide });
+  for (const [x, z] of [[-16, -12], [-9, -15], [13, -13], [19, -9], [-20, 6], [21, 7], [4, -18]]) {
+    const palm = new THREE.Group(); palm.position.set(x, 0, z);
+    const h = rnd(6, 8.5), lean = rnd(-0.15, 0.15);
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, h, 10), trunkM); tr.position.y = h / 2; tr.rotation.z = lean; tr.castShadow = true; palm.add(tr);
+    for (let i = 0; i < 8; i++) {
+      const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 3.4, 1, 4), leafM);
+      leaf.geometry.translate(0, 1.7, 0);
+      leaf.position.set(-Math.sin(lean) * h, h, 0); leaf.rotation.set(rnd(1.0, 1.4), i / 8 * Math.PI * 2, 0, 'YXZ'); leaf.castShadow = true; palm.add(leaf);
+    }
+    scene.add(palm);
+  }
+}
 // pavimento: zona libera blu, campo arancione, righe bianche (fondo, laterali, linea dei 3 m)
-{
+if (!BEACH) {
   const FW = 34, FD = 22, S = 64;
   const tex = canvasTex(FW * S, FD * S, (c, w, h) => {
     c.fillStyle = '#1d4e9e'; c.fillRect(0, 0, w, h);
@@ -131,7 +172,7 @@ const crowd = [];
   const m = new THREE.Matrix4(), col = new THREE.Color();
   let k = 0;
   const stand = (cx, cz, len, alongX, out) => {   // out: verso di uscita (+1 / -1) lontano dal campo
-    for (let r = 0; r < 9; r++) {
+    for (let r = 0; r < (BEACH ? 6 : 9); r++) {
       const step = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.9, 0.45, alongX ? 0.9 : len), standM);
       const d = r * 0.9, y = r * 0.45 + 0.22;
       step.position.set(alongX ? cx : cx + out * d, y, alongX ? cz + out * d : cz); step.receiveShadow = true; scene.add(step);
@@ -144,7 +185,8 @@ const crowd = [];
       }
     }
   };
-  stand(0, 9.5, 30, true, 1); stand(0, -9.5, 30, true, -1); stand(15, 0, 16, false, 1); stand(-15, 0, 16, false, -1);
+  if (BEACH) stand(0, 8.6, 22, true, 1);
+  else { stand(0, 9.5, 30, true, 1); stand(0, -9.5, 30, true, -1); stand(15, 0, 16, false, 1); stand(-15, 0, 16, false, -1); }
   bodies.count = heads.count = k; scene.add(bodies, heads);
   crowd.bodies = bodies; crowd.heads = heads;
   // tabelloni pubblicitari a bordo campo
@@ -152,17 +194,18 @@ const crowd = [];
   ads.forEach((a, i) => {
     const t = canvasTex(512, 64, (c, w, h) => { c.fillStyle = i % 2 ? '#f4f4f4' : '#c81e3a'; c.fillRect(0, 0, w, h); c.fillStyle = i % 2 ? '#c81e3a' : '#ffffff'; c.font = 'italic bold 46px Arial Black, Arial'; c.textAlign = 'center'; c.fillText(a, w / 2, 50); });
     const b = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.8, 0.12), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }));
-    b.position.set(-13.5 + i * 5.4, 0.4, 8.6); scene.add(b);
-    const b2 = b.clone(); b2.position.z = -8.6; b2.rotation.y = Math.PI; scene.add(b2);
+    const AZ = BEACH ? 7.4 : 8.6;
+    b.position.set(-13.5 + i * 5.4, 0.4, AZ); scene.add(b);
+    const b2 = b.clone(); b2.position.z = -AZ; b2.rotation.y = Math.PI; scene.add(b2);
   });
   // luci del soffitto
-  for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
+  if (!BEACH) for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
 }
 
 // ---------------- pallone ----------------
 const ballTex = canvasTex(512, 256, (c, w, h) => {
-  c.fillStyle = '#f4d21a'; c.fillRect(0, 0, w, h);
-  c.fillStyle = '#1f4fc8';
+  c.fillStyle = BEACH ? '#f6f6f2' : '#f4d21a'; c.fillRect(0, 0, w, h);
+  c.fillStyle = BEACH ? '#e8a018' : '#1f4fc8';
   for (let i = 0; i < 3; i++) { c.beginPath(); for (let x = 0; x <= w; x += 8) { const y = h * (0.2 + i * 0.3) + Math.sin(x / w * Math.PI * 4 + i) * 18; x ? c.lineTo(x, y) : c.moveTo(x, y); } for (let x = w; x >= 0; x -= 8) c.lineTo(x, h * (0.2 + i * 0.3) + 26 + Math.sin(x / w * Math.PI * 4 + i) * 18); c.fill(); }
   c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 2;
   for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(0, h * i / 6); c.lineTo(w, h * i / 6); c.stroke(); }
@@ -219,11 +262,12 @@ function makeAthlete(kit, num, look) {
   add(hg, GEO.sph(0.013), M.eye, 0.036, 0.11, 0.098); add(hg, GEO.sph(0.013), M.eye, -0.036, 0.11, 0.098);   // occhi
   add(hg, new THREE.ConeGeometry(0.016, 0.04, 10), M.skin, 0, 0.085, 0.112, 1, 1, 1).rotation.x = Math.PI / 2;   // naso
   add(hg, GEO.cyl(0.03, 0.02, 0.008), mat(0x8a4a3a, 0.6), 0, 0.055, 0.1).rotation.x = Math.PI / 2;               // bocca
+  if (look.glasses) { const gm = mat(0x101820, 0.1, { metalness: 0.6 }); add(hg, new THREE.BoxGeometry(0.19, 0.035, 0.02), gm, 0, 0.112, 0.103); }   // occhiali da sole
   // braccia: spalla, manica, braccio, gomito, avambraccio, mano
   for (const s of [1, -1]) {
     const sh = joint(spine, s > 0 ? 'shL' : 'shR', s * 0.215, 0.42, 0);
     add(sh, GEO.sph(0.072), M.shirt, 0, 0, 0, 1, 0.9, 0.95);
-    add(sh, GEO.cyl(0.068, 0.058, 0.13), M.shirt, 0, -0.07, 0);                           // manica
+    if (!look.beach) add(sh, GEO.cyl(0.068, 0.058, 0.13), M.shirt, 0, -0.07, 0);          // manica (nel beach canottiera)
     add(sh, GEO.cyl(0.052, 0.042, 0.26), M.skin, 0, -0.15, 0);
     const el = joint(sh, s > 0 ? 'elL' : 'elR', 0, -0.285, 0);
     add(el, GEO.sph(0.043), M.skin);
@@ -241,10 +285,13 @@ function makeAthlete(kit, num, look) {
     if (!look.noPads) add(kn, GEO.cyl(0.066, 0.066, 0.1), kit.padDark ? M.dark : M.white, 0, -0.01, 0.006);
     else add(kn, GEO.sph(0.06), M.skin);
     add(kn, GEO.cyl(0.062, 0.042, 0.24), M.skin, 0, -0.14, -0.005);                       // polpaccio
-    add(kn, GEO.cyl(0.044, 0.04, 0.14), M.white, 0, -0.32, 0);                            // calza
+    if (!look.beach) add(kn, GEO.cyl(0.044, 0.04, 0.14), M.white, 0, -0.32, 0);           // calza
     const an = joint(kn, s > 0 ? 'anL' : 'anR', 0, -0.42, 0);
-    add(an, GEO.cap(0.048, 0.15), M.white, 0, -0.025, 0.05, 1.05, 1, 1).rotation.x = Math.PI / 2;   // scarpa
-    add(an, GEO.cyl(0.06, 0.06, 0.02), M.sole, 0, -0.065, 0.05, 0.85, 1, 1.95);                     // suola
+    if (look.beach) add(an, GEO.cap(0.04, 0.14), M.skin, 0, -0.035, 0.05, 1.1, 0.75, 1).rotation.x = Math.PI / 2;   // piede nudo
+    else {
+      add(an, GEO.cap(0.048, 0.15), M.white, 0, -0.025, 0.05, 1.05, 1, 1).rotation.x = Math.PI / 2;   // scarpa
+      add(an, GEO.cyl(0.06, 0.06, 0.02), M.sole, 0, -0.065, 0.05, 0.85, 1, 1.95);                     // suola
+    }
   }
   root.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
   return { root, J };
@@ -292,18 +339,22 @@ function nameSprite(txt, mine) {
 // ---------------- squadre ----------------
 // ruoli: 0 alzatore, 1 schiacciatore di sinistra, 2 schiacciatore di destra, 3 difensore
 // posizioni (distanza dalla rete d, lato zl: negativo = alla sinistra del giocatore) per fase
-const HOME = {
+const HOME = BEACH ? {
+  receive: [[5.0, 1.9], [5.0, -1.9]],
+  attack: [[2.0, 1.0], [3.4, -1.8]],
+  defend: [[0.55, 0], [5.4, 0]]
+} : {
   receive: [[1.4, 1.6], [6.2, -2.7], [6.2, 2.7], [7.2, 0]],
   attack: [[SETTER_D, 0.8], [3.8, -3.1], [3.8, 3.1], [6.6, 0]],
   defend: [[0.55, 0.3], [0.55, -2.8], [5.4, 2.8], [6.6, -0.8]]
 };
 function makeTeam(code, side, human) {
   const P = TEAMS[code];
-  const kit = { shirt: P.sh, trim: P.tr, trimHex: P.tr, shorts: P.so, padDark: P.sh === '#f4f4f4' };
+  const kit = { shirt: P.sh, trim: P.tr, trimHex: P.tr, shorts: BEACH ? P.tr === '#ffffff' ? P.sh : P.tr : P.so, padDark: P.sh === '#f4f4f4' };
   const T = { code, side, name: P.name, players: [], score: 0, srvI: 0, touches: 0, plan: null, attacker: null, human };
-  const nums = [3, 7, 11, 14];
-  for (let i = 0; i < 4; i++) {
-    const look = { skin: P.sk, hair: P.ha[i % P.ha.length] };
+  const nums = BEACH ? [1, 2] : [3, 7, 11, 14];
+  for (let i = 0; i < NPL; i++) {
+    const look = { skin: P.sk, hair: P.ha[i % P.ha.length], beach: BEACH, noPads: BEACH, glasses: BEACH && i === 0 };
     const body = makeAthlete(kit, nums[i], look);
     const isMe = human && i === 1;
     const p = { team: T, i, role: i, name: isMe ? 'TU' : P.names[i], num: nums[i], body, x: side * 5, z: 0, h: 0, vh: 0, air: false,
@@ -354,7 +405,7 @@ function point(T, why) {
   T.score++; S.state = 'dead'; S.t = 0; ball.live = false;
   say(why + (T === me.team ? ' - PUNTO ITALIA!' : ' - PUNTO ' + T.name));
   const won = T.score >= TARGET && T.score - other(T).score >= 2;
-  if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % 4; }
+  if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % NPL; }
   if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); }
   for (const t of teams) for (const p of t.players) { p.act = t === T ? 'cheer' : 'sad'; p.actT = 1.8; }
 }
@@ -375,7 +426,8 @@ function touch(p, kind) {
     Object.assign(b, v); p.act = spd > 13 && Math.hypot(p.x - b.x, p.z - b.z) > REACH + LAT ? 'dive' : 'pass'; p.actT = 0.55;
   } else if (kind === 'set') {
     // alzata a uno schiacciatore: tu ricevi la palla una volta su due se sei in prima linea
-    const hit = T.players.filter(q => q.role === 1 || q.role === 2).filter(q => q !== p);
+    // nel beach attacca il compagno di chi alza (di solito chi ha ricevuto)
+    const hit = BEACH ? T.players.filter(q => q !== p) : T.players.filter(q => q.role === 1 || q.role === 2).filter(q => q !== p);
     let a = hit[Math.floor(Math.random() * hit.length)];
     if (T.human && hit.includes(me) && Math.random() < 0.6) a = me;
     T.attacker = a;
@@ -428,7 +480,7 @@ function think(T) {
   const xc = b.x + b.vx * tc, zc = b.z + b.vz * tc;
   if (xc * T.side < 0.15 && kind !== 'spike') return;   // la palla non arriva nel nostro campo
   let p = null;
-  if (kind === 'set') p = T.players[0] !== b.last ? T.players[0] : null;
+  if (kind === 'set') p = BEACH ? T.players.find(q => q !== b.last) : T.players[0] !== b.last ? T.players[0] : null;
   if (kind === 'spike') p = T.attacker;
   if (!p) {   // il più vicino al punto (non chi ha appena toccato)
     let best = 1e9;
@@ -602,6 +654,15 @@ function step(dt) {
   }
 }
 
+// ---------------- visuali (V o i tasti 1-6) ----------------
+const CAMS = [
+  { id: 'eyes', name: 'OCCHI (prima persona)' }, { id: 'eyesBody', name: 'PRIMA PERSONA CON IL CORPO' },
+  { id: 'face', name: 'IL TUO VOLTO' }, { id: 'full', name: 'CORPO INTERO' },
+  { id: 'shoulders', name: 'DIETRO LE SPALLE' }, { id: 'tv', name: 'TELEVISIONE' }
+];
+function setCam(i) { S.cam = (i + CAMS.length) % CAMS.length; S.camMsg = 'VISUALE ' + (S.cam + 1) + ': ' + CAMS[S.cam].name; S.camT = 1.6; }
+function nextCam(d) { setCam(S.cam + d); }
+
 // ---------------- disegno ----------------
 const tmpV = new THREE.Vector3();
 let camPos = new THREE.Vector3(-8, 1.8, 0), camLook = new THREE.Vector3(0, 1.5, 0);
@@ -631,11 +692,11 @@ function draw(dt) {
     if (p.act === 'cheer') { P = Object.assign({}, POSE.cheer, { crouch: -Math.abs(Math.sin(S.t * 9)) * 0.06 }); }
     applyPose(p, P, Math.min(1, dt * (p.act === 'hit' ? 26 : 12)));
     // nome
-    p.label.visible = S.names > 0 && !(p === me && S.cam === 0);
+    p.label.visible = S.names > 0 && !(p === me && /eyes|face/.test(CAMS[S.cam].id));
     p.label.position.set(p.x, S.names === 1 ? p.h + 2.25 : 0.12, p.z);
   }
   // in prima persona la tua testa non si vede (si vedono braccia e gambe)
-  me.body.J.headMesh.visible = S.cam !== 0;
+  me.body.J.headMesh.visible = CAMS[S.cam].id !== 'eyes';
   // cerchio: dove andare per il prossimo tocco (o rosso quando è il momento di schiacciare)
   const mp = me.team.plan;
   ring.visible = !!(mp && mp.p === me) || (S.state === 'serve' && S.server === me);
@@ -649,18 +710,42 @@ function draw(dt) {
   // telecamera
   const side = me.team.side;
   let eye, look;
-  if (S.cam === 0) {
-    // occhi del giocatore: guarda la palla girando la testa (al massimo ~80° dalla rete)
-    const J = me.body.J; J.head.updateWorldMatrix(true, false);
-    eye = new THREE.Vector3(0, 0.12, 0.09).applyMatrix4(J.head.matrixWorld);
-    const toB = new THREE.Vector3(b.x - eye.x, b.h - eye.y, b.z - eye.z);
+  // direzione dello sguardo verso la palla (testa che gira al massimo ~80° dalla rete)
+  const gaze = from => {
+    const toB = new THREE.Vector3(b.x - from.x, b.h - from.y, b.z - from.z);
     let yaw = Math.atan2(toB.z, toB.x), base = side < 0 ? 0 : Math.PI;
     let dy = ((yaw - base + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dy = clamp(dy, -1.35, 1.35);
     yaw = base + dy * 0.85;
     const hd = Math.hypot(toB.x, toB.z), pitch = clamp(Math.atan2(toB.y, hd), -0.55, 1.15) * 0.85;
-    look = eye.clone().add(new THREE.Vector3(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch)).multiplyScalar(5));
+    return new THREE.Vector3(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch));
+  };
+  const J = me.body.J; J.head.updateWorldMatrix(true, false);
+  const headW = new THREE.Vector3(0, 0.1, 0).applyMatrix4(J.head.matrixWorld);
+  const fwd = new THREE.Vector3(Math.sin(me.yaw), 0, Math.cos(me.yaw));   // dove guarda il tuo corpo
+  const V = CAMS[S.cam].id;
+  if (V === 'eyes') {
+    // occhi del giocatore
+    eye = new THREE.Vector3(0, 0.12, 0.09).applyMatrix4(J.head.matrixWorld);
+    look = eye.clone().add(gaze(eye).multiplyScalar(5));
     camPos.copy(eye); camLook.lerp(look, Math.min(1, dt * 9));
-  } else if (S.cam === 1) {
+  } else if (V === 'eyesBody') {
+    // prima persona con il corpo: appena dietro e sopra la testa, vedi spalle, braccia e gambe sotto di te
+    eye = headW.clone().addScaledVector(fwd, -0.62); eye.y += 0.42;
+    const g = gaze(eye); g.y = Math.min(g.y, 0.2) - 0.38;
+    look = eye.clone().add(g.normalize().multiplyScalar(5));
+    camPos.lerp(eye, Math.min(1, dt * 14)); camLook.lerp(look, Math.min(1, dt * 9));
+  } else if (V === 'face') {
+    // il tuo volto: telecamera davanti a te, di tre quarti, con il campo alle spalle
+    const sideV = new THREE.Vector3(-fwd.z, 0, fwd.x);
+    eye = headW.clone().addScaledVector(fwd, 0.95).addScaledVector(sideV, 0.32); eye.y += 0.03;
+    look = headW.clone(); look.y -= 0.18;
+    camPos.lerp(eye, Math.min(1, dt * 8)); camLook.lerp(look, Math.min(1, dt * 12));
+  } else if (V === 'full') {
+    // corpo intero: dietro e di lato, tutto il giocatore in vista con la rete davanti
+    eye = new THREE.Vector3(me.x + side * 3.4, 1.5, me.z + (me.z > 0 ? -1.5 : 1.5));
+    look = new THREE.Vector3(me.x - side * 0.5, 0.95 + me.h * 0.8, me.z);
+    camPos.lerp(eye, Math.min(1, dt * 6)); camLook.lerp(look, Math.min(1, dt * 8));
+  } else if (V === 'shoulders') {
     // dietro le spalle
     eye = new THREE.Vector3(me.x + side * 3.4, me.h + 2.6, me.z * 0.85);
     look = new THREE.Vector3(lerp(me.x, b.x, 0.5), Math.max(1.6, b.h * 0.6), lerp(me.z, b.z, 0.4));
@@ -693,7 +778,7 @@ const mapC = $('map').getContext('2d');
 function hud() {
   const [A, B] = teams;
   $('score').innerHTML = `<span class="${S.serving === A ? 'srv' : ''}">ITALIA ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>`;
-  $('msg').textContent = S.msgT > 0 || S.state === 'end' ? S.msg : '';
+  $('msg').textContent = S.camT > 0 ? S.camMsg : S.msgT > 0 || S.state === 'end' ? S.msg : '';
   let h = '', now = false;
   const mp = me.team.plan;
   if (S.paused) h = 'PAUSA (P per riprendere)';
@@ -711,7 +796,7 @@ function hud() {
   // mappa dall'alto
   const W = 360, H = 200, k = 17, ox = W / 2, oz = H / 2;
   mapC.clearRect(0, 0, W, H);
-  mapC.fillStyle = '#c8682e'; mapC.fillRect(ox - HALF * k, oz - CW * k, 2 * HALF * k, 2 * CW * k);
+  mapC.fillStyle = BEACH ? '#d8bc80' : '#c8682e'; mapC.fillRect(ox - HALF * k, oz - CW * k, 2 * HALF * k, 2 * CW * k);
   mapC.strokeStyle = '#fff'; mapC.lineWidth = 2; mapC.strokeRect(ox - HALF * k, oz - CW * k, 2 * HALF * k, 2 * CW * k);
   mapC.beginPath(); mapC.moveTo(ox, oz - CW * k - 8); mapC.lineTo(ox, oz + CW * k + 8); mapC.stroke();
   for (const t of teams) for (const p of t.players) { mapC.fillStyle = p === me ? '#ffe030' : t === me.team ? '#4a7aff' : '#3ac04a'; mapC.beginPath(); mapC.arc(ox + p.x * k, oz + p.z * k, p === me ? 7 : 5, 0, 7); mapC.fill(); }
@@ -725,9 +810,11 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   const k = e.key.toLowerCase();
   if (k === 'z' || k === ' ') { S.zPress = true; S.zT = 0.25; e.preventDefault(); }
-  if (k === 'v') S.cam = (S.cam + 1) % 3;
+  if (k === 'v') nextCam(e.shiftKey ? -1 : 1);
+  if (k >= '1' && k <= String(CAMS.length)) setCam(Number(k) - 1);
   if (k === 'n') S.names = (S.names + 1) % 3;
   if (k === 'p') S.paused = !S.paused;
+  if (k === 'b') { const u = new URL(location.href); if (BEACH) u.searchParams.delete('beach'); else u.searchParams.set('beach', '1'); location.href = u.href; }
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
   if (k === 'enter' && S.state === 'end') newGame();
   if (k === 'escape') location.href = '../index.html';
@@ -741,7 +828,7 @@ function pollPad() {
   input.l = ax < -0.4 || B(14); input.r = ax > 0.4 || B(15); input.u = ay < -0.4 || B(12); input.d = ay > 0.4 || B(13);
   const now = { a: B(0), v: B(3), st: B(9) };
   if (now.a && !padPrev.a) { S.zPress = true; S.zT = 0.25; }
-  if (now.v && !padPrev.v) S.cam = (S.cam + 1) % 3;
+  if (now.v && !padPrev.v) nextCam(1);
   if (now.st && !padPrev.st && S.state === 'end') newGame();
   padPrev = now;
 }
@@ -755,7 +842,7 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
   st.addEventListener('pointermove', e => { if (e.pointerId === id) set(e.clientX, e.clientY); });
   st.addEventListener('pointerup', () => { id = null; kn.style.left = kn.style.top = '40px'; input.l = input.r = input.u = input.d = false; });
   $('ta').addEventListener('pointerdown', e => { e.preventDefault(); S.zPress = true; S.zT = 0.25; });
-  $('tv').addEventListener('pointerdown', e => { e.preventDefault(); S.cam = (S.cam + 1) % 3; });
+  $('tv').addEventListener('pointerdown', e => { e.preventDefault(); nextCam(1); });
   $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (S.state === 'end') newGame(); else S.paused = !S.paused; });
 }
 
@@ -763,7 +850,7 @@ function newGame() {
   for (const t of teams) { t.score = 0; t.srvI = 0; }
   S.over = false; S.serving = Math.random() < 0.5 ? teams[0] : teams[1];
   me.x = -5; me.z = -2;
-  startServe(); say('ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
+  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + 'ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
 }
 
 // ---------------- ciclo ----------------
@@ -777,6 +864,8 @@ function frame(now) {
     while (acc >= CFG.STEP) { step(CFG.STEP); acc -= CFG.STEP; }
     trackMoves();
     if (S.msgT > 0 && S.state !== 'end') S.msgT -= dt;
+  }
+  if (S.camT > 0) { S.camT -= dt;
   }
   draw(S.paused ? 0 : dt);
   requestAnimationFrame(frame);
