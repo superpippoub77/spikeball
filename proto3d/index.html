@@ -37,8 +37,19 @@
   #setup button.on { background: #ffd23a; color: #111; } #setup button.green { background: #1e8a3a; } #setup button.red { background: #a02028; } #setup button:disabled { opacity: 0.4; }
   #setup select { font: bold 15px Arial; padding: 5px; border-radius: 6px; max-width: 80vw; } #setup label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   #setup .muted { color: #9ab8f0; font-size: 12px; } #setup .next { font-size: 16px; color: #7ad0ff; }
+  #setup input { font: bold 17px Arial; width: 120px; padding: 5px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 3px; }
+  #setup .code { font: 30px "Arial Black", Arial; letter-spacing: 6px; color: var(--gold); background: #05153a; padding: 2px 12px; border-radius: 8px; }
   #setup .tab td { padding: 2px 8px; } #setup .tab tr.me { color: var(--gold); font-weight: bold; } #setup .tab tr:first-child td { color: #9ab8f0; font-size: 11px; }
   #score img { height: 26px; vertical-align: middle; margin: 0 6px; }
+  /* pratica guidata */
+  #guide { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 22; width: min(760px, 92vw); background: rgba(0, 0, 0, 0.84); border: 2px solid var(--gold); border-radius: 10px; padding: 10px 16px; text-align: center; font: bold 19px Arial; }
+  #guide p { margin: 6px 0; } #guide .key { color: var(--gold); font-size: 17px; }
+  /* sorteggio */
+  #toss { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 25; background: rgba(5, 12, 36, 0.95); border: 2px solid var(--gold); border-radius: 12px; padding: 14px 26px; text-align: center; font: 16px Arial; min-width: 300px; }
+  #toss h3 { color: var(--gold); margin: 4px 0 10px; } #toss b { display: inline-block; margin: 6px; padding: 8px 16px; border: 1px solid #7ab0ff; border-radius: 6px; cursor: pointer; } #toss b.on { background: var(--gold); color: #111; }
+  #toss .coin { width: 70px; height: 70px; margin: 6px auto; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2b0, #d8a820 60%, #8a6a10); color: #5a3a00; font: bold 30px Arial; display: flex; align-items: center; justify-content: center; }
+  #toss .coin.spin { animation: coin 0.3s linear infinite; } @keyframes coin { 0% { transform: scaleX(1); } 50% { transform: scaleX(0.05); } 100% { transform: scaleX(1); } }
+  #score .sets { display: inline-block; background: var(--gold); color: #111; border-radius: 4px; padding: 0 6px; margin: 0 6px; font-size: 16px; }
   /* cambi e statistiche */
   #subs { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(5, 12, 36, 0.94); border: 2px solid var(--gold); border-radius: 10px; padding: 10px 16px; font: 14px Arial; min-width: 360px; }
   #subs h3, #stats h3 { margin: 4px 0; font: bold 13px Arial; color: var(--gold); }
@@ -72,9 +83,11 @@
   <div id="cross"></div>
 </div>
 <div id="setup" style="display:none"></div>
+<div id="toss" style="display:none"></div>
+<div id="guide" style="display:none"></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div><div class="tb" id="ta">Z</div><div class="tb" id="tv">V</div><div class="tb" id="ts">START</div><div class="tb" id="tx">X</div><div class="tb" id="tr">R</div></div>
 <script src="../config.js"></script>
 <script type="importmap">{ "imports": { "three": "./three.module.min.js" } }</script>
-<script type="module" src="gioco3d.js?v=5"></script>
+<script type="module" src="gioco3d.js?v=7"></script>
 </body>
 </html>

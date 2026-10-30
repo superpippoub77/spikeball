@@ -93,11 +93,11 @@ export async function loadGameData() {
     const byN = n => DATA.byName[asciiUp(n)] || genTeam(n);
     const giornate = Array.isArray(c.giornate) && c.giornate.length ? c.giornate.map((g, gi) => ({ numero: g.numero || gi + 1, gare: (g.gare || []).map(x => ({ casa: byN(x.casa), ospite: byN(x.ospite), risultato: x.risultato })) }))
       : calendar(teams, true);
-    DATA.camps.push({ id: 'json:' + (c.id || c.nome), nome: c.nome, sesso: asciiUp(c.sesso || 'M')[0], logo: rel(c.logo), teams, giornate });
+    DATA.camps.push({ id: 'json:' + (c.id || c.nome), nome: c.nome, set: Number(c.set) || 3, sesso: asciiUp(c.sesso || 'M')[0], logo: rel(c.logo), teams, giornate });
   }
   for (const c of ed.campionati || []) {
     const teams = (c.squadre || []).map(s => (s.codice && TEAMS[s.codice] ? s.codice : null) || DATA.byName[asciiUp(s.nome)] || genTeam(s.nome)).filter(Boolean);
-    if (teams.length >= 2) DATA.camps.push({ id: 'ed:' + c.id, nome: asciiUp(c.nome), sesso: 'M', logo: rel(c.logo), teams, giornate: calendar(teams, c.ritorno !== false) });
+    if (teams.length >= 2) DATA.camps.push({ id: 'ed:' + c.id, nome: asciiUp(c.nome), set: Number(c.set) || 3, sesso: 'M', logo: rel(c.logo), teams, giornate: calendar(teams, c.ritorno !== false) });
   }
   // i miei giocatori: nella rosa della loro squadra, in campo se titolari
   DATA.my = (ls('sf91_miei_giocatori') || []).filter(d => d && d.team);
@@ -130,14 +130,13 @@ export function campNext(c, st) {
   return null;
 }
 // registra la tua gara e simula le altre della stessa giornata (e di quelle prima) ancora senza risultato
-export function campRecord(c, st, next, mineWon) {
+export function campRecord(c, st, next, sets) {   // sets = [set vinti da te, set vinti dall'avversario]
   const g = next.g, home = g.casa === st.mine;
-  const sets = mineWon ? [3, Math.floor(Math.random() * 3)] : [Math.floor(Math.random() * 3), 3];
   st.res[gid(next.gi, next.k)] = home ? sets : [sets[1], sets[0]];
   for (let gi = 0; gi <= next.gi; gi++) c.giornate[gi].gare.forEach((x, k) => {
     if (campResult(c, st, gi, k)) return;
-    const w = Math.random() < 0.5, l = Math.floor(Math.random() * 3);
-    st.res[gid(gi, k)] = w ? [3, l] : [l, 3];
+    const N = Math.ceil((c.set || 3) / 2), w = Math.random() < 0.5, l = Math.floor(Math.random() * N);
+    st.res[gid(gi, k)] = w ? [N, l] : [l, N];
   });
   campSave(c, st);
 }
@@ -148,7 +147,7 @@ export function campTable(c, st) {
     const r = campResult(c, st, gi, k); if (!r || !T[g.casa] || !T[g.ospite]) return;
     const [a, b] = r, H = T[g.casa], A = T[g.ospite];
     H.g++; A.g++; H.sv += a; H.sp += b; A.sv += b; A.sp += a;
-    const W = a > b ? H : A, L = a > b ? A : H, close = Math.min(a, b) === 2;
+    const W = a > b ? H : A, L = a > b ? A : H, close = Math.min(a, b) === Math.max(a, b) - 1 && Math.max(a, b) > 1;
     W.w++; L.l++; W.pts += close ? 2 : 3; L.pts += close ? 1 : 0;
   }));
   return Object.values(T).sort((x, y) => y.pts - x.pts || y.w - x.w || (y.sv - y.sp) - (x.sv - x.sp));
