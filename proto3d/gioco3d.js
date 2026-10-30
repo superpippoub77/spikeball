@@ -1,0 +1,790 @@
+// ============================================================
+//  SPIKE FEVER 3D - PROTOTIPO IN PRIMA PERSONA (three.js)
+//  Tu sei uno schiacciatore dell'Italia (4 contro 4, set a 15) e vedi la partita dai tuoi occhi, come la
+//  visuale interna dei giochi di guida. V cambia visuale (occhi / dietro le spalle / televisione).
+//  Fisica e logica sono quelle del gioco (config.js: CFG e le formule di PHYS) riportate in metri e in 3D:
+//    - x lungo il campo (rete in x = 0, Italia a sinistra), z di lato (campo largo 9 m), h altezza;
+//    - stessa gravità del pallone (CFG.G / CFG.PPM = 10 m/s²), stessa corsa (CFG.RUN), stessa velocità di
+//      schiacciata (CFG.SPIKE_SPEED), stesse distanze di presa (CFG.REACH, LAT_REACH, DIVE_REACH);
+//    - le altezze del gioco (rete 2,6 m, salto di 1,7 m da sala giochi) diventano quelle vere: rete 2,43 m,
+//      salto di 0,85 m con gli stessi 0,8 s in aria, colpo a 3,35 m;
+//    - stessa sequenza di gioco: ricezione e alzata automatiche quando sei nel punto giusto (cerchio blu),
+//      schiacciata con Z quando la palla è ROSSA (rincorsa e stacco automatici), muro con Z, battuta Z + Z.
+//  Giocatori: manichini costruiti con forme 3D lisce (niente file di modelli), animati a mano: pronto, corsa,
+//  bagher, palleggio, schiacciata, muro, battuta, esultanza.
+// ============================================================
+import * as THREE from 'three';
+
+// ---------------- costanti (dal gioco) ----------------
+const PPM = CFG.PPM;
+const HALF = CFG.HALF / PPM;              // 9 m
+const CW = 4.5;                           // metà larghezza del campo
+const G = CFG.G / PPM;                    // 10 m/s²
+const NET = 2.43;
+const RUN = CFG.RUN / PPM;                // 4,4 m/s
+const JUMP_T = CFG.JUMP_V / CFG.PG;       // 0,4 s per arrivare in cima al salto (come nel gioco)
+const JUMP_H = 0.85;
+const PG = 2 * JUMP_H / (JUMP_T * JUMP_T);
+const JUMP_V = PG * JUMP_T;
+const REACH_UP = 2.45;                    // mani alzate da fermo
+const HIT_H = REACH_UP + JUMP_H + 0.05;   // 3,35 m
+const SET_H = 2.35, PASS_H = 0.8;
+const REACH = CFG.REACH / PPM, LAT = CFG.LAT_REACH / PPM, DIVE = CFG.DIVE_REACH / PPM;
+const SPIKE_V = CFG.SPIKE_SPEED / PPM;    // 21,5 m/s
+const SETTER_D = CFG.SETTER_D / PPM;      // l'alzatore a 1,5 m dalla rete
+const SERVE_X = 10.4;
+const BALL_R = 0.105;
+const TARGET = 15;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+
+// formule di PHYS (config.js) in 3D: arco con altezza massima e tiro teso a velocità data
+function arc3(x0, z0, h0, x1, z1, h1, apex) {
+  apex = Math.max(apex, h0 + 0.1, h1 + 0.1);
+  const vy = Math.sqrt(2 * G * (apex - h0)), T = vy / G + Math.sqrt(2 * (apex - h1) / G);
+  return { vx: (x1 - x0) / T, vz: (z1 - z0) / T, vy, T };
+}
+function shot3(x0, z0, h0, x1, z1, h1, speed) {
+  const d = Math.hypot(x1 - x0, z1 - z0), T = Math.max(0.08, d / speed);
+  return { vx: (x1 - x0) / T, vz: (z1 - z0) / T, vy: (h1 - h0 + 0.5 * G * T * T) / T, T };
+}
+const heightAtX = (b, v, X) => { if (Math.abs(v.vx) < 1e-3) return Infinity; const t = (X - b.x) / v.vx; return t < 0 ? Infinity : b.h + v.vy * t - 0.5 * G * t * t; };
+const timeToH = (h, vy, H) => { const d = vy * vy + 2 * G * (h - H); return d < 0 ? null : (vy + Math.sqrt(d)) / G; };
+const clears = (b, v, m = 0.15) => { const hn = heightAtX(b, v, 0); return hn === Infinity || hn > NET + m; };
+
+// ---------------- scena ----------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1430);
+scene.fog = new THREE.Fog(0x0b1430, 30, 75);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.06, 200);
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a2a20, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(-6, 22, 9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 9, bottom: -9, near: 1, far: 50 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffe8c8, 0.6); fill.position.set(8, 12, -10); scene.add(fill);
+
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+// pavimento: zona libera blu, campo arancione, righe bianche (fondo, laterali, linea dei 3 m)
+{
+  const FW = 34, FD = 22, S = 64;
+  const tex = canvasTex(FW * S, FD * S, (c, w, h) => {
+    c.fillStyle = '#1d4e9e'; c.fillRect(0, 0, w, h);
+    const X = m => (m + FW / 2) * S, Z = m => (m + FD / 2) * S;
+    c.fillStyle = '#d8783a'; c.fillRect(X(-HALF), Z(-CW), 2 * HALF * S, 2 * CW * S);
+    // venature del parquet
+    for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},0.025)`; c.fillRect(Math.random() * w, Math.random() * h, rnd(60, 260), 3); }
+    c.strokeStyle = '#ffffff'; c.lineWidth = 0.05 * S;
+    c.strokeRect(X(-HALF), Z(-CW), 2 * HALF * S, 2 * CW * S);
+    for (const xm of [-3, 3]) { c.beginPath(); c.moveTo(X(xm), Z(-CW)); c.lineTo(X(xm), Z(CW)); c.stroke(); }
+    c.beginPath(); c.moveTo(X(0), Z(-CW)); c.lineTo(X(0), Z(CW)); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.75)'; c.font = `bold ${2 * S}px Arial Black, Arial`; c.textAlign = 'center';
+    c.save(); c.translate(X(0), Z(CW + 2.6)); c.fillText('SPIKE FEVER \'91', 0, 0); c.restore();
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(FW, FD), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.42, metalness: 0.02 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(120, 90), new THREE.MeshStandardMaterial({ color: 0x14203a, roughness: 0.9 }));
+  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.01; scene.add(outer);
+}
+// rete, pali, antenne
+{
+  const netTex = canvasTex(1024, 104, (c, w, h) => {
+    c.clearRect(0, 0, w, h); c.strokeStyle = 'rgba(20,20,20,0.9)'; c.lineWidth = 2;
+    for (let x = 0; x <= w; x += 10.5) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+    for (let y = 0; y <= h; y += 10.5) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    c.fillStyle = '#f4f4f4'; c.fillRect(0, 0, w, 7); c.fillRect(0, h - 5, w, 5);
+  });
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(9.9, 1.0), new THREE.MeshStandardMaterial({ map: netTex, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.8 }));
+  net.rotation.y = Math.PI / 2; net.position.set(0, NET - 0.5, 0); net.castShadow = true; scene.add(net);
+  const postM = new THREE.MeshStandardMaterial({ color: 0x2a3a6a, metalness: 0.5, roughness: 0.4 });
+  for (const z of [-5.1, 5.1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 2.6, 16), postM); p.position.set(0, 1.3, z); p.castShadow = true; scene.add(p);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0xd82020, roughness: 0.7 })); pad.position.set(0, 0.9, z); scene.add(pad);
+  }
+  const antTex = canvasTex(8, 64, (c, w, h) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#ffffff' : '#e02020'; c.fillRect(0, i * 8, w, 8); } });
+  for (const z of [-CW, CW]) { const a = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.8, 8), new THREE.MeshStandardMaterial({ map: antTex })); a.position.set(0, NET - 1 + 0.9 + 0.3, z); scene.add(a); }
+}
+// palazzetto: spalti a gradoni con il pubblico (istanze: pochi oggetti per la scheda grafica)
+const crowd = [];
+{
+  const standM = new THREE.MeshStandardMaterial({ color: 0x27304a, roughness: 0.9 });
+  const body = new THREE.CapsuleGeometry(0.2, 0.35, 4, 8), head = new THREE.SphereGeometry(0.12, 10, 8);
+  const N = 1400, bodies = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ roughness: 0.85 }), N), heads = new THREE.InstancedMesh(head, new THREE.MeshStandardMaterial({ roughness: 0.7 }), N);
+  const cols = ['#2a48d8', '#ffffff', '#24a83a', '#e02020', '#f2d020', '#1a1a1a', '#ff8a2a', '#7a3ad8', '#2a48d8', '#2a48d8'];
+  const skins = ['#eeb088', '#c88a5a', '#8a5a38', '#f2c4a4', '#b67a4c'];
+  const m = new THREE.Matrix4(), col = new THREE.Color();
+  let k = 0;
+  const stand = (cx, cz, len, alongX, out) => {   // out: verso di uscita (+1 / -1) lontano dal campo
+    for (let r = 0; r < 9; r++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.9, 0.45, alongX ? 0.9 : len), standM);
+      const d = r * 0.9, y = r * 0.45 + 0.22;
+      step.position.set(alongX ? cx : cx + out * d, y, alongX ? cz + out * d : cz); step.receiveShadow = true; scene.add(step);
+      for (let i = 0; i < len / 0.62 && k < N; i++) {
+        if (Math.random() < 0.12) continue;
+        const a = -len / 2 + 0.31 + i * 0.62 + rnd(-0.08, 0.08), px = alongX ? cx + a : cx + out * d, pz = alongX ? cz + out * d : cz + a, py = y + 0.22 + 0.37;
+        m.makeTranslation(px, py, pz); bodies.setMatrixAt(k, m); bodies.setColorAt(k, col.set(cols[Math.floor(Math.random() * cols.length)]));
+        m.makeTranslation(px, py + 0.43, pz); heads.setMatrixAt(k, m); heads.setColorAt(k, col.set(skins[Math.floor(Math.random() * skins.length)]));
+        crowd.push({ k, px, py, pz, ph: Math.random() * 6 }); k++;
+      }
+    }
+  };
+  stand(0, 9.5, 30, true, 1); stand(0, -9.5, 30, true, -1); stand(15, 0, 16, false, 1); stand(-15, 0, 16, false, -1);
+  bodies.count = heads.count = k; scene.add(bodies, heads);
+  crowd.bodies = bodies; crowd.heads = heads;
+  // tabelloni pubblicitari a bordo campo
+  const ads = ['SPIKE COLA', 'NETWORX', 'VOLTEX', 'MIRAKO', 'SESIA', 'KOBAYA'];
+  ads.forEach((a, i) => {
+    const t = canvasTex(512, 64, (c, w, h) => { c.fillStyle = i % 2 ? '#f4f4f4' : '#c81e3a'; c.fillRect(0, 0, w, h); c.fillStyle = i % 2 ? '#c81e3a' : '#ffffff'; c.font = 'italic bold 46px Arial Black, Arial'; c.textAlign = 'center'; c.fillText(a, w / 2, 50); });
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.8, 0.12), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }));
+    b.position.set(-13.5 + i * 5.4, 0.4, 8.6); scene.add(b);
+    const b2 = b.clone(); b2.position.z = -8.6; b2.rotation.y = Math.PI; scene.add(b2);
+  });
+  // luci del soffitto
+  for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
+}
+
+// ---------------- pallone ----------------
+const ballTex = canvasTex(512, 256, (c, w, h) => {
+  c.fillStyle = '#f4d21a'; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#1f4fc8';
+  for (let i = 0; i < 3; i++) { c.beginPath(); for (let x = 0; x <= w; x += 8) { const y = h * (0.2 + i * 0.3) + Math.sin(x / w * Math.PI * 4 + i) * 18; x ? c.lineTo(x, y) : c.moveTo(x, y); } for (let x = w; x >= 0; x -= 8) c.lineTo(x, h * (0.2 + i * 0.3) + 26 + Math.sin(x / w * Math.PI * 4 + i) * 18); c.fill(); }
+  c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 2;
+  for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(0, h * i / 6); c.lineTo(w, h * i / 6); c.stroke(); }
+});
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 20), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, emissive: 0x000000 }));
+ballMesh.castShadow = true; scene.add(ballMesh);
+// cerchio dove andare (blu) / momento di colpire (rosso)
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 40), new THREE.MeshBasicMaterial({ color: 0x3a9aff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; scene.add(ring);
+const landDot = new THREE.Mesh(new THREE.CircleGeometry(0.16, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+landDot.rotation.x = -Math.PI / 2; landDot.position.y = 0.011; scene.add(landDot);
+
+// ---------------- manichini ----------------
+// Altezza 1,92 m. Asse locale: avanti = +Z, sinistra = +X. Articolazioni (gruppi): bacino, busto, testa,
+// spalle/gomiti, anche/ginocchia/caviglie; le pose ruotano le articolazioni.
+const GEO = {
+  cyl: (r1, r2, h) => new THREE.CylinderGeometry(r1, r2, h, 18, 1),
+  sph: r => new THREE.SphereGeometry(r, 20, 14),
+  cap: (r, h) => new THREE.CapsuleGeometry(r, h, 6, 16)
+};
+function mat(color, rough = 0.7, extra = {}) { return new THREE.MeshStandardMaterial(Object.assign({ color, roughness: rough }, extra)); }
+function numberTex(n, fg, bg) {
+  return canvasTex(128, 128, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = fg; c.font = 'bold 92px Arial Black, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 6; c.strokeStyle = bg; c.strokeText(String(n), w / 2, h / 2 + 4); c.fillText(String(n), w / 2, h / 2 + 4); });
+}
+function makeAthlete(kit, num, look) {
+  const M = {
+    skin: mat(look.skin, 0.55), shirt: mat(kit.shirt, 0.78), trim: mat(kit.trim, 0.7), shorts: mat(kit.shorts, 0.75),
+    hair: mat(look.hair, 0.9), white: mat(0xf2f2f2, 0.6), dark: mat(0x1a1a1a, 0.6), eye: mat(0x101010, 0.2), sole: mat(kit.trim, 0.5)
+  };
+  const root = new THREE.Group(), J = {};
+  const add = (parent, geo, m, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; parent.add(o); return o; };
+  const joint = (parent, name, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); J[name] = g; return g; };
+  const pelvis = joint(root, 'pelvis', 0, 0.98, 0);
+  // pantaloncini
+  add(pelvis, GEO.cyl(0.165, 0.18, 0.2), M.shorts, 0, -0.02, 0, 1, 1, 0.78);
+  const spine = joint(pelvis, 'spine', 0, 0.06, 0);
+  // busto: addome e torace (maglia), spalle rotonde, numero davanti e dietro
+  add(spine, GEO.cap(0.15, 0.16), M.shirt, 0, 0.13, 0, 1.08, 1, 0.72);
+  add(spine, GEO.cap(0.17, 0.2), M.shirt, 0, 0.32, 0, 1.22, 1, 0.78);
+  add(spine, GEO.cyl(0.155, 0.17, 0.04), M.trim, 0, 0.005, 0, 1.06, 1, 0.74);   // bordo della maglia
+  const nt = numberTex(num, '#ffffff', kit.trimHex);
+  const nm = new THREE.MeshBasicMaterial({ map: nt, transparent: true });
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.17), nm); front.position.set(0, 0.3, 0.142); spine.add(front);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.24), nm); back.position.set(0, 0.33, -0.142); back.rotation.y = Math.PI; spine.add(back);
+  const neck = joint(spine, 'neck', 0, 0.5, 0.01);
+  add(neck, GEO.cyl(0.052, 0.06, 0.12), M.skin, 0, 0.04, 0);
+  const head = joint(neck, 'head', 0, 0.11, 0.01);
+  const hg = new THREE.Group(); head.add(hg); J.headMesh = hg;
+  add(hg, GEO.sph(0.112), M.skin, 0, 0.1, 0.005, 0.9, 1.08, 1);                       // cranio
+  add(hg, GEO.sph(0.07), M.skin, 0, 0.035, 0.035, 0.95, 0.9, 1);                     // mascella e mento
+  add(hg, GEO.sph(0.118), M.hair, 0, 0.13, -0.012, 0.92, 0.85, 1.0);                 // capelli
+  add(hg, GEO.sph(0.022), M.skin, 0.098, 0.095, 0, 0.6, 1.1, 1);                     // orecchie
+  add(hg, GEO.sph(0.022), M.skin, -0.098, 0.095, 0, 0.6, 1.1, 1);
+  add(hg, GEO.sph(0.013), M.eye, 0.036, 0.11, 0.098); add(hg, GEO.sph(0.013), M.eye, -0.036, 0.11, 0.098);   // occhi
+  add(hg, new THREE.ConeGeometry(0.016, 0.04, 10), M.skin, 0, 0.085, 0.112, 1, 1, 1).rotation.x = Math.PI / 2;   // naso
+  add(hg, GEO.cyl(0.03, 0.02, 0.008), mat(0x8a4a3a, 0.6), 0, 0.055, 0.1).rotation.x = Math.PI / 2;               // bocca
+  // braccia: spalla, manica, braccio, gomito, avambraccio, mano
+  for (const s of [1, -1]) {
+    const sh = joint(spine, s > 0 ? 'shL' : 'shR', s * 0.215, 0.42, 0);
+    add(sh, GEO.sph(0.072), M.shirt, 0, 0, 0, 1, 0.9, 0.95);
+    add(sh, GEO.cyl(0.068, 0.058, 0.13), M.shirt, 0, -0.07, 0);                           // manica
+    add(sh, GEO.cyl(0.052, 0.042, 0.26), M.skin, 0, -0.15, 0);
+    const el = joint(sh, s > 0 ? 'elL' : 'elR', 0, -0.285, 0);
+    add(el, GEO.sph(0.043), M.skin);
+    add(el, GEO.cyl(0.042, 0.032, 0.25), M.skin, 0, -0.13, 0);
+    const hand = joint(el, s > 0 ? 'haL' : 'haR', 0, -0.27, 0);
+    add(hand, GEO.sph(0.045), M.skin, 0, -0.035, 0.005, 0.75, 1.25, 0.48);
+    add(hand, GEO.sph(0.018), M.skin, s * -0.03, -0.01, 0.02, 1, 1.6, 1);                 // pollice
+  }
+  // gambe: coscia (pantaloncino), ginocchio con ginocchiera, polpaccio, calza, scarpa
+  for (const s of [1, -1]) {
+    const hip = joint(pelvis, s > 0 ? 'hiL' : 'hiR', s * 0.095, -0.04, 0);
+    add(hip, GEO.cyl(0.092, 0.084, 0.16), M.shorts, 0, -0.06, 0);
+    add(hip, GEO.cyl(0.08, 0.06, 0.4), M.skin, 0, -0.2, 0);
+    const kn = joint(hip, s > 0 ? 'knL' : 'knR', 0, -0.42, 0);
+    if (!look.noPads) add(kn, GEO.cyl(0.066, 0.066, 0.1), kit.padDark ? M.dark : M.white, 0, -0.01, 0.006);
+    else add(kn, GEO.sph(0.06), M.skin);
+    add(kn, GEO.cyl(0.062, 0.042, 0.24), M.skin, 0, -0.14, -0.005);                       // polpaccio
+    add(kn, GEO.cyl(0.044, 0.04, 0.14), M.white, 0, -0.32, 0);                            // calza
+    const an = joint(kn, s > 0 ? 'anL' : 'anR', 0, -0.42, 0);
+    add(an, GEO.cap(0.048, 0.15), M.white, 0, -0.025, 0.05, 1.05, 1, 1).rotation.x = Math.PI / 2;   // scarpa
+    add(an, GEO.cyl(0.06, 0.06, 0.02), M.sole, 0, -0.065, 0.05, 0.85, 1, 1.95);                     // suola
+  }
+  root.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
+  return { root, J };
+}
+
+// pose: angoli delle articolazioni (radianti). x di spalla/anca negativo = avanti, ginocchio positivo = piegato
+const POSE = {
+  stand: { lean: 0.05, crouch: 0, sh: [-0.1, -0.1], shZ: [0.12, 0.12], el: [-0.2, -0.2], hi: [0, 0], kn: [0.08, 0.08], an: [0, 0], head: 0 },
+  ready: { lean: 0.38, crouch: 0.2, sh: [-0.75, -0.75], shZ: [0.22, 0.22], el: [-0.9, -0.9], hi: [-0.65, -0.65], kn: [1.05, 1.05], an: [-0.3, -0.3], head: -0.3 },
+  pass: { lean: 0.42, crouch: 0.24, sh: [-0.9, -0.9], shZ: [-0.12, -0.12], el: [0, 0], hi: [-0.75, -0.75], kn: [1.15, 1.15], an: [-0.35, -0.35], head: -0.35 },
+  set: { lean: -0.05, crouch: 0.06, sh: [-2.75, -2.75], shZ: [0.25, 0.25], el: [-1.1, -1.1], hi: [-0.15, -0.15], kn: [0.3, 0.3], an: [0, 0], head: 0.35 },
+  jump: { lean: 0.0, crouch: 0, sh: [-2.6, -2.6], shZ: [0.35, 0.35], el: [-0.4, -0.4], hi: [-0.25, -0.25], kn: [0.55, 0.55], an: [0.4, 0.4], head: 0.25 },
+  load: { lean: 0.15, crouch: 0, sh: [-2.9, -0.9], shZ: [0.3, 0.2], el: [-1.9, -0.6], hi: [-0.3, -0.1], kn: [0.7, 0.4], an: [0.4, 0.4], head: 0.4 },   // schiacciata: braccio destro caricato dietro la testa
+  hit: { lean: 0.55, crouch: 0, sh: [-2.1, -0.5], shZ: [0.2, 0.1], el: [-0.1, -0.4], hi: [-0.6, -0.2], kn: [0.6, 0.5], an: [0.3, 0.3], head: 0.1 },
+  block: { lean: -0.05, crouch: 0, sh: [-3.05, -3.05], shZ: [0.1, 0.1], el: [-0.05, -0.05], hi: [-0.1, -0.1], kn: [0.25, 0.25], an: [0.4, 0.4], head: 0.2 },
+  toss: { lean: 0.05, crouch: 0.02, sh: [-2.4, -1.4], shZ: [0.3, 0.1], el: [-1.6, -0.2], hi: [0, 0.15], kn: [0.15, 0.1], an: [0, 0], head: 0.45 },
+  dive: { lean: 1.1, crouch: 0.45, sh: [-1.5, -1.5], shZ: [-0.1, -0.1], el: [0, 0], hi: [-1.3, 0.2], kn: [1.4, 0.4], an: [0, 0], head: -0.5 },
+  cheer: { lean: -0.1, crouch: 0, sh: [-3.0, -3.0], shZ: [0.5, 0.5], el: [-0.3, -0.3], hi: [0, 0], kn: [0.1, 0.1], an: [0, 0], head: 0.4 },
+  sad: { lean: 0.35, crouch: 0.05, sh: [-0.05, -0.05], shZ: [0.05, 0.05], el: [-0.1, -0.1], hi: [-0.1, -0.1], kn: [0.2, 0.2], an: [0, 0], head: -0.6 }
+};
+// corsa: ciclo calcolato dalla fase
+function runPose(ph, k) {
+  const s = Math.sin(ph), c = Math.cos(ph);
+  return { lean: 0.22 * k + 0.05, crouch: 0.04 * k, sh: [0.75 * s * k - 0.1, -0.75 * s * k - 0.1], shZ: [0.1, 0.1], el: [-1.25, -1.25], hi: [-0.75 * s * k, 0.75 * s * k], kn: [0.25 + Math.max(0, -c) * 1.15 * k, 0.25 + Math.max(0, c) * 1.15 * k], an: [0.1, 0.1], head: 0, bob: Math.abs(Math.sin(ph)) * 0.05 * k };
+}
+function applyPose(pl, P, k) {
+  const J = pl.body.J, cur = pl.cur;
+  for (const key of ['lean', 'crouch', 'head', 'bob']) cur[key] = lerp(cur[key] || 0, P[key] || 0, k);
+  for (const key of ['sh', 'shZ', 'el', 'hi', 'kn', 'an']) { cur[key] = cur[key] || [0, 0]; for (let i = 0; i < 2; i++) cur[key][i] = lerp(cur[key][i], P[key][i], k); }
+  // destra = [0] (braccio che colpisce), sinistra = [1]
+  J.pelvis.position.y = 0.98 - cur.crouch + cur.bob;
+  J.spine.rotation.x = cur.lean; J.head.rotation.x = -cur.lean * 0.6 - cur.head;
+  J.shR.rotation.x = cur.sh[0]; J.shL.rotation.x = cur.sh[1]; J.shR.rotation.z = -cur.shZ[0]; J.shL.rotation.z = cur.shZ[1];
+  J.elR.rotation.x = cur.el[0]; J.elL.rotation.x = cur.el[1];
+  J.hiR.rotation.x = cur.hi[0] - cur.lean * 0.3; J.hiL.rotation.x = cur.hi[1] - cur.lean * 0.3;
+  J.knR.rotation.x = cur.kn[0]; J.knL.rotation.x = cur.kn[1]; J.anR.rotation.x = cur.an[0] - cur.kn[0] * 0.45; J.anL.rotation.x = cur.an[1] - cur.kn[1] * 0.45;
+}
+
+// etichetta con il nome (N: sopra la testa / sotto i piedi / spenta)
+function nameSprite(txt, mine) {
+  const t = canvasTex(256, 64, (c, w, h) => { c.font = 'bold 34px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 7; c.strokeStyle = '#000'; c.strokeText(txt, w / 2, h / 2); c.fillStyle = mine ? '#ffe030' : '#ffffff'; c.fillText(txt, w / 2, h / 2); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(0.9, 0.225, 1); s.renderOrder = 10; return s;
+}
+
+// ---------------- squadre ----------------
+// ruoli: 0 alzatore, 1 schiacciatore di sinistra, 2 schiacciatore di destra, 3 difensore
+// posizioni (distanza dalla rete d, lato zl: negativo = alla sinistra del giocatore) per fase
+const HOME = {
+  receive: [[1.4, 1.6], [6.2, -2.7], [6.2, 2.7], [7.2, 0]],
+  attack: [[SETTER_D, 0.8], [3.8, -3.1], [3.8, 3.1], [6.6, 0]],
+  defend: [[0.55, 0.3], [0.55, -2.8], [5.4, 2.8], [6.6, -0.8]]
+};
+function makeTeam(code, side, human) {
+  const P = TEAMS[code];
+  const kit = { shirt: P.sh, trim: P.tr, trimHex: P.tr, shorts: P.so, padDark: P.sh === '#f4f4f4' };
+  const T = { code, side, name: P.name, players: [], score: 0, srvI: 0, touches: 0, plan: null, attacker: null, human };
+  const nums = [3, 7, 11, 14];
+  for (let i = 0; i < 4; i++) {
+    const look = { skin: P.sk, hair: P.ha[i % P.ha.length] };
+    const body = makeAthlete(kit, nums[i], look);
+    const isMe = human && i === 1;
+    const p = { team: T, i, role: i, name: isMe ? 'TU' : P.names[i], num: nums[i], body, x: side * 5, z: 0, h: 0, vh: 0, air: false,
+      act: null, actT: 0, ph: Math.random() * 6, spd: 0, yaw: 0, cur: {}, human: isMe, label: nameSprite(isMe ? 'TU' : P.names[i], isMe) };
+    body.root.scale.setScalar(rnd(0.97, 1.04));
+    scene.add(body.root); scene.add(p.label);
+    T.players.push(p);
+  }
+  return T;
+}
+const teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
+const me = teams[0].players[1];
+const other = t => t === teams[0] ? teams[1] : teams[0];
+// (prove automatiche: con window.__auto il tuo giocatore gioca da solo)
+const hum = p => p.human && !window.__auto;
+
+// ---------------- stato della partita ----------------
+const ball = { x: 0, z: 0, h: 1, vx: 0, vz: 0, vy: 0, held: null, live: false, team: null, last: null, spin: 0, ver: 0 };
+const S = { count: {}, state: 'serve', t: 0, serving: teams[1], server: null, phase: 'walk', toss: false, hitWin: false, msg: '', msgT: 0, over: false, paused: false, cam: 0, names: 1 };
+const keys = {}, pressed = new Set();
+const input = { l: false, r: false, u: false, d: false };
+
+function homeOf(p, phase) {
+  const T = p.team, [d, zl] = HOME[phase][p.role];
+  return { x: T.side * d, z: zl * -T.side };
+}
+function phaseOf(T) {
+  if (S.state === 'serve') return T === S.serving ? 'defend' : 'receive';
+  if (!ball.live) return 'defend';
+  if (ball.team === T) return 'attack';
+  // l'altra squadra costruisce l'attacco: a muro e in difesa; dopo la battuta: in ricezione
+  const O = other(T);
+  if (ball.team === O && O.touches >= 3 && ball.last === S.server && S.t < 3) return 'receive';
+  return 'defend';
+}
+function say(m, t = 1.6) { S.msg = m; S.msgT = t; }
+
+function startServe() {
+  const T = S.serving, sv = T.players[T.srvI];
+  S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false;
+  Object.assign(ball, { held: sv, live: false, team: null, last: null, vx: 0, vz: 0, vy: 0 });
+  for (const t of teams) { t.touches = 0; t.plan = null; t.attacker = null; for (const p of t.players) { p.act = null; if (!p.human) { const h = homeOf(p, phaseOf(t)); p.x = h.x; p.z = h.z; } p.h = 0; p.vh = 0; p.air = false; } }
+  sv.x = T.side * SERVE_X; sv.z = T.side * 1.2;
+  if (me !== sv) { const h = homeOf(me, phaseOf(me.team)); me.x = h.x; me.z = h.z; }   // a ogni battuta torni al tuo posto
+}
+function point(T, why) {
+  if (S.state !== 'rally' && S.state !== 'serve') return;
+  T.score++; S.state = 'dead'; S.t = 0; ball.live = false;
+  say(why + (T === me.team ? ' - PUNTO ITALIA!' : ' - PUNTO ' + T.name));
+  const won = T.score >= TARGET && T.score - other(T).score >= 2;
+  if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % 4; }
+  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); }
+  for (const t of teams) for (const p of t.players) { p.act = t === T ? 'cheer' : 'sad'; p.actT = 1.8; }
+}
+
+// ---------------- colpi ----------------
+function touch(p, kind) {
+  const T = p.team, b = ball;
+  if (b.team === T) T.touches++; else { T.touches = 1; other(T).touches = 0; }
+  b.team = T; b.last = p; b.ver++; b.held = null;
+  S.count[kind] = (S.count[kind] || 0) + 1;   // conteggio dei colpi (prove)
+  if (T.touches > 3) { point(other(T), 'QUATTRO TOCCHI'); return; }
+  const side = T.side, spd = Math.hypot(b.vx, b.vy, b.vz);
+  if (kind === 'pass') {
+    // ricezione / difesa verso l'alzatore (o verso chi è più vicino alla rete se ha ricevuto l'alzatore)
+    const err = (p.human ? 0.45 : 0.6) + spd / 22 * (p.human ? 1.0 : 1.4);
+    const sx = side * (SETTER_D + rnd(-0.2, 0.6) * err), sz = clamp(1.2 * -side + rnd(-1, 1) * err, -3.8, 3.8);
+    const v = arc3(b.x, b.z, b.h, sx, sz, SET_H, rnd(4.0, 5.2));
+    Object.assign(b, v); p.act = spd > 13 && Math.hypot(p.x - b.x, p.z - b.z) > REACH + LAT ? 'dive' : 'pass'; p.actT = 0.55;
+  } else if (kind === 'set') {
+    // alzata a uno schiacciatore: tu ricevi la palla una volta su due se sei in prima linea
+    const hit = T.players.filter(q => q.role === 1 || q.role === 2).filter(q => q !== p);
+    let a = hit[Math.floor(Math.random() * hit.length)];
+    if (T.human && hit.includes(me) && Math.random() < 0.6) a = me;
+    T.attacker = a;
+    const tz = clamp(a.z * 0.8 + (homeOf(a, 'attack').z) * 0.2, -3.7, 3.7), tx = side * 0.95;
+    const v = arc3(b.x, b.z, b.h, tx, tz, HIT_H - 0.05, HIT_H + rnd(1.0, 1.5));
+    Object.assign(b, v); p.act = 'set'; p.actT = 0.5;
+    a.spikeX = tx; a.spikeZ = tz;
+    if (a === me) say('ALZATA PER TE! Vai sul cerchio', 1.4);
+  } else if (kind === 'over') {
+    // palla facile di là
+    const v = arc3(b.x, b.z, b.h, -side * rnd(3, 7), rnd(-3.5, 3.5), 0, Math.max(b.h, NET) + rnd(1.2, 2));
+    Object.assign(b, v); p.act = 'pass'; p.actT = 0.45;
+  } else if (kind === 'spike') {
+    let tx = -side * rnd(2.5, 8.2), tz = rnd(-3.8, 3.8), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)), lob = false;
+    if (p.human) {
+      // ← → mira (a sinistra / a destra di chi schiaccia)
+      tz = input.l ? 3.4 * side : input.r ? -3.4 * side : rnd(-1.5, 1.5);
+      if (input.u) lob = true; if (input.d) { sp = SPIKE_V * 1.18; tx = -side * rnd(5, 8); }
+    } else if (Math.random() < 0.07) tx = -side * 9.6;   // ogni tanto fuori
+    let v = lob ? arc3(b.x, b.z, b.h, -side * rnd(2, 3.6), tz, 0, Math.max(b.h, NET) + 0.7) : shot3(b.x, b.z, b.h, tx, tz, 0, sp);
+    for (let i = 0; i < 8 && !clears(b, v, 0.05); i++) { tx -= side * 0.6; v = shot3(b.x, b.z, b.h, tx, tz, 0, sp * 0.95); }
+    Object.assign(b, v); p.act = 'hit'; p.actT = 0.35; T.attacker = null;
+    b.spin = 30;
+  }
+}
+function serveHit(p) {
+  const T = p.team, side = T.side, b = ball;
+  let tx = -side * rnd(4.5, 8.3), tz = rnd(-3.6, 3.6);
+  if (p.human) { tx = -side * (input.u ? 8.2 : input.d ? 3.8 : 6.4); tz = input.l ? 3.3 * side : input.r ? -3.3 * side : rnd(-1, 1); }
+  else if (Math.random() < 0.06) tx = -side * 10;
+  let v = null;
+  for (let sp = 17; sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, 0.25)) break; }
+  Object.assign(b, v); b.held = null; b.live = true; b.team = T; b.last = p; b.ver++; T.touches = 3;   // chi batte non può toccare di nuovo
+  other(T).touches = 0;
+  S.state = 'rally'; S.t = 0; p.act = 'hit'; p.actT = 0.35; b.spin = 12;
+}
+
+// ---------------- intelligenza (piani come in match.js: chi prende la palla, dove e quando) ----------------
+function think(T) {
+  T.plan = null;
+  const b = ball;
+  if (S.state !== 'rally' || !b.live) return;
+  const next = b.team === T ? T.touches + 1 : 1;
+  if (next > 3) return;
+  let kind = next === 1 ? 'pass' : next === 2 ? 'set' : (T.attacker ? 'spike' : 'over');
+  let hc = kind === 'pass' ? PASS_H : kind === 'set' ? SET_H : kind === 'spike' ? HIT_H - 0.05 : 1.6;
+  let tc = timeToH(b.h, b.vy, hc);
+  if (tc === null && kind === 'spike') { kind = 'over'; hc = 1.6; tc = timeToH(b.h, b.vy, hc); }
+  if (tc === null) { hc = Math.max(0.5, b.h - 0.1); tc = timeToH(b.h, b.vy, hc) || 0; }
+  const xc = b.x + b.vx * tc, zc = b.z + b.vz * tc;
+  if (xc * T.side < 0.15 && kind !== 'spike') return;   // la palla non arriva nel nostro campo
+  let p = null;
+  if (kind === 'set') p = T.players[0] !== b.last ? T.players[0] : null;
+  if (kind === 'spike') p = T.attacker;
+  if (!p) {   // il più vicino al punto (non chi ha appena toccato)
+    let best = 1e9;
+    for (const q of T.players) { if (q === b.last && b.team === T) continue; const d = Math.hypot(q.x - xc, q.z - zc) - (q.human ? 0.4 : 0); if (d < best) { best = d; p = q; } }
+  }
+  T.plan = { kind, p, xc, zc, tc, hc };
+}
+function movePlayer(p, dt) {
+  const T = p.team;
+  let tx = p.x, tz = p.z, sp = RUN;
+  if (hum(p)) {
+    const mx = (input.u ? 1 : 0) - (input.d ? 1 : 0), mz = (input.r ? 1 : 0) - (input.l ? 1 : 0);   // ↑ = verso la rete
+    let vx = mx * -T.side, vz = mz * -T.side;
+    // durante la schiacciata la rincorsa è automatica (come nel gioco)
+    if (S.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
+    const n = Math.hypot(vx, vz) || 1;
+    if (!(p.air || (S.state === 'serve' && S.server === p && S.phase !== 'walk'))) { p.x += vx / n * RUN * dt * (vx || vz ? 1 : 0); p.z += vz / n * RUN * dt * (vx || vz ? 1 : 0); }
+    p.spd = (vx || vz) && !p.air ? RUN : 0;
+  } else {
+    const pl = T.plan;
+    if (S.state === 'serve' && S.server === p) { tx = T.side * SERVE_X; tz = T.side * 1.2; }
+    else if (pl && pl.p === p && S.verAge < 0.12 && pl.kind === 'pass') { tx = p.x; tz = p.z; }   // tempo di reazione dopo il colpo
+    else if (pl && pl.p === p) {
+      if (pl.kind === 'spike') {
+        // rincorsa: indietro di 2,5 m, poi corsa verso il punto di colpo e stacco quando mancano 0,4 s
+        const back = pl.tc > 0.85 ? 2.4 : 0.2;
+        tx = pl.xc + T.side * back; tz = pl.zc; sp = pl.tc > 0.85 ? RUN : RUN * 1.6;
+        if (!p.air && pl.tc <= JUMP_T + 0.02 && pl.tc > 0.2) jump(p, 'load');
+      } else { tx = pl.xc; tz = pl.zc; sp = RUN * 1.25; }
+    } else if (S.state === 'dead' || S.state === 'end') { tx = p.x; tz = p.z; }
+    else {
+      const h = homeOf(p, phaseOf(T)); tx = h.x; tz = h.z;
+      // muro: i giocatori a rete seguono lo schiacciatore avversario e saltano con lui
+      const O = other(T), a = O.attacker;
+      if (a && ball.team === O && Math.abs(tx) < 1.2 && (p.role === 0 || p.role === 1)) {
+        tz = clamp(a.z + (p.role === 0 ? 0.35 : -0.35) * -T.side, -4, 4);
+        if (!p.air && a.air && a.h > 0.12 && p.blockVer !== ball.ver) { p.blockVer = ball.ver; if (Math.random() < 0.75) jump(p, 'block'); }
+      }
+    }
+    const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    if (!p.air && d > 0.04) { const s = Math.min(d, sp * dt); p.x += dx / d * s; p.z += dz / d * s; p.spd = s / dt; } else p.spd = 0;
+  }
+  // ognuno nel suo campo (fino a sotto la rete)
+  if (T.side < 0) p.x = clamp(p.x, -SERVE_X - 1, -0.25); else p.x = clamp(p.x, 0.25, SERVE_X + 1);
+  p.z = clamp(p.z, -7, 7);
+  // salto
+  if (p.air) {
+    p.vh -= PG * dt; p.h += p.vh * dt;
+    if (p.h <= 0) { p.h = 0; p.vh = 0; p.air = false; if (p.act === 'load' || p.act === 'block' || p.act === 'jump') p.act = null; }
+  }
+  if (p.actT > 0) { p.actT -= dt; if (p.actT <= 0 && !p.air) p.act = null; }
+}
+function jump(p, act) { if (p.air) return; p.air = true; p.vh = JUMP_V; p.act = act; p.actT = 0.8; }
+
+// contatti: tocchi automatici (ricezione, alzata, palla di là), schiacciata, muro
+function contacts() {
+  const b = ball;
+  if (S.state !== 'rally' || !b.live) return;
+  for (const T of teams) {
+    const pl = T.plan; if (!pl || !pl.p) continue;
+    const p = pl.p, d = Math.hypot(p.x - b.x, p.z - b.z);
+    if (pl.kind === 'spike') {
+      const hand = p.h + REACH_UP + 0.1, ok = p.air && d < 0.95 && Math.abs(b.h - hand) < 0.42;
+      if (hum(p)) {
+        S.hitWin = ok;
+        if (ok && S.zPress) { S.zPress = false; touch(p, 'spike'); return; }
+        // finestra finita senza Z: palla di là in qualche modo
+        if (p.air && d < 1.1 && b.h < hand - 0.4 && b.vy < 0) { touch(p, 'over'); T.attacker = null; return; }
+      } else if (ok && (b.vy < 0 || b.h > hand - 0.1)) { touch(p, 'spike'); return; }
+      continue;
+    }
+    // tocchi bassi e alzata: quando la palla scende all'altezza giusta vicino al giocatore
+    if (b.vy < 0 && b.h <= pl.hc + 0.12 && b.h > 0.15) {
+      const reach = REACH + LAT + (pl.kind === 'pass' ? (p.human ? 0.55 : DIVE * 0.55) : 0.3);
+      if (d <= reach && !(p.air && pl.kind === 'pass')) {
+        // difesa su schiacciata: più la palla è veloce e lontana, più è difficile tenerla (una prova per palla)
+        const spd = Math.hypot(b.vx, b.vy, b.vz);
+        if (pl.kind === 'pass' && spd > 14 && p.tryVer !== b.ver) {
+          p.tryVer = b.ver;
+          const ok = hum(p) ? (d <= REACH + LAT ? 1 : 0.6) : d <= REACH ? 0.88 : d <= REACH + LAT ? 0.62 : 0.32;
+          p.tryOk = Math.random() < ok;
+        }
+        if (pl.kind === 'pass' && spd > 14 && !p.tryOk) { p.act = 'dive'; p.actT = 0.6; continue; }
+        if (!hum(p) && pl.kind === 'pass' && spd <= 14 && d > REACH + LAT && Math.random() < 0.35) continue;   // tuffo non riuscito
+        touch(p, pl.kind); return;
+      }
+    }
+  }
+}
+function blockCheck(prevX) {
+  const b = ball;
+  if (!b.live || Math.sign(prevX) === Math.sign(b.x) && Math.abs(b.x) > 0.3) return false;
+  const D = teams.find(t => t.side * b.vx > 0);   // squadra verso cui va la palla
+  if (!D || b.team === D) return false;
+  for (const p of D.players) {
+    if (!p.air || Math.abs(p.x) > 0.9) continue;
+    const top = p.h + REACH_UP + 0.12;
+    if (Math.abs(p.z - b.z) < 0.55 && b.h < top && b.h > NET - 0.2 && (p.human || Math.random() < 0.55)) {
+      b.vx = -b.vx * 0.4; b.vz *= 0.5; b.vy = Math.abs(b.vy) * 0.2 + 1.2; b.x = -D.side * 0.25;
+      b.team = D; b.last = p; D.touches = 0; other(D).touches = 0; b.ver++;
+      p.act = 'block'; say(p === me ? 'MURO! BRAVO!' : 'MURO!', 1.2);
+      return true;
+    }
+  }
+  return false;
+}
+
+// ---------------- passo di simulazione (1/120 s come nel gioco) ----------------
+function step(dt) {
+  S.t += dt;
+  const b = ball;
+  if (S.state === 'serve') {
+    const sv = S.server, T = sv.team;
+    if (S.phase === 'walk') {
+      const dx = T.side * SERVE_X - sv.x, dz = T.side * 1.2 - sv.z, d = Math.hypot(dx, dz);
+      if (d > 0.05 && !hum(sv)) { const s = Math.min(d, RUN * dt); sv.x += dx / d * s; sv.z += dz / d * s; sv.spd = RUN; }
+      if (hum(sv)) { sv.x = T.side * SERVE_X; }
+      if (d < 0.06 || hum(sv)) { S.phase = 'ready'; S.t = 0; }
+    } else if (S.phase === 'ready') {
+      if ((hum(sv) && S.zPress) || (!hum(sv) && S.t > 1.5)) {
+        S.zPress = false; S.phase = 'toss'; S.t = 0; b.held = null; b.vy = 5.4; b.vx = -T.side * 0.6; b.vz = 0; sv.act = 'toss'; sv.actT = 1.2;
+      }
+    } else if (S.phase === 'toss') {
+      b.vy -= G * dt; b.x += b.vx * dt; b.h += b.vy * dt;
+      S.hitWin = b.h > 2.55 && b.h < 3.45 && S.t > 0.3;
+      if (S.hitWin && ((hum(sv) && S.zPress) || (!hum(sv) && b.vy < rnd(-0.5, 1.5)))) { S.zPress = false; S.hitWin = false; serveHit(sv); }
+      else if (b.h < 1.4 && b.vy < 0) { S.hitWin = false; point(other(T), 'BATTUTA SBAGLIATA'); }
+    }
+    if (b.held) { const h = b.held; b.x = h.x - h.team.side * 0.35; b.z = h.z - 0.2 * h.team.side; b.h = 1.15; }
+    for (const t of teams) for (const p of t.players) if (p !== sv || hum(p)) movePlayer(p, dt);
+    return;
+  }
+  if (S.state === 'rally') {
+    if (b.ver !== S.lastVer) { S.lastVer = b.ver; S.verAge = 0; } else S.verAge += dt;
+    for (const t of teams) think(t);
+    S.autoAppr = false;
+    const mp = me.team.plan;
+    if (hum(me) && mp && mp.p === me && mp.kind === 'spike' && !me.air) {
+      // rincorsa e stacco automatici se sei vicino al punto di colpo (come nel gioco)
+      const d = Math.hypot(me.x - mp.xc, me.z - mp.zc);
+      if (d < 1.2 && mp.tc <= JUMP_T + 0.02 && mp.tc > 0.15) { const k = Math.min(1, dt * 8); me.x = lerp(me.x, mp.xc, k); me.z = lerp(me.z, mp.zc, k); jump(me, 'load'); }
+      else if (d < 4.6 && mp.tc < 1.0) { S.autoAppr = true; const s = Math.min(d, RUN * 1.7 * dt); if (d > 0.05) { me.x += (mp.xc - me.x) / d * s; me.z += (mp.zc - me.z) / d * s; me.spd = RUN; } }
+    }
+    for (const t of teams) for (const p of t.players) movePlayer(p, dt);
+    // Z senza un colpo da fare: salto (muro vicino alla rete)
+    if (S.zPress && !(mp && mp.p === me && mp.kind === 'spike')) { S.zPress = false; jump(me, Math.abs(me.x) < 1.6 ? 'block' : 'jump'); }
+    const px = b.x;
+    b.vy -= G * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
+    // rete e antenne
+    if (Math.sign(px) !== Math.sign(b.x) && px !== 0) {
+      if (!blockCheck(px)) {
+        if (Math.abs(b.z) > CW + 0.1) { point(other(b.team), 'FUORI DALLE ANTENNE'); return; }
+        if (b.h < NET + BALL_R) { b.vx = -b.vx * 0.2; b.x = px > 0 ? 0.2 : -0.2; b.vy = Math.min(b.vy, 0); say('RETE', 1); }
+      }
+    }
+    contacts();
+    if (b.h <= BALL_R) {
+      b.h = BALL_R;
+      const inside = Math.abs(b.x) <= HALF + BALL_R && Math.abs(b.z) <= CW + BALL_R;
+      if (inside) { const T = teams.find(t => t.side * b.x > 0) || teams[0]; point(other(T), 'PALLA A TERRA'); }
+      else point(b.team ? other(b.team) : teams[0], 'FUORI');
+    }
+    return;
+  }
+  // palla ferma: rimbalza un po' e rotola
+  if (S.state === 'dead' || S.state === 'end') {
+    b.vy -= G * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
+    if (b.h < BALL_R) { b.h = BALL_R; b.vy = Math.abs(b.vy) * 0.45; b.vx *= 0.7; b.vz *= 0.7; }
+    for (const t of teams) for (const p of t.players) { if (p.air) movePlayer(p, dt); if (p.actT > 0) p.actT -= dt; }
+    if (S.state === 'dead' && S.t > 2.3) startServe();
+  }
+}
+
+// ---------------- disegno ----------------
+const tmpV = new THREE.Vector3();
+let camPos = new THREE.Vector3(-8, 1.8, 0), camLook = new THREE.Vector3(0, 1.5, 0);
+function draw(dt) {
+  const b = ball;
+  ballMesh.position.set(b.x, b.h, b.z);
+  ballMesh.rotation.z -= (b.spin || 4) * dt; ballMesh.rotation.x += 2 * dt;
+  const red = S.hitWin;
+  ballMesh.material.emissive.setHex(red ? 0xd01010 : 0x000000);
+  // giocatori: posizione, direzione (verso la palla, di solito verso la rete) e posa
+  for (const t of teams) for (const p of t.players) {
+    const R = p.body.root;
+    R.position.set(p.x, p.h, p.z);
+    const fx = b.x - p.x, fz = b.z - p.z;
+    let yaw = Math.atan2(fx, fz);
+    const net = Math.atan2(-t.side, 0);   // verso la rete
+    let dy = ((yaw - net + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dy = clamp(dy, -1.2, 1.2);
+    yaw = net + dy;
+    if (p.spd > 0.5 && !p.air && p !== me) { const h = p.lastMove; if (h !== undefined) yaw = h; }
+    p.yaw = p.yaw + (((yaw - p.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 10);
+    R.rotation.y = p.yaw;
+    let P;
+    if (p.act && POSE[p.act]) P = POSE[p.act];
+    else if (p.air) P = POSE.jump;
+    else if (p.spd > 0.5) { p.ph += dt * p.spd * 2.4; P = runPose(p.ph, clamp(p.spd / RUN, 0.4, 1)); }
+    else P = S.state === 'rally' || S.state === 'serve' ? POSE.ready : POSE.stand;
+    if (p.act === 'cheer') { P = Object.assign({}, POSE.cheer, { crouch: -Math.abs(Math.sin(S.t * 9)) * 0.06 }); }
+    applyPose(p, P, Math.min(1, dt * (p.act === 'hit' ? 26 : 12)));
+    // nome
+    p.label.visible = S.names > 0 && !(p === me && S.cam === 0);
+    p.label.position.set(p.x, S.names === 1 ? p.h + 2.25 : 0.12, p.z);
+  }
+  // in prima persona la tua testa non si vede (si vedono braccia e gambe)
+  me.body.J.headMesh.visible = S.cam !== 0;
+  // cerchio: dove andare per il prossimo tocco (o rosso quando è il momento di schiacciare)
+  const mp = me.team.plan;
+  ring.visible = !!(mp && mp.p === me) || (S.state === 'serve' && S.server === me);
+  if (mp && mp.p === me) { ring.position.x = mp.xc; ring.position.z = mp.zc; }
+  else if (S.state === 'serve' && S.server === me) { ring.position.x = me.x; ring.position.z = me.z; }
+  ring.material.color.setHex(red ? 0xff3020 : 0x3a9aff);
+  // punto di caduta della palla
+  const tl = b.live ? timeToH(b.h, b.vy, BALL_R) : null;
+  landDot.visible = !!tl && S.state === 'rally';
+  if (tl) landDot.position.set(b.x + b.vx * tl, 0.011, b.z + b.vz * tl);
+  // telecamera
+  const side = me.team.side;
+  let eye, look;
+  if (S.cam === 0) {
+    // occhi del giocatore: guarda la palla girando la testa (al massimo ~80° dalla rete)
+    const J = me.body.J; J.head.updateWorldMatrix(true, false);
+    eye = new THREE.Vector3(0, 0.12, 0.09).applyMatrix4(J.head.matrixWorld);
+    const toB = new THREE.Vector3(b.x - eye.x, b.h - eye.y, b.z - eye.z);
+    let yaw = Math.atan2(toB.z, toB.x), base = side < 0 ? 0 : Math.PI;
+    let dy = ((yaw - base + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dy = clamp(dy, -1.35, 1.35);
+    yaw = base + dy * 0.85;
+    const hd = Math.hypot(toB.x, toB.z), pitch = clamp(Math.atan2(toB.y, hd), -0.55, 1.15) * 0.85;
+    look = eye.clone().add(new THREE.Vector3(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch)).multiplyScalar(5));
+    camPos.copy(eye); camLook.lerp(look, Math.min(1, dt * 9));
+  } else if (S.cam === 1) {
+    // dietro le spalle
+    eye = new THREE.Vector3(me.x + side * 3.4, me.h + 2.6, me.z * 0.85);
+    look = new THREE.Vector3(lerp(me.x, b.x, 0.5), Math.max(1.6, b.h * 0.6), lerp(me.z, b.z, 0.4));
+    camPos.lerp(eye, Math.min(1, dt * 5)); camLook.lerp(look, Math.min(1, dt * 6));
+  } else {
+    // televisione: di lato, in alto
+    eye = new THREE.Vector3(b.x * 0.5, 7.5, 17); look = new THREE.Vector3(b.x * 0.7, 1, 0);
+    camPos.lerp(eye, Math.min(1, dt * 3)); camLook.lerp(look, Math.min(1, dt * 4));
+  }
+  camera.position.copy(camPos); camera.lookAt(camLook);
+  // pubblico: salta dopo i punti
+  if (S.state === 'dead' || S.state === 'end') {
+    const m = new THREE.Matrix4();
+    for (const c of crowd) { const j = Math.max(0, Math.sin(S.t * 10 + c.ph)) * 0.18; m.makeTranslation(c.px, c.py + j, c.pz); crowd.bodies.setMatrixAt(c.k, m); m.makeTranslation(c.px, c.py + 0.43 + j, c.pz); crowd.heads.setMatrixAt(c.k, m); }
+    crowd.bodies.instanceMatrix.needsUpdate = crowd.heads.instanceMatrix.needsUpdate = true; crowd.jumping = true;
+  } else if (crowd.jumping) {
+    const m = new THREE.Matrix4();
+    for (const c of crowd) { m.makeTranslation(c.px, c.py, c.pz); crowd.bodies.setMatrixAt(c.k, m); m.makeTranslation(c.px, c.py + 0.43, c.pz); crowd.heads.setMatrixAt(c.k, m); }
+    crowd.bodies.instanceMatrix.needsUpdate = crowd.heads.instanceMatrix.needsUpdate = true; crowd.jumping = false;
+  }
+  renderer.render(scene, camera);
+  hud();
+}
+// direzione di corsa (per girare il corpo mentre corre)
+function trackMoves() { for (const t of teams) for (const p of t.players) { const dx = p.x - (p.px ?? p.x), dz = p.z - (p.pz ?? p.z); if (Math.hypot(dx, dz) > 0.002) p.lastMove = Math.atan2(dx, dz); p.px = p.x; p.pz = p.z; } }
+
+// ---------------- interfaccia ----------------
+const $ = id => document.getElementById(id);
+const mapC = $('map').getContext('2d');
+function hud() {
+  const [A, B] = teams;
+  $('score').innerHTML = `<span class="${S.serving === A ? 'srv' : ''}">ITALIA ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>`;
+  $('msg').textContent = S.msgT > 0 || S.state === 'end' ? S.msg : '';
+  let h = '', now = false;
+  const mp = me.team.plan;
+  if (S.paused) h = 'PAUSA (P per riprendere)';
+  else if (S.state === 'end') h = 'INVIO = nuova partita   ·   ESC = torna al gioco';
+  else if (S.state === 'serve' && S.server === me) {
+    h = S.phase === 'toss' ? (S.hitWin ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : 'Z quando la palla diventa ROSSA') : 'BATTI TU: Z per lanciare la palla';
+    now = S.hitWin;
+  } else if (S.state === 'serve') h = S.serving === me.team ? 'Batte un compagno: preparati a difendere' : 'Ricezione: vai sul cerchio blu se la palla viene da te';
+  else if (mp && mp.p === me) {
+    if (mp.kind === 'spike') { h = S.hitWin ? 'Z ADESSO! (← → mira, ↑ pallonetto, ↓ potente)' : 'SCHIACCIA TU: vai vicino al cerchio, salto automatico'; now = S.hitWin; }
+    else h = mp.kind === 'pass' ? 'RICEZIONE: mettiti sul cerchio blu (il bagher è automatico)' : 'Mettiti sotto la palla (cerchio blu)';
+  } else if (ball.team && ball.team !== me.team && other(me.team).attacker && Math.abs(me.x) < 1.6) h = 'MURO: Z quando lo schiacciatore salta';
+  else h = '';
+  const el = $('hint'); el.textContent = h; el.style.display = h ? '' : 'none'; el.classList.toggle('now', now);
+  // mappa dall'alto
+  const W = 360, H = 200, k = 17, ox = W / 2, oz = H / 2;
+  mapC.clearRect(0, 0, W, H);
+  mapC.fillStyle = '#c8682e'; mapC.fillRect(ox - HALF * k, oz - CW * k, 2 * HALF * k, 2 * CW * k);
+  mapC.strokeStyle = '#fff'; mapC.lineWidth = 2; mapC.strokeRect(ox - HALF * k, oz - CW * k, 2 * HALF * k, 2 * CW * k);
+  mapC.beginPath(); mapC.moveTo(ox, oz - CW * k - 8); mapC.lineTo(ox, oz + CW * k + 8); mapC.stroke();
+  for (const t of teams) for (const p of t.players) { mapC.fillStyle = p === me ? '#ffe030' : t === me.team ? '#4a7aff' : '#3ac04a'; mapC.beginPath(); mapC.arc(ox + p.x * k, oz + p.z * k, p === me ? 7 : 5, 0, 7); mapC.fill(); }
+  mapC.fillStyle = '#fff'; mapC.beginPath(); mapC.arc(ox + ball.x * k, oz + ball.z * k, 4 + ball.h, 0, 7); mapC.fill();
+}
+
+// ---------------- comandi: tastiera, gamepad, touch ----------------
+const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd' };
+addEventListener('keydown', e => {
+  if (KEYMAP[e.key]) { input[KEYMAP[e.key]] = true; e.preventDefault(); }
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' || k === ' ') { S.zPress = true; S.zT = 0.25; e.preventDefault(); }
+  if (k === 'v') S.cam = (S.cam + 1) % 3;
+  if (k === 'n') S.names = (S.names + 1) % 3;
+  if (k === 'p') S.paused = !S.paused;
+  if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
+  if (k === 'enter' && S.state === 'end') newGame();
+  if (k === 'escape') location.href = '../index.html';
+});
+addEventListener('keyup', e => { if (KEYMAP[e.key]) input[KEYMAP[e.key]] = false; });
+let padPrev = {};
+function pollPad() {
+  const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
+  if (!gp) return;
+  const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, B = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+  input.l = ax < -0.4 || B(14); input.r = ax > 0.4 || B(15); input.u = ay < -0.4 || B(12); input.d = ay > 0.4 || B(13);
+  const now = { a: B(0), v: B(3), st: B(9) };
+  if (now.a && !padPrev.a) { S.zPress = true; S.zT = 0.25; }
+  if (now.v && !padPrev.v) S.cam = (S.cam + 1) % 3;
+  if (now.st && !padPrev.st && S.state === 'end') newGame();
+  padPrev = now;
+}
+// touch: joystick a sinistra, Z, V e START a destra
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  document.body.classList.add('touch');
+  const st = $('stick'), kn = $('knob');
+  let id = null;
+  const set = (x, y) => { const r = st.getBoundingClientRect(), dx = clamp(x - r.left - 65, -45, 45), dy = clamp(y - r.top - 65, -45, 45); kn.style.left = 40 + dx + 'px'; kn.style.top = 40 + dy + 'px'; input.l = dx < -15; input.r = dx > 15; input.u = dy < -15; input.d = dy > 15; };
+  st.addEventListener('pointerdown', e => { id = e.pointerId; st.setPointerCapture(id); set(e.clientX, e.clientY); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === id) set(e.clientX, e.clientY); });
+  st.addEventListener('pointerup', () => { id = null; kn.style.left = kn.style.top = '40px'; input.l = input.r = input.u = input.d = false; });
+  $('ta').addEventListener('pointerdown', e => { e.preventDefault(); S.zPress = true; S.zT = 0.25; });
+  $('tv').addEventListener('pointerdown', e => { e.preventDefault(); S.cam = (S.cam + 1) % 3; });
+  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (S.state === 'end') newGame(); else S.paused = !S.paused; });
+}
+
+function newGame() {
+  for (const t of teams) { t.score = 0; t.srvI = 0; }
+  S.over = false; S.serving = Math.random() < 0.5 ? teams[0] : teams[1];
+  me.x = -5; me.z = -2;
+  startServe(); say('ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
+}
+
+// ---------------- ciclo ----------------
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  pollPad();
+  if (!S.paused) {
+    if (S.zT > 0) { S.zT -= dt; if (S.zT <= 0) S.zPress = false; }   // una pressione di Z vale per 0,25 s
+    acc += dt;
+    while (acc >= CFG.STEP) { step(CFG.STEP); acc -= CFG.STEP; }
+    trackMoves();
+    if (S.msgT > 0 && S.state !== 'end') S.msgT -= dt;
+  }
+  draw(S.paused ? 0 : dt);
+  requestAnimationFrame(frame);
+}
+window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
+// prove: n passi di simulazione senza disegnare
+window.__sim = n => { for (let i = 0; i < n; i++) { if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); if (i % 4 === 0) trackMoves(); if (S.msgT > 0) S.msgT -= CFG.STEP; } };
+newGame();
+$('load').remove();
+setTimeout(() => { $('help').style.display = 'none'; }, 15000);   // le istruzioni spariscono dopo 15 s (H per rivederle)
+requestAnimationFrame(frame);

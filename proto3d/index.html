@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Spike Fever 3D - prima persona (prototipo)</title>
+<style>
+  :root { --gold: #ffd23a; --ink: #071233; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: Arial, sans-serif; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #score { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(5, 10, 30, 0.8); border: 1px solid #3a7ae0; border-radius: 8px; padding: 4px 14px; font: bold 22px "Arial Black", Arial; letter-spacing: 1px; white-space: nowrap; }
+  #score .srv { color: var(--gold); }
+  #msg { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); font: 34px "Arial Black", Arial; color: var(--gold); text-shadow: 0 3px 0 #000, 0 0 12px #000; white-space: nowrap; }
+  #hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); max-width: 92vw; background: rgba(5, 10, 30, 0.75); border-radius: 8px; padding: 6px 12px; font: bold 15px Arial; text-align: center; }
+  #hint.now { color: #ff5a4a; border: 2px solid #ff5a4a; }
+  #help { position: absolute; top: 10px; left: 10px; background: rgba(5, 10, 30, 0.7); border-radius: 8px; padding: 6px 10px; font: 12px Arial; line-height: 1.45; color: #cfe0ff; }
+  #help b { color: var(--gold); }
+  #map { position: absolute; top: 10px; right: 10px; width: 180px; height: 100px; background: rgba(5, 10, 30, 0.7); border-radius: 6px; }
+  #cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); }
+  #load { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font: bold 20px Arial; color: var(--gold); background: var(--ink); }
+  /* comandi touch */
+  #touch { display: none; } body.touch #touch { display: block; } body.touch #help { display: none; }
+  #stick { position: fixed; left: 24px; bottom: 24px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.35); pointer-events: auto; }
+  #knob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); }
+  .tb { position: fixed; border-radius: 50%; background: rgba(255, 60, 60, 0.55); border: 2px solid #fff; font: bold 22px Arial; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+  #ta { right: 30px; bottom: 40px; width: 86px; height: 86px; }
+  #tv { right: 130px; bottom: 30px; width: 50px; height: 50px; font-size: 14px; background: rgba(60, 120, 255, 0.55); }
+  #ts { right: 30px; bottom: 140px; width: 50px; height: 50px; font-size: 12px; background: rgba(60, 200, 90, 0.55); }
+</style>
+</head>
+<body>
+<div id="load">Caricamento del palazzetto 3D...</div>
+<div id="hud">
+  <div id="score"></div>
+  <div id="msg"></div>
+  <div id="hint"></div>
+  <div id="help">
+    <b>PROTOTIPO 3D - PRIMA PERSONA</b> (tu sei il n. 7 dell'Italia)<br>
+    <b>FRECCE</b> muoviti (↑ verso la rete) · <b>Z</b> salta / batti / schiaccia<br>
+    Ricezione e alzata automatiche: vai sul <b>cerchio blu</b><br>
+    Schiacciata: avvicinati al cerchio, <b>Z</b> quando diventa <b style="color:#ff5a4a">ROSSO</b><br>
+    (← → mira, ↑ pallonetto, ↓ potente) · Battuta: <b>Z</b> lancia, <b>Z</b> colpisce<br>
+    <b>V</b> visuale · <b>N</b> nomi · <b>H</b> istruzioni · <b>P</b> pausa · <b>INVIO</b> nuova partita · <b>ESC</b> torna al gioco
+  </div>
+  <canvas id="map" width="360" height="200"></canvas>
+  <div id="cross"></div>
+</div>
+<div id="touch"><div id="stick"><div id="knob"></div></div><div class="tb" id="ta">Z</div><div class="tb" id="tv">V</div><div class="tb" id="ts">START</div></div>
+<script src="../config.js"></script>
+<script type="importmap">{ "imports": { "three": "./three.module.min.js" } }</script>
+<script type="module" src="gioco3d.js?v=1"></script>
+</body>
+</html>
