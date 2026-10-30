@@ -1,8 +1,9 @@
 <?php
 // Partite online (online.js): scambio dei dati di connessione WebRTC tra i due giocatori, con un codice partita.
 // Il gioco poi passa direttamente da un browser all'altro: questo file serve solo all'inizio.
-//   POST ?a=create              corpo {offer}   -> {code}        chi crea la partita
-//   GET  ?a=offer&c=CODICE                      -> {offer}       chi entra con il codice
+//   POST ?a=create              corpo {offer, meta?}   -> {code}        chi crea la partita
+//   GET  ?a=offer&c=CODICE                      -> {offer, meta}  chi entra con il codice
+// meta (facoltativo, prototipo 3D): {g3d, beach, women} solo vero/falso, per aprire la stessa versione del gioco
 //   POST ?a=answer&c=CODICE     corpo {answer}  -> {ok}
 //   GET  ?a=answer&c=CODICE                     -> {answer} oppure {wait:true}
 // I dati restano in api/dati/online/ (non raggiungibile dal web) e vengono cancellati dopo 20 minuti.
@@ -32,14 +33,16 @@ if ($a === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   if (count(glob($dir . '/*.json') ?: []) > 500) out(503, ['errore' => 'troppe partite aperte, riprova tra poco']);
   $abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // niente lettere che si confondono (I, O, 0, 1)
   do { $code = ''; for ($i = 0; $i < 5; $i++) $code .= $abc[random_int(0, strlen($abc) - 1)]; } while (is_file("$dir/$code.json"));
-  file_put_contents("$dir/$code.json", json_encode(['offer' => $d['offer'], 'answer' => null]), LOCK_EX);
+  $meta = [];
+  if (isset($d['meta']) && is_array($d['meta'])) foreach (['g3d', 'beach', 'women'] as $k) $meta[$k] = !empty($d['meta'][$k]);
+  file_put_contents("$dir/$code.json", json_encode(['offer' => $d['offer'], 'answer' => null, 'meta' => $meta]), LOCK_EX);
   out(200, ['code' => $code]);
 }
 if (!preg_match('/^[A-Z0-9]{5}$/', $c)) out(400, ['errore' => 'codice non valido']);
 $file = "$dir/$c.json";
 if (!is_file($file)) out(404, ['errore' => 'partita non trovata o scaduta']);
 $room = json_decode(file_get_contents($file), true);
-if ($a === 'offer') out(200, ['offer' => $room['offer']]);
+if ($a === 'offer') out(200, ['offer' => $room['offer'], 'meta' => $room['meta'] ?? []]);
 if ($a === 'answer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $d = $body();
   if (!$sdp($d['answer'] ?? null)) out(400, ['errore' => 'risposta non valida']);

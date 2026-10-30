@@ -40,7 +40,9 @@ const SPIKE_V = CFG.SPIKE_SPEED / PPM;    // 21,5 m/s
 const SETTER_D = CFG.SETTER_D / PPM;      // l'alzatore a 1,5 m dalla rete
 const SERVE_X = HALF + 1.4;
 const BALL_R = 0.105;
-const TARGET = BEACH ? 21 : 15;
+// partita: set da giocare (1, meglio di 3, meglio di 5) e punti del set; l'ultimo set (tie-break) a 15
+const MATCH = { sets: 1, pts: BEACH ? 21 : 15 };
+const target = () => MATCH.sets > 1 && S.setsWon[0] === S.setsWon[1] && S.setsWon[0] === Math.floor(MATCH.sets / 2) ? 15 : MATCH.pts;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -255,6 +257,7 @@ landDot.rotation.x = -Math.PI / 2; landDot.position.y = 0.011; scene.add(landDot
 // impronta / buca di raggio r e profondità d, con il bordo di sabbia spostata che si alza (rim)
 function sandStamp(x, z, r, d, rim = d * 0.4, ex = 1) {
   if (!SAND) return;
+  if (S.online === 'host') RETE.ev.push(['st', near(x), near(z), r, d, rim, ex]);
   const S2 = SAND, cs = S2.W / S2.NX, ix0 = Math.floor((x + S2.W / 2) / cs), iz0 = Math.floor((z + S2.D / 2) / cs), R = Math.ceil(r * 1.7 * ex / cs) + 1;
   for (let iz = iz0 - R; iz <= iz0 + R; iz++) for (let ix = ix0 - R; ix <= ix0 + R; ix++) {
     if (ix < 0 || iz < 0 || ix > S2.NX || iz > S2.NZ) continue;
@@ -300,6 +303,7 @@ if (BEACH) {
 }
 function splash(x, z, n, power = 1) {
   if (!SPL.pts) return;
+  if (S.online === 'host') RETE.ev.push(['sp', near(x), near(z), n, power]);
   for (let k = 0; k < n; k++) {
     const i = SPL.i = (SPL.i + 1) % SPL.n, a = Math.random() * Math.PI * 2, v = rnd(0.5, 2.2) * power;
     SPL.pos[i * 3] = x + rnd(-0.1, 0.1); SPL.pos[i * 3 + 1] = 0.03; SPL.pos[i * 3 + 2] = z + rnd(-0.1, 0.1);
@@ -466,9 +470,11 @@ function makeTeam(code, side, human) {
   for (let ni = 0; ni < (PL ? Math.max(PL.length, NPL) : nums.length); ni++) {
     const e = PL && PL[ni];
     const name = e ? e.name : (WOMEN && !P.club ? femName(code, ni) : P.names[ni % P.names.length]);
-    T.roster.push({ ni, num: e ? e.num : nums[ni], name, hair: e ? e.ha : P.ha[ni % P.ha.length], sk: e ? e.sk : P.sk, mine: !!(e && e.mine), foto: e && e.foto, sc: rnd(0.97, 1.04) });
+    T.roster.push({ ni, num: e ? e.num : nums[ni], name, hair: e ? e.ha : P.ha[ni % P.ha.length], sk: e ? e.sk : P.sk, mine: !!(e && e.mine), foto: e && e.foto, sc: rnd(0.97, 1.04), role: e ? e.role : 'PSOSSL'[ni] });
     T.en.push(100); T.st.push({ pts: 0, err: 0, t: 0, ace: 0, blk: 0, kill: 0 });
   }
+  // LIBERO (solo palazzetto): il primo L in panchina, altrimenti l'ultimo della rosa; maglia di colore diverso
+  if (!BEACH && T.roster.length > NPL) { const L = T.roster.slice(NPL).find(R => R.role === 'L') || T.roster[T.roster.length - 1]; T.lib = L.ni; L.lib = true; }
   T.lv = PL ? PL.slice(0, NPL).reduce((a, e) => a + e.lv, 0) / Math.min(NPL, PL.length) : 6;   // livello medio dei titolari
   for (let i = 0; i < NPL; i++) {
     const p = { team: T, i, role: i, ni: i, x: side * 5, z: 0, h: 0, vh: 0, air: false, act: null, actT: 0, ph: Math.random() * 6, spd: 0, yaw: 0, cur: {}, human: human && i === 1 };
@@ -483,23 +489,32 @@ function dress(p) {
   if (p.body) scene.remove(p.body.root);
   if (p.label) scene.remove(p.label);
   const look = { skin: R.sk || P.sk, hair: R.hair, beach: BEACH, noPads: BEACH, glasses: BEACH && p.i === 0, fem: WOMEN };
-  p.body = makeAthlete(T.kit, R.num, look); p.cur = {};
+  const kit = R.lib ? Object.assign({}, T.kit, { shirt: T.kit.trim === T.kit.shirt ? '#f2d020' : T.kit.trim, trim: T.kit.shirt, trimHex: T.kit.shirt }) : T.kit;
+  p.body = makeAthlete(kit, R.num, look); p.cur = {};
   p.body.root.scale.setScalar(R.sc * (WOMEN ? 0.95 : 1));
   p.name = R.name; p.num = R.num;
-  p.label = nameSprite(p.human ? R.name + ' (TU)' : R.name, p.human);
+  p.label = nameSprite(p.human ? R.name + (p.remote ? ' (AVVERSARIO)' : ' (TU)') : R.lib ? R.name + ' (L)' : R.name, p.human && !p.remote);
   scene.add(p.body.root); scene.add(p.label);
 }
 let teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
 let me = teams[0].players[1];
 // nuova partita tra due squadre qualsiasi (scelte nella schermata iniziale)
-function setupTeams(a, b) {
+function setupTeams(a, b, online) {
   for (const t of teams) for (const p of t.players) { scene.remove(p.body.root); scene.remove(p.label); }
-  teams = [makeTeam(a, -1, true), makeTeam(b, 1, false)]; me = teams[0].players[1];
+  teams = [makeTeam(a, -1, true), makeTeam(b, 1, !!online)];
+  // online: l'host comanda a sinistra, l'avversario (dalla rete) a destra; per il guest è il contrario
+  me = online === 'guest' ? teams[1].players[1] : teams[0].players[1];
+  if (online) for (const t of teams) for (const p of t.players) if (p.human) { p.remote = p !== me; dress(p); }
   window.__teams = teams;
 }
 const other = t => t === teams[0] ? teams[1] : teams[0];
 // (prove automatiche: con window.__auto il tuo giocatore gioca da solo)
-const hum = p => p.human && !window.__auto;
+const hum = p => p.human && !(window.__auto && !p.remote);
+// comandi di ogni giocatore umano: i tuoi (tastiera, gamepad, touch) e, online, quelli dell'avversario (REM, dalla rete)
+const REM = { inp: { l: false, r: false, u: false, d: false }, z: false, zT: 0 };
+const inp = p => p.remote ? REM.inp : input;
+const zOf = p => p.remote ? REM.z : p === me && S.zPress;
+const zClr = p => { if (p.remote) REM.z = false; else S.zPress = false; };
 
 // arbitro sul seggiolone a bordo rete (nome dall'EDITOR, se c'è)
 const REF = { body: makeAthlete({ shirt: '#f4f4f4', trim: '#1a1a1a', trimHex: '#1a1a1a', shorts: '#1a1a1a' }, '', { skin: '#eeb088', hair: '#5a4a3a' }), label: null };
@@ -519,14 +534,35 @@ function refLabel() {
 
 // ---------------- stato della partita ----------------
 const ball = { x: 0, z: 0, h: 1, vx: 0, vz: 0, vy: 0, held: null, live: false, team: null, last: null, spin: 0, ver: 0 };
-const S = { count: {}, statsOn: true, state: 'serve', t: 0, serving: teams[1], server: null, phase: 'walk', toss: false, hitWin: false, msg: '', msgT: 0, over: false, paused: false, cam: 0, names: 1 };
+const S = { setsWon: [0, 0], setLog: [], count: {}, statsOn: true, state: 'serve', t: 0, serving: teams[1], server: null, phase: 'walk', toss: false, hitWin: false, msg: '', msgT: 0, over: false, paused: false, cam: 0, names: 1 };
 const keys = {}, pressed = new Set();
 const input = { l: false, r: false, u: false, d: false };
 
+// ROTAZIONE (palazzetto, 4 in campo): a ogni cambio palla si ruota di un posto; il posto 3 è chi batte (in seconda linea),
+// 0-2 in prima linea. In ricezione e in attacco l'alzatore va comunque al suo posto (penetra) e chi era lì prende il suo.
+const slotOf = p => BEACH ? p.role : (p.i - p.team.srvI + 3 + NPL) % NPL;
+function homeIdx(p, phase) {
+  if (BEACH) return p.role;
+  const T = p.team, setter = T.players[0], ss = slotOf(setter), sl = slotOf(p);
+  if (phase === 'defend') return sl;
+  if (p === setter) return 0;
+  return sl === 0 ? ss : sl;
+}
 function homeOf(p, phase) {
-  const T = p.team, [d, zl] = HOME[phase][p.role];
+  const T = p.team, [d, zl] = HOME[phase][homeIdx(p, phase)];
   return { x: T.side * d, z: zl * -T.side };
 }
+// libero: entra al posto di chi è in seconda linea quando si riceve, esce quando dovrebbe battere o andare a rete
+function liberoSwap() {
+  for (const T of teams) {
+    if (T.lib === undefined) continue;
+    const L = T.players.find(p => p.ni === T.lib);
+    if (L && (slotOf(L) !== 3 || S.serving === T)) { L.ni = L.libOut; dress(L); }
+    const back = T.players.find(p => slotOf(p) === 3);
+    if (back && S.serving !== T && !back.human && back.i !== 0 && back.ni !== T.lib && !T.players.some(p => p.ni === T.lib)) { back.libOut = back.ni; back.ni = T.lib; dress(back); }
+  }
+}
+const isLib = p => p.team.lib !== undefined && p.ni === p.team.lib;
 function phaseOf(T) {
   if (S.state === 'serve') return T === S.serving ? 'defend' : 'receive';
   if (!ball.live) return 'defend';
@@ -549,7 +585,8 @@ const SERVES = {
   sky: { name: 'SKY BALL!', toss: 1.2, fwd: 0.1, sky: true, err: 0.04 },
   phantom: { name: 'PHANTOM!', toss: 5.4, fwd: 0.6, speed: 17, wob: 1.2, ghost: true, err: 0.07 }
 };
-function serveKindFromInput() {
+function serveKindFromInput(p) {
+  const input = inp(p);
   if (input.u && (input.l || input.r)) return 'thunder';
   return input.u ? 'jump' : input.d ? 'jfloat' : input.l ? 'sky' : input.r ? 'phantom' : 'float';
 }
@@ -560,9 +597,11 @@ function aiServeKind() {
 
 function startServe() {
   const T = S.serving, sv = T.players[T.srvI];
-  S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false; S.kind = null; S.quickReq = false; S.receiverTouched = false;
+  S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false; S.kind = null; S.receiverTouched = false;
+  for (const t of teams) { t.quickReq = false; for (const p of t.players) p.win = false; }
   Object.assign(ball, { held: sv, live: false, team: null, last: null, vx: 0, vz: 0, vy: 0, wob: 0, top: 0, ghost: 0, thunder: 0 });
-  for (const t of teams) { t.touches = 0; t.plan = null; t.attacker = null; for (const p of t.players) { p.act = null; if (!p.human) { const h = homeOf(p, phaseOf(t)); p.x = h.x; p.z = h.z; } p.h = 0; p.vh = 0; p.air = false; } }
+  for (const t of teams) { t.touches = 0; t.plan = null; t.attacker = null; for (const p of t.players) { p.act = null; if (!p.human || p !== sv) { const h = homeOf(p, phaseOf(t)); p.x = h.x; p.z = h.z; } p.h = 0; p.vh = 0; p.air = false; } }
+  liberoSwap();
   sv.x = T.side * SERVE_X; sv.z = T.side * 1.2;
   if (me !== sv) { const h = homeOf(me, phaseOf(me.team)); me.x = h.x; me.z = h.z; }   // a ogni battuta torni al tuo posto
 }
@@ -572,21 +611,32 @@ function point(T, why, who, what) {
   if (who && what) who.team.st[who.ni][what]++;
   if (who && (what === 'kill' || what === 'ace' || what === 'blk')) who.team.st[who.ni].pts++;
   T.score++; S.state = 'dead'; S.t = 0; ball.live = false; S.hitWin = false;
+  for (const t of teams) for (const p of t.players) p.win = false;
   for (const t of teams) { t.plan = null; t.attacker = null; }
   S.streak = S.streak && S.streak.T === T ? { T, n: S.streak.n + 1 } : { T, n: 1 };
   say(why + ' - PUNTO ' + T.name + (T === me.team ? '!' : ''));
-  const won = T.score >= TARGET && T.score - other(T).score >= 2;
+  const won = T.score >= target() && T.score - other(T).score >= 2;
   if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % NPL; }
   for (const t of teams) {
     const onCourt = new Set(t.players.map(p => p.ni));
     for (const p of t.players) tire(p, FAT.point);
     for (let ni = 0; ni < t.roster.length; ni++) if (!onCourt.has(ni)) t.en[ni] = Math.min(100, t.en[ni] + FAT.bench);
   }
-  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); showStats(true); campEnd(T === me.team); }
+  if (won) {
+    // fine del set: partita finita o pausa tra i set (nuovo set con l'altra squadra al servizio)
+    const ti = teams.indexOf(T); S.setsWon[ti]++; S.setLog.push(teams.map(t => t.score));
+    const need = Math.ceil(MATCH.sets / 2);
+    if (S.setsWon[ti] >= need) {
+      S.over = true; S.state = 'end'; showStats(true);
+      if (S.online === 'host') { netSend(netSnap()); netSend({ t: 'end', st: teams.map(t => t.st), en: teams.map(t => t.en) }); }
+      say((S.online ? 'VINCE ' + T.name + ' ' : T === me.team ? 'HAI VINTO ' : 'HAI PERSO ') + (MATCH.sets > 1 ? `${Math.max(...S.setsWon)}-${Math.min(...S.setsWon)}` : 'IL SET'), 99);
+      campEnd(S.setsWon[teams.indexOf(me.team)], S.setsWon[teams.indexOf(other(me.team))]);
+    } else { S.state = 'setbreak'; S.t = 0; say(`SET ${S.setLog.length} A ${T.name} ${T.score}-${other(T).score}  ·  SET ${S.setsWon[0]}-${S.setsWon[1]}`, 4); }
+  }
   for (const t of teams) for (const p of t.players) { p.act = t === T ? 'cheer' : 'sad'; p.actT = 1.8; }
   if (won) return;
   // il computer: cambia chi è stanco e chiama time-out se l'altra squadra fa 4 punti di fila
-  for (const t of teams) if (!t.human) aiSubs(t);
+  for (const t of teams) if (!t.human || t.players.some(p => p.remote)) aiSubs(t);
   const O = other(S.streak.T);
   if (!O.human && S.streak.n >= 4 && O.to < 1) callTimeout(O);
 }
@@ -613,16 +663,19 @@ function touch(p, kind) {
     if (dive) { tire(p, FAT.dive); sandStamp(p.x, p.z, 0.32, 0.04, 0.016, 1.8); splash(p.x, p.z, 30, 1.1); }
   } else if (kind === 'set') {
     // alzata: nel palazzetto a uno schiacciatore (tu una volta su due se sei in prima linea), nel beach al compagno
-    const hit = BEACH ? T.players.filter(q => q !== p) : T.players.filter(q => q.role === 1 || q.role === 2).filter(q => q !== p);
+    // nel palazzetto: chi non alza e non è il libero; chi è in seconda linea attacca da dietro i 3 m
+    const hit = BEACH ? T.players.filter(q => q !== p) : T.players.filter(q => q !== p && q.i !== 0 && !isLib(q));
     let a = hit[Math.floor(Math.random() * hit.length)];
-    if (T.human && hit.includes(me) && (Math.random() < 0.6 || S.quickReq)) a = me;
+    const H = T.players.find(q => q.human);
+    if (H && hit.includes(H) && (Math.random() < 0.6 || T.quickReq || S.forceMe)) a = H;
     T.attacker = a;
     // tipo di alzata: le tue richieste (↑ alta, ↓ veloce, Z durante la ricezione = primo tempo, oltre i 3 m = seconda linea)
     let type = 'normal';
-    if (a === me && hum(me)) {
-      if (S.quickReq) type = 'quick'; else if (Math.abs(me.x) > 3.1 && !BEACH) type = 'back'; else if (input.u) type = 'high'; else if (input.d) type = 'fast';
+    if (a.human && hum(a)) {
+      if (T.quickReq) type = 'quick'; else if (Math.abs(a.x) > 3.1 && !BEACH) type = 'back'; else if (inp(a).u) type = 'high'; else if (inp(a).d) type = 'fast';
     } else { const r = Math.random(); type = r < 0.15 && !BEACH ? 'quick' : r < 0.3 ? 'high' : r < 0.4 ? 'fast' : r < 0.46 && !BEACH ? 'back' : 'normal'; }
-    S.quickReq = false;
+    if (!BEACH && slotOf(a) === 3) type = 'back';   // seconda linea: attacco da dietro i 3 m
+    T.quickReq = false;
     let tz = clamp(a.z * 0.8 + (homeOf(a, 'attack').z) * 0.2, -CW + 0.8, CW - 0.8), tx = side * 0.95, apex = HIT_H + rnd(1.0, 1.5);
     if (type === 'high') { apex = HIT_H + 2.3; tz = clamp(tz * 1.25, -CW + 0.5, CW - 0.5); }
     if (type === 'fast') apex = HIT_H + 0.45;
@@ -643,6 +696,7 @@ function touch(p, kind) {
   } else if (kind === 'spike') {
     let tx = -side * rnd(2.5, HALF - 0.8), tz = rnd(-CW + 0.7, CW - 0.7), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)) * (1 - 0.15 * F) * (WOMEN ? 0.88 : 1), lob = false;
     if (hum(p)) {
+      const input = inp(p);
       // ← → mira (a sinistra / a destra di chi schiaccia), ↑ pallonetto, ↓ potente
       tz = input.l ? (CW - 1.1) * side : input.r ? -(CW - 1.1) * side : rnd(-1.5, 1.5);
       if (input.u) lob = true; if (input.d) { sp *= 1.18; tx = -side * rnd(5, HALF - 1); }
@@ -661,8 +715,10 @@ function touch(p, kind) {
 function serveHit(p) {
   const T = p.team, side = T.side, b = ball, K = SERVES[S.kind];
   let tx = -side * rnd(4.5, HALF - 0.7), tz = rnd(-CW + 0.9, CW - 0.9);
+  const input = inp(p);
   if (hum(p)) { tx = -side * (input.u ? HALF - 0.8 : input.d ? 3.6 : HALF * 0.7); tz = input.l ? (CW - 1.2) * side : input.r ? -(CW - 1.2) * side : rnd(-1, 1); }
-  if (Math.random() < K.err * (hum(p) ? 0.5 : 1) + fatigue(p) * 0.06) tx = -side * (HALF + 1);   // battuta sbagliata (lunga)
+  if (S.practice === 'receive' && !hum(p)) { tx = me.x + rnd(-0.6, 0.6); tz = me.z + rnd(-0.6, 0.6); }   // pratica: la battuta arriva a te
+  else if (Math.random() < K.err * (hum(p) ? 0.5 : 1) + fatigue(p) * 0.06) tx = -side * (HALF + 1);   // battuta sbagliata (lunga)
   let v = null;
   if (K.sky) v = arc3(b.x, b.z, b.h, tx, tz, 0, WOMEN ? 13 : 15);                 // SKY BALL: altissima, scende quasi verticale
   else for (let sp = K.speed * (WOMEN ? 0.9 : 1); sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, K.top ? 0.12 : 0.25)) break; }
@@ -708,10 +764,11 @@ function movePlayer(p, dt) {
   const T = p.team, x0 = p.x, z0 = p.z;
   let tx = p.x, tz = p.z, sp = speedOf(p);
   if (hum(p)) {
+    const input = inp(p);
     const mx = (input.u ? 1 : 0) - (input.d ? 1 : 0), mz = (input.r ? 1 : 0) - (input.l ? 1 : 0);   // ↑ = verso la rete
     let vx = mx * -T.side, vz = mz * -T.side;
     // durante la schiacciata la rincorsa è automatica (come nel gioco)
-    if (S.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
+    if (p.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
     const n = Math.hypot(vx, vz) || 1;
     if (!(p.air || (S.state === 'serve' && S.server === p && S.phase !== 'walk'))) { p.x += vx / n * sp * dt * (vx || vz ? 1 : 0); p.z += vz / n * sp * dt * (vx || vz ? 1 : 0); }
     p.spd = (vx || vz) && !p.air ? sp : 0;
@@ -731,7 +788,7 @@ function movePlayer(p, dt) {
       const h = homeOf(p, phaseOf(T)); tx = h.x; tz = h.z;
       // muro: i giocatori a rete seguono lo schiacciatore avversario e saltano con lui (anche sulla finta)
       const O = other(T), a = O.attacker;
-      if (a && ball.team === O && Math.abs(tx) < 1.2 && (p.role === 0 || p.role === 1)) {
+      if (a && ball.team === O && Math.abs(tx) < 1.2 && homeIdx(p, 'defend') < 2 && !isLib(p)) {
         tz = clamp(a.z + (p.role === 0 ? 0.35 : -0.35) * -T.side, -CW + 0.3, CW - 0.3);
         if (!p.air && a.air && a.h > 0.12 && p.blockVer !== ball.ver) { p.blockVer = ball.ver; if (Math.random() < 0.75) jump(p, 'block'); }
       }
@@ -776,8 +833,8 @@ function contacts() {
     if (pl.kind === 'spike') {
       const hand = p.h + REACH_UP + 0.1, ok = p.air && d < 0.95 && Math.abs(b.h - hand) < 0.42;
       if (hum(p)) {
-        S.hitWin = ok;
-        if (ok && S.zPress) { S.zPress = false; touch(p, 'spike'); return; }
+        p.win = ok;
+        if (ok && zOf(p)) { zClr(p); touch(p, 'spike'); return; }
         // finestra finita senza Z: palla di là in qualche modo
         if (p.air && d < 1.1 && b.h < hand - 0.4 && b.vy < 0) { touch(p, 'over'); T.attacker = null; return; }
       } else if (ok && (b.vy < 0 || b.h > hand - 0.1)) { touch(p, 'spike'); return; }
@@ -807,8 +864,8 @@ function contacts() {
           S.receiverTouched = true; T.st[p.ni].err++; T.st[p.ni].t++; say('RICEZIONE SBAGLIATA', 1); return;
         }
         // alzatore vicino alla rete: ogni tanto attacco di seconda (SURPRISE ATTACK); tu: Z mentre alzi
-        if (pl.kind === 'set' && Math.abs(p.x) < 1.6 && !BEACH && ((hum(p) && S.zPress) || (!hum(p) && Math.random() < 0.06))) { S.zPress = false; touch(p, 'dump'); return; }
-        if (pl.kind === 'set' && hum(p) && S.zPress) { S.zPress = false; touch(p, 'dump'); return; }
+        if (pl.kind === 'set' && Math.abs(p.x) < 1.6 && !BEACH && ((hum(p) && zOf(p)) || (!hum(p) && Math.random() < 0.06))) { zClr(p); touch(p, 'dump'); return; }
+        if (pl.kind === 'set' && hum(p) && zOf(p)) { zClr(p); touch(p, 'dump'); return; }
         touch(p, pl.kind); return;
       }
     }
@@ -836,14 +893,19 @@ function blockCheck(prevX) {
 function aiSubs(T) {
   if (BEACH || T.subs >= MAX_SUBS) return;
   for (const p of T.players) {
-    if (p.human || T.en[p.ni] > 50) continue;
-    const onCourt = new Set(T.players.map(q => q.ni));
+    if (p.human || isLib(p) || T.en[p.ni] > 50) continue;
     let best = -1;
-    for (let ni = 0; ni < T.roster.length; ni++) if (!onCourt.has(ni) && T.en[ni] > T.en[p.ni] + 20 && (best < 0 || T.en[ni] > T.en[best])) best = ni;
+    for (const R of benchOf(T)) if (T.en[R.ni] > T.en[p.ni] + 20 && (best < 0 || T.en[R.ni] > T.en[best])) best = R.ni;
     if (best >= 0) { doSub(T, p, best); say('CAMBIO ' + T.name + ': ENTRA ' + T.roster[best].name, 1.6); }
   }
 }
 function doSub(T, p, ni) { p.ni = ni; T.subs++; dress(p); }
+// panchina: chi non è in campo, non è il libero e non è uscito solo per far entrare il libero
+function benchOf(T) {
+  const out = new Set(T.players.map(p => p.ni)); if (T.lib !== undefined) out.add(T.lib);
+  for (const p of T.players) if (isLib(p) && p.libOut !== undefined) out.add(p.libOut);
+  return T.roster.filter(R => !out.has(R.ni));
+}
 function callTimeout(T) {
   if (T.to >= 1 || (S.state !== 'dead' && S.state !== 'serve')) return false;
   T.to++; S.state = 'timeout'; S.t = 0;
@@ -858,10 +920,11 @@ function subOpen() {
   if (BEACH || (S.state !== 'dead' && S.state !== 'serve') || (S.state === 'serve' && S.phase === 'toss')) return;
   const T = me.team;
   if (T.subs >= MAX_SUBS) { say('CAMBI FINITI (' + MAX_SUBS + ' PER SET)', 1.5); return; }
-  SUB.open = true; SUB.out = T.players.findIndex(p => !p.human); SUB.inn = 0; subDraw();
+  if (!benchOf(T).length) { say('NESSUNO IN PANCHINA', 1.2); return; }
+  SUB.open = true; SUB.out = T.players.findIndex(p => !p.human && !isLib(p)); SUB.inn = 0; subDraw();
 }
 function subKey(k) {
-  const T = me.team, bench = T.roster.filter(R => !T.players.some(p => p.ni === R.ni)), court = T.players.filter(p => !p.human);
+  const T = me.team, bench = benchOf(T), court = T.players.filter(p => !p.human && !isLib(p));
   if (k === 'up' || k === 'down') { let i = court.indexOf(T.players[SUB.out]); i = (i + (k === 'up' ? -1 : 1) + court.length) % court.length; SUB.out = T.players.indexOf(court[i]); }
   if (k === 'left' || k === 'right') SUB.inn = (SUB.inn + (k === 'left' ? -1 : 1) + bench.length) % bench.length;
   if (k === 'ok') { doSub(T, T.players[SUB.out], bench[SUB.inn].ni); say('CAMBIO: ENTRA ' + bench[SUB.inn].name, 1.5); SUB.open = false; }
@@ -872,7 +935,7 @@ const bar = e => `<span class="bar"><i style="width:${e}%;background:${e > 60 ? 
 const errPct = (T, ni) => { const s = T.st[ni]; return s.t ? Math.round(s.err / s.t * 100) : 0; };
 function subDraw() {
   const el = $('subs'); el.style.display = SUB.open ? '' : 'none'; if (!SUB.open) return;
-  const T = me.team, bench = T.roster.filter(R => !T.players.some(p => p.ni === R.ni));
+  const T = me.team, bench = benchOf(T);
   let h = `<h3>CAMBI (${T.subs}/${MAX_SUBS}) · ↑ ↓ chi esce · ← → chi entra · Z conferma · X chiudi</h3><table>`;
   for (const p of T.players) { const sel = T.players[SUB.out] === p; h += `<tr class="${sel ? 'sel' : ''}${p.human ? ' me' : ''}"><td>${sel ? '▶' : ''}</td><td>${p.num}</td><td>${p.name}</td><td>${bar(Math.round(T.en[p.ni]))} ${Math.round(T.en[p.ni])}%</td><td>err ${errPct(T, p.ni)}%</td></tr>`; }
   h += '</table><h3>PANCHINA</h3><table>';
@@ -906,6 +969,7 @@ function step(dt) {
   sandUpdate(dt);
   if (SUB.open) return;   // pannello dei cambi aperto: tutto fermo
   if (S.state === 'timeout') { if (S.t > 3.2) startServe(); return; }
+  if (S.state === 'setbreak') { if (S.t > 4.2) newSet(); return; }
   if (S.state === 'serve') {
     const sv = S.server, T = sv.team;
     if (S.phase === 'walk') {
@@ -914,8 +978,8 @@ function step(dt) {
       if (hum(sv)) { sv.x = T.side * SERVE_X; }
       if (d < 0.06 || hum(sv)) { S.phase = 'ready'; S.t = 0; }
     } else if (S.phase === 'ready') {
-      if ((hum(sv) && S.zPress) || (!hum(sv) && S.t > 1.5)) {
-        S.zPress = false; S.phase = 'toss'; S.t = 0; S.kind = hum(sv) ? serveKindFromInput() : aiServeKind();
+      if ((hum(sv) && zOf(sv)) || (!hum(sv) && S.t > 1.5)) {
+        zClr(sv); S.phase = 'toss'; S.t = 0; S.kind = hum(sv) ? serveKindFromInput(sv) : aiServeKind();
         const K = SERVES[S.kind];
         b.held = null; b.vy = K.toss; b.vx = -T.side * K.fwd; b.vz = 0; sv.act = 'toss'; sv.actT = K.jump ? 0.5 : 1.2;
         if (K.sky) { b.h = 0.9; sv.act = 'pass'; }
@@ -937,8 +1001,9 @@ function step(dt) {
         S.hitWin = sv.air && Math.abs(b.h - hand) < 0.42 && Math.abs(b.x - sv.x) < 0.9;
       } else if (K.sky) S.hitWin = b.vy < 0 && b.h < 1.25 && b.h > 0.6;
       else S.hitWin = b.h > 2.55 && b.h < 3.45 && S.t > 0.3;
-      if (S.hitWin && ((hum(sv) && S.zPress) || (!hum(sv) && (K.jump ? b.vy < 0.5 : K.sky ? b.h < 1.05 : b.vy < rnd(-0.5, 1.5))))) { S.zPress = false; S.hitWin = false; serveHit(sv); }
-      else if (b.h < (K.sky ? 0.4 : 1.2) && b.vy < 0) { S.hitWin = false; point(other(T), 'BATTUTA SBAGLIATA', sv, 'err'); }
+      sv.win = S.hitWin;
+      if (S.hitWin && ((hum(sv) && zOf(sv)) || (!hum(sv) && (K.jump ? b.vy < 0.5 : K.sky ? b.h < 1.05 : b.vy < rnd(-0.5, 1.5))))) { zClr(sv); S.hitWin = sv.win = false; serveHit(sv); }
+      else if (b.h < (K.sky ? 0.4 : 1.2) && b.vy < 0) { S.hitWin = sv.win = false; point(other(T), 'BATTUTA SBAGLIATA', sv, 'err'); }
       if (!hum(sv) && (sv.air || sv.h > 0)) movePlayer(sv, dt);
     }
     if (b.held) { const h = b.held; b.x = h.x - h.team.side * 0.35; b.z = h.z - 0.2 * h.team.side; b.h = 1.15; }
@@ -948,21 +1013,25 @@ function step(dt) {
   if (S.state === 'rally') {
     if (b.ver !== S.lastVer) { S.lastVer = b.ver; S.verAge = 0; } else S.verAge += dt;
     for (const t of teams) think(t);
-    S.autoAppr = false;
-    const mp = me.team.plan;
-    if (hum(me) && mp && mp.p === me && mp.kind === 'spike' && !me.air) {
-      // rincorsa e stacco automatici se sei vicino al punto di colpo (come nel gioco)
-      const d = Math.hypot(me.x - mp.xc, me.z - mp.zc);
-      // FINTA: Z prima della rincorsa = finto salto (il muro avversario salta), poi il salto vero
-      if (S.zPress && mp.tc > 0.85 && me.fakeVer !== ball.ver && !BEACH) { S.zPress = false; me.fakeVer = ball.ver; jump(me, 'load', 0.5); say('FINTA!', 1); }
-      else if (d < 1.2 && mp.tc <= JUMP_T + 0.02 && mp.tc > 0.15) { const k = Math.min(1, dt * 8); me.x = lerp(me.x, mp.xc, k); me.z = lerp(me.z, mp.zc, k); jump(me, 'load'); }
-      else if (d < 4.6 && mp.tc < 1.0) { S.autoAppr = true; const sp = speedOf(me) * 1.7, s = Math.min(d, sp * dt); if (d > 0.05) { me.x += (mp.xc - me.x) / d * s; me.z += (mp.zc - me.z) / d * s; me.spd = sp; } }
+    // giocatori umani (tu e, online, l'avversario): rincorsa automatica, finta, primo tempo, salto con Z
+    const humans = teams.map(t => t.players.find(p => p.human && hum(p))).filter(Boolean);
+    for (const H of humans) {
+      H.autoAppr = false;
+      const mp = H.team.plan;
+      if (mp && mp.p === H && mp.kind === 'spike' && !H.air) {
+        // rincorsa e stacco automatici se sei vicino al punto di colpo (come nel gioco)
+        const d = Math.hypot(H.x - mp.xc, H.z - mp.zc);
+        // FINTA: Z prima della rincorsa = finto salto (il muro avversario salta), poi il salto vero
+        if (zOf(H) && mp.tc > 0.85 && H.fakeVer !== ball.ver && !BEACH) { zClr(H); H.fakeVer = ball.ver; jump(H, 'load', 0.5); say('FINTA!', 1); }
+        else if (d < 1.2 && mp.tc <= JUMP_T + 0.02 && mp.tc > 0.15) { const k = Math.min(1, dt * 8); H.x = lerp(H.x, mp.xc, k); H.z = lerp(H.z, mp.zc, k); jump(H, 'load'); }
+        else if (d < 4.6 && mp.tc < 1.0) { H.autoAppr = true; const sp = speedOf(H) * 1.7, s = Math.min(d, sp * dt); if (d > 0.05) { H.x += (mp.xc - H.x) / d * s; H.z += (mp.zc - H.z) / d * s; H.spd = sp; } }
+      }
+      // Z mentre i compagni ricevono = chiedi il PRIMO TEMPO (palla veloce vicino all'alzatore)
+      if (zOf(H) && ball.team === H.team && H.team.touches === 1 && !(mp && mp.p === H) && !BEACH) { zClr(H); H.team.quickReq = true; say('PRIMO TEMPO!', 1); }
     }
-    // Z mentre i compagni ricevono = chiedi il PRIMO TEMPO (palla veloce vicino all'alzatore)
-    if (hum(me) && S.zPress && ball.team === me.team && me.team.touches === 1 && !(mp && mp.p === me) && !BEACH) { S.zPress = false; S.quickReq = true; say('PRIMO TEMPO!', 1); }
     for (const t of teams) for (const p of t.players) movePlayer(p, dt);
     // Z senza un colpo da fare: salto (muro vicino alla rete)
-    if (S.zPress && !(mp && mp.p === me && (mp.kind === 'spike' || mp.kind === 'set'))) { S.zPress = false; jump(me, Math.abs(me.x) < 1.6 ? 'block' : 'jump'); }
+    for (const H of humans) { const mp = H.team.plan; if (zOf(H) && !(mp && mp.p === H && (mp.kind === 'spike' || mp.kind === 'set'))) { zClr(H); jump(H, Math.abs(H.x) < 1.6 ? 'block' : 'jump'); } }
     const px = b.x;
     // flottante: la palla balla di lato; con la rotazione in avanti scende prima
     if (b.wob) b.vz += Math.sin(S.t * 9 + b.wobPh) * b.wob * dt * 3;
@@ -998,7 +1067,7 @@ function step(dt) {
     b.vy -= G * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.h += b.vy * dt;
     if (b.h < BALL_R) { b.h = BALL_R; b.vy = Math.abs(b.vy) * 0.45; b.vx *= 0.7; b.vz *= 0.7; }
     for (const t of teams) for (const p of t.players) { if (p.air) movePlayer(p, dt); if (p.actT > 0) p.actT -= dt; }
-    if (S.state === 'dead' && S.t > 2.6) startServe();
+    if (S.state === 'dead' && S.t > 2.6) restart();
   }
 }
 // scossa della telecamera (schiacciate potenti, thunder)
@@ -1020,7 +1089,7 @@ function draw(dt) {
   const b = ball;
   ballMesh.position.set(b.x, b.h, b.z);
   ballMesh.rotation.z -= (b.spin || 4) * dt; ballMesh.rotation.x += 2 * dt;
-  const red = S.hitWin;
+  const red = !!me.win;
   ballMesh.material.emissive.setHex(red ? 0xd01010 : b.thunder ? (Math.random() < 0.5 ? 0xffd020 : 0x806000) : 0x000000);
   // PHANTOM: la palla finta sparisce quando la vera arriva nel campo di chi riceve
   const rs = b.team ? -b.team.side : 0;
@@ -1136,29 +1205,41 @@ const mapC = $('map').getContext('2d');
 function hud() {
   const [A, B] = teams;
   const logo = t => TEAMS[t.code].logo ? `<img src="${TEAMS[t.code].logo}" alt="">` : '';
-  const sc = `${A.code}${A.score}${S.serving === A}${B.score}`;
-  if (S.scoreKey !== sc) { S.scoreKey = sc; $('score').innerHTML = `${logo(A)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${logo(B)}`; }
+  const sc = `${A.code}${A.score}${S.serving === A}${B.score}${S.setsWon}`, sw = MATCH.sets > 1 ? i => `<small class="sets">${S.setsWon[i]}</small>` : () => '';
+  if (S.scoreKey !== sc) { S.scoreKey = sc; $('score').innerHTML = `${logo(A)}${sw(0)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${sw(1)}${logo(B)}`; }
   $('msg').textContent = S.camT > 0 ? S.camMsg : S.msgT > 0 || S.state === 'end' ? S.msg : '';
+  let [h, now] = playHint();
+  if (S.inSetup) h = '';
+  else if (S.paused && !S.guideF) h = 'PAUSA (P per riprendere)';
+  else if (S.state === 'end') h = 'INVIO = ' + (S.lastCamp ? 'classifica e prossima partita' : 'nuova partita') + '   ·   ESC = torna al gioco';
+  if (S.state === 'dead' && !h) h = (BEACH ? '' : 'X = cambi · ') + 'R = time-out · I = energia ed errori';
+  if (S.guideF) h = '';
+  const el = $('hint'); el.textContent = h; el.style.display = h ? '' : 'none'; el.classList.toggle('now', now);
+  guideDraw();
+  hudMap();
+}
+// che cosa devi fare in questo momento (riga in basso; nella pratica guidata il gioco si ferma a ogni nuova istruzione)
+function playHint() {
   let h = '', now = false;
   const mp = me.team.plan;
-  if (S.inSetup) h = '';
-  else if (S.paused) h = 'PAUSA (P per riprendere)';
-  else if (S.state === 'end') h = 'INVIO = ' + (S.lastCamp ? 'classifica e prossima partita' : 'nuova partita') + '   ·   ESC = torna al gioco';
-  else if (S.state === 'serve' && S.server === me) {
-    h = S.phase === 'toss' ? (S.hitWin ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : SERVES[S.kind].name + ': Z quando la palla diventa ROSSA')
+  if (S.state === 'serve' && S.server === me) {
+    h = S.phase === 'toss' ? (me.win ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : SERVES[S.kind].name + ': Z quando la palla diventa ROSSA')
       : 'BATTI TU - Z lancia. Tieni: niente = dall\'alto · ↑ in salto · ↓ salto flottante · ← SKY BALL · → PHANTOM · ↑+←/→ THUNDER';
-    now = S.hitWin;
+    now = !!me.win;
   } else if (S.state === 'serve') h = S.serving === me.team ? 'Batte un compagno: preparati a difendere' : 'Ricezione: vai sul cerchio blu se la palla viene da te';
   else if (mp && mp.p === me) {
-    if (mp.kind === 'spike') { h = S.hitWin ? 'Z ADESSO! (← → mira, ↑ pallonetto, ↓ potente)' : 'SCHIACCIA TU: vai vicino al cerchio, salto automatico' + (BEACH ? '' : ' · Z subito = FINTA'); now = S.hitWin; }
+    if (mp.kind === 'spike') { h = me.win ? 'Z ADESSO! (← → mira, ↑ pallonetto, ↓ potente)' : 'SCHIACCIA TU: vai vicino al cerchio, salto automatico' + (BEACH ? '' : ' · Z subito = FINTA'); now = !!me.win; }
     else h = mp.kind === 'pass' ? 'RICEZIONE: mettiti sul cerchio blu (il bagher è automatico)' : 'ALZI TU: mettiti sotto la palla (cerchio blu) · Z = attacco di seconda';
   } else if (S.state === 'rally' && ball.team === me.team && me.team.touches === 1 && !BEACH) {
     h = 'ALZATA IN ARRIVO: tieni ↑ palla alta · ↓ veloce · Z = PRIMO TEMPO · oltre i 3 m = SECONDA LINEA';
 
-  } else if (ball.team && ball.team !== me.team && other(me.team).attacker && Math.abs(me.x) < 1.6) h = 'MURO: Z quando lo schiacciatore salta';
-  else h = '';
-  if (S.state === 'dead' && !h) h = (BEACH ? '' : 'X = cambi · ') + 'R = time-out · I = energia ed errori';
-  const el = $('hint'); el.textContent = h; el.style.display = h ? '' : 'none'; el.classList.toggle('now', now);
+  } else if (S.state === 'rally' && ball.team && ball.team !== me.team && other(me.team).attacker && Math.abs(me.x) < 1.6) {
+    const a = other(me.team).attacker; h = a.air ? 'MURO: Z ADESSO! (salta con lo schiacciatore)' : 'MURO: Z quando lo schiacciatore salta'; now = a.air;
+  }
+  if (S.state === 'tossing' || S.state === 'timeout' || S.state === 'setbreak') h = '';
+  return [h, now];
+}
+function hudMap() {
   // mappa dall'alto
   const W = 360, H = 200, k = 17, ox = W / 2, oz = H / 2;
   mapC.clearRect(0, 0, W, H);
@@ -1172,6 +1253,10 @@ function hud() {
 // ---------------- comandi: tastiera, gamepad, touch ----------------
 const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd' };
 addEventListener('keydown', e => {
+  if (TOSS.open) {
+    const m = { ArrowLeft: 'left', ArrowRight: 'right', z: 'ok', Z: 'ok', ' ': 'ok', Enter: 'ok' }[e.key];
+    if (m && !e.repeat) tossKey(m); e.preventDefault(); return;
+  }
   // pannello dei cambi aperto: le frecce scelgono, Z conferma, X o ESC chiude
   if (SUB.open) {
     const m = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', z: 'ok', Z: 'ok', ' ': 'ok', Enter: 'ok', x: 'close', X: 'close', Escape: 'close' }[e.key];
@@ -1180,21 +1265,25 @@ addEventListener('keydown', e => {
   if (KEYMAP[e.key]) { input[KEYMAP[e.key]] = true; e.preventDefault(); }
   if (e.repeat) return;
   const k = e.key.toLowerCase();
+  // pratica guidata ferma: Z esegue (o continua), INVIO continua senza Z
+  if (S.guideF && (k === 'z' || k === ' ' || k === 'enter')) { guideKey(k === 'enter' ? 'enter' : 'z'); e.preventDefault(); return; }
   if (k === 'z' || k === ' ') { S.zPress = true; S.zT = 0.25; e.preventDefault(); }
   if (k === 'v') nextCam(e.shiftKey ? -1 : 1);
   if (k >= '1' && k <= String(CAMS.length)) setCam(Number(k) - 1);
   if (k === 'n') S.names = (S.names + 1) % 3;
   if (k === 'p') S.paused = !S.paused;
   if (k === 'b') { const u = new URL(location.href); if (BEACH) u.searchParams.delete('beach'); else u.searchParams.set('beach', '1'); location.href = u.href; }
+  if (S.online === 'guest' && (k === 'x' || k === 'r' || k === 'p')) { if (k === 'r') netSend({ t: 'to' }); return; }
+  if (S.online && k === 'p') return;
   if (k === 'x') subOpen();
   if (k === 'r') { if (!callTimeout(me.team)) say(me.team.to >= 1 ? 'TIME-OUT GIÀ USATO IN QUESTO SET' : 'TIME-OUT SOLO A PALLA FERMA', 1.4); }
   if (k === 'i') { S.statsOn = !S.statsOn; showStats(); }
   if (k === 'l') { S.slow = !S.slow; say(S.slow ? 'AL RALLENTATORE' : 'VELOCITÀ NORMALE', 1.2); }
   if (k === 'f') { const u = new URL(location.href); u.searchParams.set('women', WOMEN ? '0' : '1'); location.href = u.href; }
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
-  if (k === 'enter' && S.state === 'end') openSetup();
+  if (k === 'enter' && S.state === 'end') { if (S.online) { netClose(); S.online = null; } openSetup(); }
   if (k === 'm' && !S.inSetup) openSetup();
-  if (k === 'escape') location.href = '../index.html';
+  if (k === 'escape') { if (RETE.role) netSend({ t: 'bye' }); location.href = '../index.html'; }
 });
 addEventListener('keyup', e => { if (KEYMAP[e.key]) input[KEYMAP[e.key]] = false; });
 let padPrev = {};
@@ -1204,7 +1293,8 @@ function pollPad() {
   const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, B = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
   input.l = ax < -0.4 || B(14); input.r = ax > 0.4 || B(15); input.u = ay < -0.4 || B(12); input.d = ay > 0.4 || B(13);
   const now = { a: B(0), v: B(3), st: B(9) };
-  if (now.a && !padPrev.a) { S.zPress = true; S.zT = 0.25; }
+  if (now.a && !padPrev.a) { if (!guideKey('z')) { S.zPress = true; S.zT = 0.25; } }
+  if (now.st && !padPrev.st && S.guideF) guideKey('enter');
   if (now.v && !padPrev.v) nextCam(1);
   if (now.st && !padPrev.st && S.state === 'end') openSetup();
   padPrev = now;
@@ -1218,13 +1308,20 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
   st.addEventListener('pointerdown', e => { id = e.pointerId; st.setPointerCapture(id); set(e.clientX, e.clientY); });
   st.addEventListener('pointermove', e => { if (e.pointerId === id) set(e.clientX, e.clientY); });
   st.addEventListener('pointerup', () => { id = null; kn.style.left = kn.style.top = '40px'; input.l = input.r = input.u = input.d = false; });
-  $('ta').addEventListener('pointerdown', e => { e.preventDefault(); S.zPress = true; S.zT = 0.25; });
+  $('ta').addEventListener('pointerdown', e => { e.preventDefault(); if (!guideKey('z')) { S.zPress = true; S.zT = 0.25; } });
   $('tv').addEventListener('pointerdown', e => { e.preventDefault(); nextCam(1); });
-  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('ok'); else if (S.state === 'end') openSetup(); else S.paused = !S.paused; });
+  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (guideKey('enter')) return; if (SUB.open) subKey('ok'); else if (S.state === 'end') openSetup(); else S.paused = !S.paused; });
   $('tx').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('close'); else subOpen(); });
   $('tr').addEventListener('pointerdown', e => { e.preventDefault(); callTimeout(me.team); });
 }
 
+// nuovo set: punteggio da capo, cambi e time-out di nuovo disponibili, un po' di riposo, sabbia spianata
+function newSet() {
+  for (const t of teams) { t.score = 0; t.subs = 0; t.to = 0; t.en = t.en.map(e => Math.min(100, e + 15)); }
+  if (SAND) SAND.rake = 1.5;
+  S.streak = null; S.firstServe = other(S.firstServe); S.serving = S.firstServe; S.scoreKey = null;
+  startServe(); say(`SET ${S.setLog.length + 1}${target() === 15 && MATCH.sets > 1 ? ' (TIE-BREAK A 15)' : ''}`, 2);
+}
 function newGame() {
   for (const t of teams) {
     t.score = 0; t.srvI = 0; t.subs = 0; t.to = 0; t.en = t.en.map(() => 100); t.st = t.st.map(() => ({ pts: 0, err: 0, t: 0, ace: 0, blk: 0, kill: 0 }));
@@ -1232,10 +1329,233 @@ function newGame() {
   }
   if (SAND) { SAND.h.fill(0); SAND.dirty = true; }
   $('stats').classList.remove('end'); S.statsOn = true; S.streak = null;
-  S.over = false; S.serving = Math.random() < 0.5 ? teams[0] : teams[1];
+  S.over = false; S.setsWon = [0, 0]; S.setLog = []; TOSS.open = false; S.guideF = null;
   me.x = -5; me.z = -2;
-  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + (WOMEN ? 'FEMMINILE  ·  ' : '') + teams[0].name + ' - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
   S.scoreKey = null; refLabel();
+  S.serving = Math.random() < 0.5 ? teams[0] : teams[1]; S.firstServe = S.serving;
+  startServe();
+  tossDraw();
+  if (S.practice || S.online === 'guest' || S.inSetup) return;
+  coinToss();
+}
+// ---------------- sorteggio (come nel gioco): testa o croce, chi vince sceglie battuta o ricezione ----------------
+const TOSS = { open: false, step: 0, call: 0, choice: 0, won: false };
+function coinToss() {
+  Object.assign(TOSS, { open: true, step: 0, call: 0, choice: 0 }); S.state = 'tossing'; tossDraw();
+}
+function tossKey(k) {
+  if (TOSS.step === 0) {
+    if (k === 'left' || k === 'right') TOSS.call = k === 'left' ? 0 : 1;
+    if (k === 'ok') { TOSS.step = 1; TOSS.res = Math.random() < 0.5 ? 0 : 1; TOSS.won = TOSS.res === TOSS.call; setTimeout(() => { TOSS.step = 2; tossDraw(); }, 1300); }
+  } else if (TOSS.step === 2) {
+    if (TOSS.won && (k === 'left' || k === 'right')) TOSS.choice = k === 'left' ? 0 : 1;
+    if (k === 'ok') {
+      const mine = TOSS.won ? TOSS.choice === 0 : false;   // chi perde: il computer sceglie di battere
+      S.serving = mine ? me.team : other(me.team); S.firstServe = S.serving;
+      TOSS.open = false; startServe();
+      say((BEACH ? 'BEACH  ·  ' : '') + (WOMEN ? 'FEMMINILE  ·  ' : '') + teams[0].name + ' - ' + teams[1].name + '  ·  ' + (MATCH.sets > 1 ? 'MEGLIO DI ' + MATCH.sets + ' SET' : 'SET') + ' A ' + MATCH.pts, 2.4);
+    }
+  }
+  tossDraw();
+}
+function tossDraw() {
+  const el = $('toss'); el.style.display = TOSS.open ? '' : 'none'; if (!TOSS.open) return;
+  const face = ['TESTA', 'CROCE'];
+  el.innerHTML = TOSS.step === 0 ? `<h3>SORTEGGIO</h3><div class="coin">?</div><p>${face.map((f, i) => `<b class="${TOSS.call === i ? 'on' : ''}" data-k="${i ? 'right' : 'left'}">${f}</b>`).join(' ')}</p><p class="muted">← → scegli · Z conferma</p>`
+    : TOSS.step === 1 ? `<h3>SORTEGGIO</h3><div class="coin spin">●</div><p>Hai scelto ${face[TOSS.call]}...</p>`
+    : `<h3>${face[TOSS.res]}! ${TOSS.won ? 'HAI VINTO IL SORTEGGIO' : 'HA VINTO ' + other(me.team).name}</h3><div class="coin">${face[TOSS.res][0]}</div>`
+      + (TOSS.won ? `<p>${['BATTUTA', 'RICEZIONE'].map((f, i) => `<b class="${TOSS.choice === i ? 'on' : ''}" data-k="${i ? 'right' : 'left'}">${f}</b>`).join(' ')}</p><p class="muted">← → scegli · Z conferma</p>` : `<p>${other(me.team).name} sceglie la BATTUTA</p><p class="muted">Z per iniziare</p>`);
+  el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { tossKey(b.dataset.k); tossKey('ok'); });
+  if (TOSS.step === 2 && !TOSS.won) el.onclick = () => tossKey('ok'); else el.onclick = null;
+}
+
+// ---------------- PRATICA (come TEST MODE - PRATICA del gioco): battuta, ricezione, alzata e schiacciata, muro ----------------
+// con GUIDATA il gioco va al rallentatore e si ferma a ogni nuova istruzione: da fermo tieni la direzione e premi Z
+// (l'azione parte in quell'istante), INVIO continua senza premere Z
+const DRILLS3 = [['serve', 'BATTUTA (anche speciali)'], ['receive', 'RICEZIONE (batte il computer)'], ['attack', 'ALZATA E SCHIACCIATA'], ['block', 'MURO E DIFESA']];
+function restart() { if (S.practice) practiceStart(); else startServe(); }
+function practiceStart() {
+  const d = S.practice, M = me.team, O = other(M);
+  S.guideSeen = new Set();
+  if (d === 'serve') { M.srvI = me.i; S.serving = M; startServe(); return; }
+  if (d === 'receive') { S.serving = O; startServe(); return; }
+  // alzata e schiacciata / muro: l'allenatore simula una buona ricezione e la palla va all'alzatore
+  const T = d === 'attack' ? M : O; S.serving = O === T ? M : O; startServe();
+  const b = ball, side = T.side, rec = T.players[T.players.length - 1], st = T.players[0];
+  b.held = null; b.live = true; b.x = side * 6; b.z = rnd(-1.5, 1.5); b.h = PASS_H;
+  Object.assign(b, arc3(b.x, b.z, b.h, side * SETTER_D, st.z, SET_H, 4.6));
+  b.team = T; b.last = rec; b.kind = 'pass'; b.ver++; T.touches = 1; other(T).touches = 0; S.receiverTouched = true;
+  S.state = 'rally'; S.t = 0; S.forceMe = d === 'attack';
+  if (d === 'block') { me.x = -T.side * 0.6; me.z = 0; }
+  say(d === 'attack' ? 'PRATICA: ALZATA E SCHIACCIATA' : 'PRATICA: MURO E DIFESA', 1.2);
+}
+// pausa a ogni passaggio
+function guideCheck() {
+  if (!S.guided || S.guideF || S.inSetup || TOSS.open || SUB.open) return;
+  if (S.state === 'serve' && S.phase === 'walk') return;
+  const [h, now] = playHint(); if (!h) return;
+  const key = h + (now ? '!' : '');
+  S.guideSeen = S.guideSeen || new Set();
+  if (S.guideSeen.has(key)) return;
+  S.guideSeen.add(key);
+  const zStep = now || /Z lancia|Z = /.test(h) && !/ROSSA|salto automatico|quando lo schiacciatore/.test(h) || /Z ADESSO/.test(h);
+  S.guideF = { h, now, zStep }; S.zPress = false;
+}
+function guideKey(k) {
+  if (!S.guideF) return false;
+  const z = S.guideF.zStep && k === 'z';
+  S.guideF = null;
+  if (z) { S.zPress = true; S.zT = 0.25; } else S.zPress = false;
+  return true;
+}
+function guideDraw() {
+  const el = $('guide'), G = S.guideF; el.style.display = G ? '' : 'none'; if (!G) return;
+  const k = `${G.h}|${G.now}`; if (el.dataset.k === k) return; el.dataset.k = k;
+  el.innerHTML = `<p>${G.h.replace(/ · /g, '<br>')}</p><p class="key">${G.now ? '>>> PREMI Z ADESSO! <<<   (INVIO = continua senza)' : G.zStep ? 'Tieni la direzione che vuoi e premi Z · INVIO = continua senza Z' : 'Z o INVIO = continua'}</p>`;
+}
+
+// ---------------- GIOCO ONLINE (come online.js del gioco: WebRTC da browser a browser, codice di 5 lettere) ----------------
+// Chi crea la partita (host) fa girare tutto: l'avversario è il giocatore che comanda della squadra di destra, con i
+// tasti che arrivano dalla rete. L'host manda 30 volte al secondo giocatori, pallone, punteggio e impronte nella sabbia;
+// l'altro (guest) manda i suoi tasti e disegna la partita dai suoi occhi. Se uno si scollega: gioca il computer.
+const RETE = { role: null, pc: null, ch: null, connected: false, code: null, status: '', lastRx: 0, ev: [], peerTeam: null, sendT: 0, lastIn: '' };
+const RETE_API = '../api/online.php', RETE_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
+function netSend(o) { const ch = RETE.ch; if (ch && ch.readyState === 'open') try { ch.send(JSON.stringify(o)); } catch (e) { /* */ } }
+async function netApi(a, c, body) {
+  const r = await fetch(`${RETE_API}?a=${a}${c ? '&c=' + encodeURIComponent(c) : ''}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.errore || 'errore ' + r.status); return j;
+}
+const netIce = pc => pc.iceGatheringState === 'complete' ? Promise.resolve() : new Promise(ok => { const t = setTimeout(ok, 4000); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); ok(); } }); });
+function netChannel(ch) {
+  RETE.ch = ch;
+  ch.onopen = () => { RETE.connected = true; RETE.lastRx = performance.now(); RETE.status = 'COLLEGATI!'; netSend({ t: 'team', code: SETUP.a }); if (S.inSetup) openSetup(); };
+  ch.onclose = () => netLost();
+  ch.onmessage = e => { RETE.lastRx = performance.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } netMsg(m); };
+}
+function netClose() { try { RETE.ch && RETE.ch.close(); } catch (e) { /* */ } try { RETE.pc && RETE.pc.close(); } catch (e) { /* */ } Object.assign(NET, { pc: null, ch: null, connected: false, role: null, peerTeam: null }); }
+async function netHost() {
+  netClose(); RETE.role = 'host'; RETE.status = 'CREO LA PARTITA...'; openSetup();
+  try {
+    const pc = RETE.pc = new RTCPeerConnection({ iceServers: RETE_ICE });
+    netChannel(pc.createDataChannel('game', { ordered: true }));
+    await pc.setLocalDescription(await pc.createOffer()); await netIce(pc);
+    const { code } = await netApi('create', null, { offer: pc.localDescription, meta: { g3d: true, beach: BEACH, women: WOMEN } });
+    RETE.code = code; RETE.status = 'IN ATTESA DELL\'AVVERSARIO...'; openSetup();
+    for (let i = 0; i < 600 && RETE.pc === pc && !RETE.connected; i++) {
+      const r = await netApi('answer', code);
+      if (r.answer) { await pc.setRemoteDescription(r.answer); RETE.status = 'COLLEGAMENTO...'; openSetup(); break; }
+      await new Promise(ok => setTimeout(ok, 1500));
+    }
+  } catch (e) { RETE.status = 'ERRORE: ' + e.message; RETE.role = null; openSetup(); }
+}
+async function netJoin(code) {
+  netClose(); RETE.role = 'guest'; RETE.code = code; RETE.status = 'MI COLLEGO...'; openSetup();
+  try {
+    const { offer, meta } = await netApi('offer', code);
+    // stessa versione dell'host (palazzetto o beach, maschile o femminile): se serve si ricarica la pagina e si rientra
+    if (meta && (!!meta.beach !== BEACH || !!meta.women !== WOMEN)) {
+      const u = new URL(location.href); if (meta.beach) u.searchParams.set('beach', '1'); else u.searchParams.delete('beach');
+      u.searchParams.set('women', meta.women ? '1' : '0'); u.searchParams.set('join', code); location.href = u.href; return;
+    }
+    const pc = RETE.pc = new RTCPeerConnection({ iceServers: RETE_ICE });
+    pc.ondatachannel = e => netChannel(e.channel);
+    await pc.setRemoteDescription(offer);
+    await pc.setLocalDescription(await pc.createAnswer()); await netIce(pc);
+    await netApi('answer', code, { answer: pc.localDescription });
+    RETE.status = 'COLLEGAMENTO...'; openSetup();
+    setTimeout(() => { if (RETE.pc === pc && !RETE.connected) { RETE.status = 'COLLEGAMENTO NON RIUSCITO (rete che blocca le connessioni dirette)'; RETE.role = null; openSetup(); } }, 20000);
+  } catch (e) { RETE.status = 'ERRORE: ' + e.message; RETE.role = null; openSetup(); }
+}
+// battito: un messaggio al secondo; 6 secondi senza notizie = scollegato
+setInterval(() => { if (!RETE.connected) return; netSend({ t: 'ping' }); if (performance.now() - RETE.lastRx > 6000) netLost(); }, 1000);
+function netLost() {
+  if (!RETE.role) return;
+  const role = RETE.role, wasOnline = S.online; netClose();
+  if (wasOnline === 'host') { const R = teams[1].players.find(p => p.remote); if (R) { R.remote = false; R.human = false; dress(R); } S.online = null; say('AVVERSARIO SCOLLEGATO: GIOCA IL COMPUTER', 3); return; }
+  if (wasOnline === 'guest') { S.online = null; RETE.status = 'CONNESSIONE PERSA'; SETUP.mode = 'online'; openSetup(); return; }
+  RETE.status = 'CONNESSIONE PERSA'; if (S.inSetup) openSetup();
+  void role;
+}
+function netSetupHtml(teamSelect) {
+  let h = '';
+  if (!RETE.connected) {
+    h += `<p class="muted">Uno crea la partita e dà il CODICE all'altro, che lo scrive e preme ENTRA. Si gioca da browser a browser: ognuno vede la partita dai suoi occhi. Chi crea gioca a sinistra.</p>
+      <div class="row"><button data-x="nethost">CREA PARTITA</button>${RETE.role === 'host' && RETE.code ? `<span class="code">${RETE.code}</span><span class="muted">dai questo codice al tuo avversario</span>` : ''}</div>
+      <div class="row"><input id="netCode" maxlength="5" placeholder="CODICE" value="${RETE.role === 'guest' ? RETE.code || '' : ''}" autocomplete="off"><button data-x="netjoin">ENTRA CON IL CODICE</button></div>`;
+  } else {
+    h += `<div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label><span>AVVERSARIO: <b>${RETE.peerTeam ? tname(RETE.peerTeam) : '...'}</b></span></div>`;
+    if (RETE.role === 'guest') h += `<p class="next">Aspetta che l'avversario inizi la partita.</p>`;
+  }
+  if (RETE.status) h += `<p class="next">${RETE.status}</p>`;
+  return h;
+}
+// l'host avvia: squadre, set e punti; il guest riceve e gioca a destra
+function netStart() {
+  if (!RETE.connected || RETE.role !== 'host' || !RETE.peerTeam) return;
+  MATCH.sets = SETUP.sets || 1; MATCH.pts = SETUP.pts || (BEACH ? 21 : 15);
+  S.practice = null; S.guided = false; S.campGame = null; S.lastCamp = false; S.online = 'host';
+  saveSetup();
+  $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
+  const b = RETE.peerTeam === SETUP.a ? other3(SETUP.a) : RETE.peerTeam;   // stessa squadra: l'avversario gioca con un'altra
+  setupTeams(SETUP.a, b, 'host');
+  netSend({ t: 'start', a: SETUP.a, b, sets: MATCH.sets, pts: MATCH.pts });
+  newGame();
+}
+function netMsg(m) {
+  if (m.t === 'team') { RETE.peerTeam = TEAMS[m.code] ? m.code : 'BRA'; if (S.inSetup) openSetup(); }
+  else if (m.t === 'bye') netLost();
+  else if (RETE.role === 'host') {
+    if (m.t === 'in') Object.assign(REM.inp, { l: !!m.l, r: !!m.r, u: !!m.u, d: !!m.d });
+    else if (m.t === 'z') { REM.z = true; REM.zT = 0.25; }
+    else if (m.t === 'to' && S.online === 'host') callTimeout(teams[1]);
+  } else if (RETE.role === 'guest') {
+    if (m.t === 'start') {
+      MATCH.sets = m.sets; MATCH.pts = m.pts; S.practice = null; S.guided = false; S.campGame = null; S.online = 'guest';
+      $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
+      setupTeams(m.a, m.b, 'guest'); newGame(); TOSS.open = false; tossDraw();
+    } else if (m.t === 's' && S.online === 'guest') netApply(m);
+    else if (m.t === 'end' && S.online === 'guest') { teams.forEach((t, i) => { t.st = m.st[i]; t.en = m.en[i]; }); S.state = 'end'; showStats(true); }
+  }
+}
+// stato della partita (host -> guest)
+const near = v => Math.round(v * 1000) / 1000;
+function netSnap() {
+  const pIdx = p => { for (let ti = 0; ti < 2; ti++) { const pi = teams[ti].players.indexOf(p); if (pi >= 0) return [ti, pi]; } return null; };
+  const b = ball;
+  return { t: 's', S: { state: S.state, phase: S.phase, kind: S.kind, msg: S.msg, msgT: near(S.msgT), sw: S.setsWon, sv: teams.indexOf(S.serving), srv: pIdx(S.server), tt: near(S.t) },
+    sc: teams.map(t => t.score), to: teams.map(t => t.touches), en: teams.map(t => t.en.map(Math.round)),
+    b: [near(b.x), near(b.z), near(b.h), b.live ? 1 : 0, b.thunder ? 1 : 0, b.ghost ? 1 : 0, near(b.ghostZ || 0), b.team ? teams.indexOf(b.team) : -1],
+    P: teams.map(t => t.players.map(p => [near(p.x), near(p.z), near(p.h), p.act || 0, near(p.spd), p.air ? 1 : 0, p.ni, p.win ? 1 : 0])),
+    pl: teams.map(t => t.plan && t.plan.p ? [t.plan.kind, t.players.indexOf(t.plan.p), near(t.plan.xc), near(t.plan.zc), near(t.plan.tc)] : 0),
+    at: teams.map(t => t.attacker ? t.players.indexOf(t.attacker) : -1), ev: RETE.ev.splice(0) };
+}
+function netApply(m) {
+  const s2 = m.S;
+  if (s2.msg !== S.msg || s2.msgT > S.msgT) { S.msg = s2.msg; S.msgT = s2.msgT; }
+  Object.assign(S, { state: s2.state, phase: s2.phase, kind: s2.kind, setsWon: s2.sw, serving: teams[s2.sv], t: s2.tt });
+  S.server = s2.srv ? teams[s2.srv[0]].players[s2.srv[1]] : null;
+  teams.forEach((t, i) => { t.score = m.sc[i]; t.touches = m.to[i]; t.en = m.en[i]; t.attacker = m.at[i] >= 0 ? t.players[m.at[i]] : null;
+    const q = m.pl[i]; t.plan = q ? { kind: q[0], p: t.players[q[1]], xc: q[2], zc: q[3], tc: q[4] } : null; });
+  const b = ball, B = m.b;
+  b.tx = B[0]; b.tz = B[1]; b.th = B[2]; b.live = !!B[3]; b.thunder = B[4]; b.ghost = B[5]; b.ghostZ = B[6]; b.team = B[7] >= 0 ? teams[B[7]] : null;
+  if (b.x === undefined || Math.hypot(b.x - b.tx, b.h - b.th) > 3) { b.x = b.tx; b.z = b.tz; b.h = b.th; }
+  m.P.forEach((ps, ti) => ps.forEach((q, pi) => {
+    const p = teams[ti].players[pi]; if (!p) return;
+    p.tx = q[0]; p.tz = q[1]; p.th = q[2]; p.act = q[3] || null; p.spd = q[4]; p.air = !!q[5]; p.win = !!q[7];
+    if (p.ni !== q[6]) { p.ni = q[6]; dress(p); }
+  }));
+  for (const e of m.ev || []) { if (e[0] === 'st') sandStamp(...e.slice(1)); else if (e[0] === 'sp') splash(...e.slice(1)); }
+}
+// guest: posizioni ammorbidite tra un pacchetto e l'altro, e invio dei tasti
+function netGuestFrame(dt) {
+  const k = Math.min(1, dt * 18), b = ball;
+  if (b.tx !== undefined) { b.x = lerp(b.x, b.tx, k); b.z = lerp(b.z, b.tz, k); b.h = lerp(b.h, b.th, k); }
+  for (const t of teams) for (const p of t.players) if (p.tx !== undefined) { p.x = lerp(p.x, p.tx, k); p.z = lerp(p.z, p.tz, k); p.h = lerp(p.h, p.th, k); }
+  const st = JSON.stringify([input.l, input.r, input.u, input.d]);
+  if (st !== RETE.lastIn) { RETE.lastIn = st; netSend({ t: 'in', l: input.l, r: input.r, u: input.u, d: input.d }); }
+  if (S.zPress) { S.zPress = false; netSend({ t: 'z' }); }
+  sandUpdate(dt);
+  if (S.msgT > 0) S.msgT -= dt;
 }
 
 // ---------------- schermata iniziale: amichevole o campionato, con le squadre del gioco ----------------
@@ -1259,9 +1579,17 @@ function openSetup() {
   const camps = DATA.camps.filter(c => (c.sesso === 'F') === WOMEN).length ? DATA.camps.filter(c => (c.sesso === 'F') === WOMEN) : DATA.camps;
   const mine = DATA.my.map(d => `${String(d.cognome || d.nome).toUpperCase()} (${d.numero}) → ${tname(d.team)}${d.titolare !== false ? ' in campo' : ' in panchina'}`);
   let h = `<h2>SPIKE FEVER 3D · PRIMA PERSONA</h2>
-    <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button>
+    <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button><button data-m="practice" class="${SETUP.mode === 'practice' ? 'on' : ''}">PRATICA</button><button data-m="online" class="${SETUP.mode === 'online' ? 'on' : ''}">ONLINE</button>
     <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button></div>`;
-  if (SETUP.mode === 'friendly') {
+  const opt = (id, list, cur) => `<select id="${id}">${list.map(([v, l]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  if (SETUP.mode === 'practice') {
+    h += `<div class="row"><label>ESERCIZIO ${opt('selD', DRILLS3, SETUP.drill || 'serve')}</label><label>${opt('selG', [[1, 'GUIDATA: SI FERMA A OGNI PASSAGGIO'], [0, 'NORMALE']], SETUP.guided === 0 ? 0 : 1)}</label></div>
+      <div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label></div>`;
+  } else h += `<div class="row"><label>PUNTI DEL SET ${opt('selP', [[15, '15'], [21, '21'], [25, '25']], SETUP.pts || (BEACH ? 21 : 15))}</label>`
+    + (SETUP.mode !== 'friendly' && !(SETUP.mode === 'online' && RETE.role === 'host') ? '' : `<label>SET ${opt('selS', [[1, '1 SET'], [3, 'AL MEGLIO DEI 3'], [5, 'AL MEGLIO DEI 5']], SETUP.sets || 1)}</label>`) + '</div>';
+  if (SETUP.mode === 'practice') { /* sopra */ }
+  else if (SETUP.mode === 'online') h += netSetupHtml(teamSelect);
+  else if (SETUP.mode === 'friendly') {
     h += `<div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label><label>AVVERSARIO ${teamSelect('selB', SETUP.b)}</label></div>`;
   } else {
     const c = camps[SETUP.camp % camps.length], st = campState(c);
@@ -1277,11 +1605,15 @@ function openSetup() {
   }
   h += `<p class="muted">Squadre: nazionali, club di squadre.json, le tue squadre dell'editor (★) e quelle dei campionati. ${DATA.sponsors.length ? 'Sponsor dell\'editor sui cartelloni. ' : ''}${DATA.refs.length ? 'Arbitro: ' + (DATA.refs[0].cognome || DATA.refs[0].nome) + '. ' : ''}</p>`;
   if (mine.length) h += `<p class="muted">I tuoi giocatori: ${mine.join(' · ')}. Se scegli la loro squadra, in campo sei tu.</p>`;
-  h += `<div class="row"><button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button><button data-x="back">TORNA AL GIOCO</button></div>`;
+  h += `<div class="row">${SETUP.mode === 'online' ? (RETE.connected && RETE.role === 'host' ? `<button data-x="netgo" class="green"${RETE.peerTeam ? '' : ' disabled'}>INIZIA LA PARTITA ONLINE</button>` : '') : `<button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button>`}<button data-x="back">TORNA AL GIOCO</button></div>`;
   el.innerHTML = h;
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SETUP.mode = b.dataset.m; openSetup(); });
   const q = id => el.querySelector('#' + id);
-  if (q('selA')) q('selA').onchange = e => { SETUP.a = e.target.value; };
+  if (q('selA')) q('selA').onchange = e => { SETUP.a = e.target.value; if (RETE.connected) netSend({ t: 'team', code: SETUP.a }); };
+  if (q('selD')) q('selD').onchange = e => { SETUP.drill = e.target.value; };
+  if (q('selG')) q('selG').onchange = e => { SETUP.guided = Number(e.target.value); };
+  if (q('selP')) q('selP').onchange = e => { SETUP.pts = Number(e.target.value); };
+  if (q('selS')) q('selS').onchange = e => { SETUP.sets = Number(e.target.value); };
   if (q('selB')) q('selB').onchange = e => { SETUP.b = e.target.value; };
   if (q('selC')) q('selC').onchange = e => { SETUP.camp = Number(e.target.value); openSetup(); };
   if (q('selM')) q('selM').onchange = e => { const { c, st } = SETUP.cur; st.mine = e.target.value; campSave(c, st); openSetup(); };
@@ -1291,25 +1623,34 @@ function openSetup() {
     if (x === 'reset') { const { c } = SETUP.cur; campSave(c, { mine: SETUP.cur.st.mine, res: {} }); openSetup(); }
     if (x === 'back') location.href = '../index.html';
     if (x === 'go') startFromSetup();
+    if (x === 'nethost') netHost();
+    if (x === 'netjoin') { const c = (q('netCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length === 5) netJoin(c); else { RETE.status = 'IL CODICE HA 5 CARATTERI'; openSetup(); } }
+    if (x === 'netgo') netStart();
+    if (x === 'back' && RETE.role) netSend({ t: 'bye' });
   });
 }
-function saveSetup() { try { localStorage.setItem('sf91_p3d_setup', JSON.stringify({ mode: SETUP.mode, a: SETUP.a, b: SETUP.b, camp: SETUP.camp })); } catch (e) { /* */ } }
+function saveSetup() { try { localStorage.setItem('sf91_p3d_setup', JSON.stringify({ mode: SETUP.mode, a: SETUP.a, b: SETUP.b, camp: SETUP.camp, sets: SETUP.sets, pts: SETUP.pts, drill: SETUP.drill, guided: SETUP.guided })); } catch (e) { /* */ } }
+const other3 = a => a === 'BRA' ? 'JPN' : TEAMS.BRA ? 'BRA' : DATA.teams.find(c => c !== a);   // avversario della pratica
 function startFromSetup() {
   let a = SETUP.a, b = SETUP.b;
   if (SETUP.mode === 'camp') {
     const { st, nx } = SETUP.cur; if (!nx) return;
-    a = st.mine; b = nx.g.casa === st.mine ? nx.g.ospite : nx.g.casa; S.campGame = SETUP.cur;
-  } else { if (a === b) b = DATA.teams.find(c => c !== a); S.campGame = null; }
+    a = st.mine; b = nx.g.casa === st.mine ? nx.g.ospite : nx.g.casa; S.campGame = SETUP.cur; MATCH.sets = SETUP.cur.c.set || 3;
+  } else { if (a === b) b = DATA.teams.find(c => c !== a); S.campGame = null; MATCH.sets = SETUP.sets || 1; }
+  MATCH.pts = SETUP.pts || (BEACH ? 21 : 15);
+  S.practice = SETUP.mode === 'practice' ? SETUP.drill || 'serve' : null; S.guided = !!S.practice && SETUP.guided !== 0; S.forceMe = false;
+  if (S.practice) { MATCH.sets = 1; MATCH.pts = 999; b = other3(a); }
   S.lastCamp = SETUP.mode === 'camp';
   saveSetup();
   $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
   setupTeams(a, b); newGame();
+  if (S.practice) { practiceStart(); say('PRATICA: ' + DRILLS3.find(d => d[0] === S.practice)[1] + (S.guided ? ' · GUIDATA' : ''), 2); }
 }
 // fine del set in campionato: risultato, altre gare della giornata e classifica
-function campEnd(won) {
+function campEnd(mine, opp) {
   const G = S.campGame; if (!G || !G.nx) return;
-  campRecord(G.c, G.st, G.nx, won); S.campGame = null;
-  say((won ? 'HAI VINTO! ' : 'SET PERSO. ') + 'INVIO = classifica e prossima partita', 99);
+  campRecord(G.c, G.st, G.nx, [mine, opp]); S.campGame = null;
+  say((mine > opp ? 'HAI VINTO ' : 'HAI PERSO ') + `${mine}-${opp}! INVIO = classifica e prossima partita`, 99);
 }
 
 // ---------------- ciclo ----------------
@@ -1317,28 +1658,35 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollPad();
-  if (!S.paused) {
-    if (S.zT > 0) { S.zT -= dt; if (S.zT <= 0) S.zPress = false; }   // una pressione di Z vale per 0,25 s
-    acc += dt * (S.slow ? 0.45 : 1);
-    while (acc >= CFG.STEP) { step(CFG.STEP); acc -= CFG.STEP; }
+  if (S.online === 'guest') netGuestFrame(dt);
+  else if (!S.paused) {
+    if (S.zT > 0 && !S.guideF) { S.zT -= dt; if (S.zT <= 0) S.zPress = false; }   // una pressione di Z vale per 0,25 s
+    acc += S.guideF ? 0 : dt * (S.slow || S.guided ? 0.45 : 1);
+    while (acc >= CFG.STEP) { step(CFG.STEP); acc -= CFG.STEP; guideCheck(); if (S.guideF) { acc = 0; break; } }
     trackMoves();
     if (S.msgT > 0 && S.state !== 'end') S.msgT -= dt;
+    if (REM.zT > 0) { REM.zT -= dt; if (REM.zT <= 0) REM.z = false; }
+    if (S.online === 'host') { RETE.sendT += dt; if (RETE.sendT > 1 / 30) { RETE.sendT = 0; netSend(netSnap()); } }
   }
+  if (S.online === 'guest') trackMoves();
   if (S.camT > 0) S.camT -= dt;
   S.statsT = (S.statsT || 0) + dt;
   if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
   draw(S.paused ? 0 : dt);
   requestAnimationFrame(frame);
 }
-window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
+window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
 // prove: n passi di simulazione senza disegnare
+window.__dbg = () => ({ hint: playHint(), seen: [...(S.guideSeen || [])], toss: TOSS.open, sub: SUB.open });
+window.__step1 = () => { if (S.guideF) return; if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); trackMoves(); guideCheck(); };
 window.__sim = n => { for (let i = 0; i < n; i++) { if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); if (i % 4 === 0) trackMoves(); if (S.msgT > 0) S.msgT -= CFG.STEP; } };
 // dati del gioco (squadre, i miei giocatori, sponsor, arbitri, campionati), poi la schermata iniziale
 try { await loadGameData(); } catch (e) { console.error(e); }
 buildAds(DATA.sponsors); refLabel();
 if (!TEAMS[SETUP.a]) SETUP.a = 'ITA'; if (!TEAMS[SETUP.b]) SETUP.b = 'BRA';
-setupTeams(SETUP.a, SETUP.b); newGame();
+S.inSetup = true; setupTeams(SETUP.a, SETUP.b); newGame();
 $('load').remove();
 openSetup();
+{ const j = new URLSearchParams(location.search).get('join'); if (j) { SETUP.mode = 'online'; netJoin(j); } }
 setTimeout(() => { $('help').style.display = 'none'; }, 15000);   // le istruzioni spariscono dopo 15 s (H per rivederle)
 requestAnimationFrame(frame);
