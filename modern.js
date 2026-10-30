@@ -341,7 +341,7 @@ class MainMenuScene extends Base {
       const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[this.gfxSel]); this.gone = true; location.href = u.href;
     });
   }
-  openFps() { this.gone = true; SFX.select(); location.href = 'proto3d/index.html' + (MENU_GFX_LIST[this.gfxSel] === 'fpsb' ? '?beach=1' : ''); }
+  openFps() { this.gone = true; SFX.select(); location.href = 'proto3d/index.html?women=' + (GS.women ? 1 : 0) + (MENU_GFX_LIST[this.gfxSel] === 'fpsb' ? '&beach=1' : ''); }   // maschile / femminile come la riga SQUADRE
   cycleLang(d) {
     const i = LANGS.findIndex(l => l.id === I18N.lang), n = LANGS.length;
     setLang(LANGS[((i < 0 ? 0 : i) + d + n) % n].id);
