@@ -163,7 +163,7 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
-const MENU_GFX_LIST = [...GFX_MODES, 'fps'];   // riga GRAFICA: le quattro grafiche e il prototipo 3D in prima persona
+const MENU_GFX_LIST = [...GFX_MODES, 'fps', 'fpsb'];   // riga GRAFICA: le quattro grafiche e il prototipo 3D in prima persona (palazzetto e beach)
 const MENU_SEX = 20, MENU_GFX = 21, MENU_CTRL = 22, MENU_ONLINE = 23;   // menu principale: righe SQUADRE, GRAFICA e COMANDI, GIOCA ONLINE accanto alla lingua (le schede sono 0-7, la lingua -1)
 const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
 // scelta maschile / femminile del menu principale: vale per tutte le modalità e resta salvata nel browser
@@ -303,7 +303,7 @@ class MainMenuScene extends Base {
     this.add.text(116, 198.5, 'GRAFICA', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
     this.gfxTxt = this.add.text(166, 198.5, '', UI.f(5.5, '#ffffff', true)).setOrigin(0.5);
     this.gfxArrows = [this.add.text(126, 198.5, '◄', UI.f(6, '#ffd23a', true)).setOrigin(0.5), this.add.text(206, 198.5, '►', UI.f(6, '#ffd23a', true)).setOrigin(0.5)];
-    this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_GFX; if (MENU_GFX_LIST[this.gfxSel] === 'fps') this.openFps(); else this.cycleGfx(1); });
+    this.gfxTxt.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.sel = MENU_GFX; if (/^fps/.test(MENU_GFX_LIST[this.gfxSel])) this.openFps(); else this.cycleGfx(1); });
     // riga COMANDI: pannello per provare, cambiare e ripristinare tasti e pulsanti (anche del gamepad; controlli.js)
     this.ctrlBox = this.add.graphics();
     this.add.text(116, 208.5, 'COMANDI', UI.f(5, '#9ab8f0', true)).setOrigin(1, 0.5);
@@ -335,13 +335,13 @@ class MainMenuScene extends Base {
     const n = MENU_GFX_LIST.length;
     this.gfxSel = (this.gfxSel + d + n) % n; SFX.blip(); this.refresh();
     if (this.gfxTimer) this.gfxTimer.remove();
-    if (MENU_GFX_LIST[this.gfxSel] === GFX || MENU_GFX_LIST[this.gfxSel] === 'fps') return;
+    if (MENU_GFX_LIST[this.gfxSel] === GFX || /^fps/.test(MENU_GFX_LIST[this.gfxSel])) return;
     this.gfxTimer = this.time.delayedCall(900, () => {
       try { sessionStorage.setItem('sf91_menuGfx', '1'); } catch (e) { /* */ }
       const u = new URL(location.href); u.searchParams.set('gfx', GFX_MODES[this.gfxSel]); this.gone = true; location.href = u.href;
     });
   }
-  openFps() { this.gone = true; SFX.select(); location.href = 'proto3d/index.html'; }
+  openFps() { this.gone = true; SFX.select(); location.href = 'proto3d/index.html' + (MENU_GFX_LIST[this.gfxSel] === 'fpsb' ? '?beach=1' : ''); }
   cycleLang(d) {
     const i = LANGS.findIndex(l => l.id === I18N.lang), n = LANGS.length;
     setLang(LANGS[((i < 0 ? 0 : i) + d + n) % n].id);
@@ -367,16 +367,16 @@ class MainMenuScene extends Base {
     this.sexBox.clear().fillStyle(X ? (GS.women ? 0xb83a7a : 0x1a5ad8) : 0x0e2a6a, 0.9).fillRoundedRect(120, 184, 92, 9, 3).lineStyle(X ? 2 : 1, X ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(120, 184, 92, 9, 3);
     this.sexTxt.setText(GS.women ? 'FEMMINILI' : 'MASCHILI').setColor(GS.women ? '#ffb0d8' : '#ffffff');
     this.sexArrows.forEach(a => a.setVisible(X));
-    this.gfxTxt.setText(gm === 'fps' ? '3D PRIMA PERSONA' : GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
+    this.gfxTxt.setText(gm === 'fps' ? '3D PRIMA PERSONA' : gm === 'fpsb' ? '3D PRIMA PERSONA BEACH' : GFX_NAMES[gm]).setColor(gm === GFX ? '#ffffff' : '#ffd23a');
     this.gfxArrows.forEach(a => a.setVisible(G));
-    this.hint.setText(O ? 'Z: PARTITA ONLINE CONTRO UN AMICO (CON UN CODICE)' : C ? 'Z: PROVA, CAMBIA O RIPRISTINA TASTI E PULSANTI (ANCHE GAMEPAD)' : L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === 'fps' ? 'Z: GIOCA IN 3D DAI TUOI OCCHI (PROTOTIPO)' : gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
+    this.hint.setText(O ? 'Z: PARTITA ONLINE CONTRO UN AMICO (CON UN CODICE)' : C ? 'Z: PROVA, CAMBIA O RIPRISTINA TASTI E PULSANTI (ANCHE GAMEPAD)' : L ? '← → LINGUA' : X ? '← → SQUADRE MASCHILI / FEMMINILI' : G ? (gm === 'fps' ? 'Z: GIOCA IN 3D DAI TUOI OCCHI (PROTOTIPO)' : gm === 'fpsb' ? 'Z: BEACH VOLLEY 2 CONTRO 2 IN 3D DAI TUOI OCCHI' : gm === GFX ? '← → GRAFICA' : 'CARICAMENTO DELLA GRAFICA...') : this.cards[this.sel].hint);
   }
   update() {
     if (this.gone) return;
     // righe: lingua (-1), schede 0-3, schede 4-6, grafica (7)
     if (this.sel === MENU_GFX) {
       if (this.jd('left')) this.cycleGfx(-1);
-      else if (this.btn() && MENU_GFX_LIST[this.gfxSel] === 'fps') this.openFps();
+      else if (this.btn() && /^fps/.test(MENU_GFX_LIST[this.gfxSel])) this.openFps();
       else if (this.jd('right') || this.btn()) this.cycleGfx(1);
       else if (this.jd('up')) { this.sel = MENU_SEX; this.refresh(); SFX.blip(); }
       else if (this.jd('down')) { this.sel = MENU_CTRL; this.refresh(); SFX.blip(); }
