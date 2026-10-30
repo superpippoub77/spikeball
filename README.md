@@ -279,6 +279,15 @@ Nel beach la sabbia schizza e si deforma a ogni passo, stacco, atterraggio, tuff
 - Nel menu principale la scheda **COME SI GIOCA** apre una guida illustrata di 9 pagine (← → per sfogliare): comandi, battute (con la rosa delle direzioni), ricezione e difesa, alzata, attacco, muro, tasti in partita, telefono e 2 giocatori, crediti. Le illustrazioni usano i giocatori, il pallone e la rete del gioco, nella grafica scelta. Testi in italiano e in inglese.
 - I **crediti** (titoli di coda) passano nell'attract mode subito dopo la classifica (TOP TEN) e si aprono anche dall'ultima pagina della guida. Il breve profilo dell'autore è in `CREDITS_BIO` (`guida.js`).
 
+### Prototipo 3D in prima persona (`proto3d/`)
+Pagina a parte, **`proto3d/index.html`** (sul sito: `.../proto3d/`): sei lo schiacciatore n. 7 dell'Italia in un 4 contro 4 (set a 15) e vedi la partita **dai tuoi occhi**, come la visuale interna dei giochi di guida. **V** cambia visuale (occhi / dietro le spalle / televisione), **N** nomi sopra / sotto / spenti, **H** istruzioni, **P** pausa, **ESC** torna al gioco. Frecce per muoverti (↑ verso la rete); ricezione e alzata automatiche quando sei sul **cerchio blu**; schiacciata con rincorsa e stacco automatici, **Z** quando la palla diventa **rossa** (← → mira, ↑ pallonetto, ↓ potente); **Z** a rete = muro; battuta **Z** lancia, **Z** colpisce. Funziona anche con gamepad e sul telefono (joystick e pulsanti a video).
+- Fisica e logica sono quelle del gioco (`config.js`: `CFG` e le formule di `PHYS`) portate in metri e in 3D: stessa gravità del pallone, corsa, velocità di schiacciata, distanze di presa e tempi di salto; le altezze diventano quelle vere (rete 2,43 m, colpo a 3,35 m).
+- I giocatori sono **manichini** costruiti con forme 3D lisce (testa con viso e capelli, maglia con numero, pantaloncini, ginocchiere, scarpe) e animati a mano: nessun file di modelli. Pubblico, cartelloni e palazzetto sono generati dal codice.
+- Spazio: `three.module.min.js` (three.js r160, licenza MIT) 670 KB + il gioco 3D circa 45 KB.
+
+### Nomi dei giocatori e statistiche
+In partita, in tutte le grafiche, **N** mostra i nomi dei giocatori in piccolo **sopra** la testa, **sotto** i piedi o li spegne (bianchi con il bordo nero, gialli per chi comandi); **B** mostra o nasconde il riquadro con energia ed errori, che ora sta **in alto** sotto il tabellone e non copre più i giocatori. Le due scelte restano salvate (`nomi.js`).
+
 ### Pratica lenta
 Nel menu **TUTORIAL / PRATICA** (anche con T dal menu) l'ultima riga **VELOCITÀ** sceglie NORMALE (come sempre) o **LENTA**. In LENTA il gioco va a meno di metà velocità e si **ferma a ogni passaggio** (battuta, lancio, momento di colpire, ricezione, alzata, schiacciata, muro) con le istruzioni scritte in grande: da fermo tieni la direzione giusta e premi **Z**, e l'azione parte esattamente in quel momento; **INVIO** (START) continua senza premere Z. Quando la palla non è ancora al punto giusto il gioco si ferma una seconda volta con **PREMI Z ADESSO!** (`lento.js`).
 
@@ -296,7 +305,7 @@ Nel menu principale la riga **COMANDI** apre un pannello con un mini controller 
 ### Telefono e tablet
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
 - **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;
-- **A** = Z (colpo / conferma), **START** = Invio, **ESC** = indietro, **II** = pausa; **⋯** apre gli altri tasti (X cambi, Q/E pagine, F formazione, T comandi, M audio, K CRT, H grafica);
+- **A** = Z (colpo / conferma), **START** = Invio, **ESC** = indietro, **II** = pausa; **⋯** apre gli altri tasti (X cambi, Q/E pagine, F formazione, T comandi, N nomi, B statistiche, M audio, K CRT, H grafica);
 - **⛶ schermo intero**, che parte anche da solo al primo tocco, in orizzontale dove il browser lo permette; in verticale compare l'invito a ruotare il telefono;
 - **gesti** sullo schermo di gioco (fuori da joystick e pulsanti): un **tocco** vale A, una **strisciata** vale una freccia, così menu e partita si usano anche solo toccando;
 - **🎮** mostra o nasconde joystick e pulsanti (si ricorda); con una tastiera vera (tablet con tastiera, computer con schermo touch) si nascondono da soli e tornano al primo tocco. Sui tablet joystick e pulsanti sono più grandi, in proporzione allo schermo.

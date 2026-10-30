@@ -7,7 +7,8 @@
 //    alzata, attacco e battuta, quindi crescono gli errori.
 //  - Errori per giocatore (pstats.err) su azioni giocate (pstats.t_*): palla mandata fuori o in rete, ricezione
 //    sbagliata, palla caduta nella sua zona.
-//  - A palla ferma, per la squadra di chi gioca: riquadro con barra dell'energia ed errori di ogni giocatore in campo;
+//  - A palla ferma, per la squadra di chi gioca: riquadro in alto con barra dell'energia ed errori di ogni giocatore in campo
+//    (B lo nasconde, nomi.js);
 //    gli stessi dati (anche per la panchina) nel pannello dei cambi (X / Q), per decidere se e chi sostituire.
 // ============================================================
 const FAT = { point: 0.4, bench: 1.4, jump: 0.35, dive: 0.9, run: 0.0045, timeout: 6 };
@@ -101,12 +102,12 @@ const _renderFat = MatchScene.prototype.render;
 MatchScene.prototype.render = function (dt) {
   _renderFat.apply(this, arguments);
   if (this.mode === 'demo' || this.mode === 'practice') return;
-  const show = !this.sub && !this.timeoutFx && typeof this.canSub === 'function' && this.canSub();
+  const show = !this.sub && !this.timeoutFx && typeof this.canSub === 'function' && this.canSub() && (typeof SHOWOPT === 'undefined' || SHOWOPT.stats);
   if (!this.fatObjs) this.fatObjs = { g: this.add.graphics().setScrollFactor(0).setDepth(2040), txt: [] };
   const F = this.fatObjs; F.g.clear();
   let k = 0;
   if (show) for (const t of this.teams.filter(q => q.human)) {
-    const left = t.human === 1, x0 = left ? 4 : 222, n = t.players.length, y0 = 206 - n * 8;
+    const left = t.human === 1, x0 = left ? 4 : 222, n = t.players.length, y0 = 54;   // in alto, sotto il tabellone: i giocatori restano visibili (B = nascondi)
     F.g.fillStyle(0x05153a, 0.82).fillRoundedRect(x0 - 2, y0 - 9, 96, n * 8 + 10, 3);
     const lab = F.txt[k] || (F.txt[k] = this.add.text(0, 0, '', UI.f(4.2, '#9ab8f0', true)).setScrollFactor(0).setDepth(2041)); k++;
     lab.setPosition(x0, y0 - 8).setText(`${t.code}  ENERGIA   ERRORI`).setVisible(true);
