@@ -14,6 +14,7 @@
 //  bagher, palleggio, schiacciata, muro, battuta, esultanza.
 // ============================================================
 import * as THREE from 'three';
+import { DATA, loadGameData, campState, campSave, campNext, campRecord, campTable } from './dati3d.js';
 
 // ---------------- costanti (dal gioco) ----------------
 const PPM = CFG.PPM;
@@ -202,17 +203,30 @@ const crowd = [];
   else { stand(0, 9.5, 30, true, 1); stand(0, -9.5, 30, true, -1); stand(15, 0, 16, false, 1); stand(-15, 0, 16, false, -1); }
   bodies.count = heads.count = k; scene.add(bodies, heads);
   crowd.bodies = bodies; crowd.heads = heads;
-  // tabelloni pubblicitari a bordo campo
-  const ads = ['SPIKE COLA', 'NETWORX', 'VOLTEX', 'MIRAKO', 'SESIA', 'KOBAYA'];
-  ads.forEach((a, i) => {
-    const t = canvasTex(512, 64, (c, w, h) => { c.fillStyle = i % 2 ? '#f4f4f4' : '#c81e3a'; c.fillRect(0, 0, w, h); c.fillStyle = i % 2 ? '#c81e3a' : '#ffffff'; c.font = 'italic bold 46px Arial Black, Arial'; c.textAlign = 'center'; c.fillText(a, w / 2, 50); });
+  // (cartelloni: buildAds, dopo il caricamento degli sponsor)
+  // luci del soffitto
+  if (!BEACH) for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
+}
+
+// tabelloni pubblicitari a bordo campo: gli sponsor dell'EDITOR (nome sul colore scelto, o il logo), altrimenti quelli inventati
+const ADS = [];
+function buildAds(list) {
+  for (const m of ADS) scene.remove(m); ADS.length = 0;
+  const names = ['SPIKE COLA', 'NETWORX', 'VOLTEX', 'MIRAKO', 'SESIA', 'KOBAYA'];
+  for (let i = 0; i < 6; i++) {
+    const sp = list.length ? list[i % list.length] : null, txt = sp ? String(sp.nome).toUpperCase() : names[i];
+    const bg = sp ? sp.colore || '#ffffff' : i % 2 ? '#f4f4f4' : '#c81e3a';
+    const fg = (() => { const h = bg.replace('#', ''); const v = parseInt(h.length === 3 ? h.split('').map(x => x + x).join('') : h, 16); return ((v >> 16) * 0.3 + ((v >> 8) & 255) * 0.59 + (v & 255) * 0.11) > 150 ? '#c81e3a' : '#ffffff'; })();
+    const t = canvasTex(512, 64, (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = fg; c.font = 'italic bold 46px Arial Black, Arial'; c.textAlign = 'center'; c.fillText(txt.slice(0, 16), w / 2, 50); });
+    if (sp && sp.logo) {   // logo dello sponsor al centro del cartellone
+      const img = new Image(); img.onload = () => { const c = t.image.getContext('2d'); c.fillStyle = bg; c.fillRect(0, 0, 512, 64); const k = Math.min(500 / img.width, 60 / img.height); c.drawImage(img, 256 - img.width * k / 2, 32 - img.height * k / 2, img.width * k, img.height * k); t.needsUpdate = true; }; img.src = sp.logo;
+    }
     const b = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.8, 0.12), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }));
     const AZ = BEACH ? 7.4 : 8.6;
     b.position.set(-13.5 + i * 5.4, 0.4, AZ); scene.add(b);
     const b2 = b.clone(); b2.position.z = -AZ; b2.rotation.y = Math.PI; scene.add(b2);
-  });
-  // luci del soffitto
-  if (!BEACH) for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
+    ADS.push(b, b2);
+  }
 }
 
 // ---------------- pallone ----------------
@@ -446,12 +460,16 @@ function makeTeam(code, side, human) {
   const P = TEAMS[code];
   const kit = { shirt: P.sh, trim: P.tr, trimHex: P.tr, shorts: BEACH ? P.tr === '#ffffff' ? P.sh : P.tr : P.so, padDark: P.sh === '#f4f4f4' };
   const T = { code, side, name: P.name, kit, players: [], score: 0, srvI: 0, touches: 0, plan: null, attacker: null, human, subs: 0, to: 0, en: [], st: [], roster: [] };
+  // rosa: dai dati del gioco (club, mie squadre, i miei giocatori) oppure dai nomi della nazionale
   const nums = BEACH ? [1, 2] : [3, 7, 11, 14, 9, 5];
-  for (let ni = 0; ni < nums.length; ni++) {
-    const isMe = human && ni === 1;
-    T.roster.push({ ni, num: nums[ni], name: isMe ? 'TU' : WOMEN ? femName(code, ni) : P.names[ni], hair: P.ha[ni % P.ha.length], sc: rnd(0.97, 1.04) });
+  const PL = P.plist ? (BEACH ? P.plist.slice(0, 2) : P.plist.slice(0, 6)) : null;
+  for (let ni = 0; ni < (PL ? Math.max(PL.length, NPL) : nums.length); ni++) {
+    const e = PL && PL[ni];
+    const name = e ? e.name : (WOMEN && !P.club ? femName(code, ni) : P.names[ni % P.names.length]);
+    T.roster.push({ ni, num: e ? e.num : nums[ni], name, hair: e ? e.ha : P.ha[ni % P.ha.length], sk: e ? e.sk : P.sk, mine: !!(e && e.mine), foto: e && e.foto, sc: rnd(0.97, 1.04) });
     T.en.push(100); T.st.push({ pts: 0, err: 0, t: 0, ace: 0, blk: 0, kill: 0 });
   }
+  T.lv = PL ? PL.slice(0, NPL).reduce((a, e) => a + e.lv, 0) / Math.min(NPL, PL.length) : 6;   // livello medio dei titolari
   for (let i = 0; i < NPL; i++) {
     const p = { team: T, i, role: i, ni: i, x: side * 5, z: 0, h: 0, vh: 0, air: false, act: null, actT: 0, ph: Math.random() * 6, spd: 0, yaw: 0, cur: {}, human: human && i === 1 };
     dress(p);
@@ -464,18 +482,40 @@ function dress(p) {
   const T = p.team, R = T.roster[p.ni], P = TEAMS[T.code];
   if (p.body) scene.remove(p.body.root);
   if (p.label) scene.remove(p.label);
-  const look = { skin: P.sk, hair: R.hair, beach: BEACH, noPads: BEACH, glasses: BEACH && p.i === 0, fem: WOMEN };
+  const look = { skin: R.sk || P.sk, hair: R.hair, beach: BEACH, noPads: BEACH, glasses: BEACH && p.i === 0, fem: WOMEN };
   p.body = makeAthlete(T.kit, R.num, look); p.cur = {};
   p.body.root.scale.setScalar(R.sc * (WOMEN ? 0.95 : 1));
   p.name = R.name; p.num = R.num;
-  p.label = nameSprite(R.name, p.human);
+  p.label = nameSprite(p.human ? R.name + ' (TU)' : R.name, p.human);
   scene.add(p.body.root); scene.add(p.label);
 }
-const teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
-const me = teams[0].players[1];
+let teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
+let me = teams[0].players[1];
+// nuova partita tra due squadre qualsiasi (scelte nella schermata iniziale)
+function setupTeams(a, b) {
+  for (const t of teams) for (const p of t.players) { scene.remove(p.body.root); scene.remove(p.label); }
+  teams = [makeTeam(a, -1, true), makeTeam(b, 1, false)]; me = teams[0].players[1];
+  window.__teams = teams;
+}
 const other = t => t === teams[0] ? teams[1] : teams[0];
 // (prove automatiche: con window.__auto il tuo giocatore gioca da solo)
 const hum = p => p.human && !window.__auto;
+
+// arbitro sul seggiolone a bordo rete (nome dall'EDITOR, se c'è)
+const REF = { body: makeAthlete({ shirt: '#f4f4f4', trim: '#1a1a1a', trimHex: '#1a1a1a', shorts: '#1a1a1a' }, '', { skin: '#eeb088', hair: '#5a4a3a' }), label: null };
+{
+  const chair = new THREE.Group(), pm = new THREE.MeshStandardMaterial({ color: 0x8a8f9a, metalness: 0.4, roughness: 0.5 });
+  for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8), pm); leg.position.set(x, 0.8, z); chair.add(leg); }
+  const plat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.8), pm); plat.position.y = 1.6; chair.add(plat);
+  chair.position.set(0, 0, -(CW + 1.0)); scene.add(chair);
+  REF.body.root.position.set(0, 1.63, -(CW + 1.0)); REF.body.root.rotation.y = 0; scene.add(REF.body.root);
+  applyPose({ body: REF.body, cur: {} }, POSE.stand, 1);
+}
+function refLabel() {
+  const R = DATA.refs[0], name = R ? String((R.cognome || '') + ' ' + (R.nome || '')).trim().toUpperCase() : 'ARBITRO';
+  if (REF.label) scene.remove(REF.label);
+  REF.label = nameSprite(name, false); REF.label.position.set(0, 3.95, -(CW + 1.0)); scene.add(REF.label);
+}
 
 // ---------------- stato della partita ----------------
 const ball = { x: 0, z: 0, h: 1, vx: 0, vz: 0, vy: 0, held: null, live: false, team: null, last: null, spin: 0, ver: 0 };
@@ -534,7 +574,7 @@ function point(T, why, who, what) {
   T.score++; S.state = 'dead'; S.t = 0; ball.live = false; S.hitWin = false;
   for (const t of teams) { t.plan = null; t.attacker = null; }
   S.streak = S.streak && S.streak.T === T ? { T, n: S.streak.n + 1 } : { T, n: 1 };
-  say(why + (T === me.team ? ' - PUNTO ITALIA!' : ' - PUNTO ' + T.name));
+  say(why + ' - PUNTO ' + T.name + (T === me.team ? '!' : ''));
   const won = T.score >= TARGET && T.score - other(T).score >= 2;
   if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % NPL; }
   for (const t of teams) {
@@ -542,7 +582,7 @@ function point(T, why, who, what) {
     for (const p of t.players) tire(p, FAT.point);
     for (let ni = 0; ni < t.roster.length; ni++) if (!onCourt.has(ni)) t.en[ni] = Math.min(100, t.en[ni] + FAT.bench);
   }
-  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); showStats(true); }
+  if (won) { S.over = true; S.state = 'end'; say(T === me.team ? 'HAI VINTO IL SET!' : 'SET PERSO', 99); showStats(true); campEnd(T === me.team); }
   for (const t of teams) for (const p of t.players) { p.act = t === T ? 'cheer' : 'sad'; p.actT = 1.8; }
   if (won) return;
   // il computer: cambia chi è stanco e chiama time-out se l'altra squadra fa 4 punti di fila
@@ -809,7 +849,7 @@ function callTimeout(T) {
   T.to++; S.state = 'timeout'; S.t = 0;
   for (const p of T.players) T.en[p.ni] = Math.min(100, T.en[p.ni] + FAT.timeout);
   if (SAND) SAND.rake = 1.6;
-  say('TIME-OUT ' + (T === me.team ? 'ITALIA' : T.name) + (SAND ? ': SI SPIANA LA SABBIA' : ''), 3);
+  say('TIME-OUT ' + T.name + (SAND ? ': SI SPIANA LA SABBIA' : ''), 3);
   for (const t of teams) for (const p of t.players) { p.act = null; }
   return true;
 }
@@ -845,7 +885,7 @@ function showStats(end) {
   if (!end && (!S.statsOn || !(S.state === 'dead' || S.state === 'timeout' || (S.state === 'serve' && S.phase !== 'toss')))) { el.style.display = 'none'; return; }
   el.style.display = '';
   const team = T => {
-    let h = `<h3>${T === me.team ? 'ITALIA' : T.name}${end ? '' : ' · ENERGIA ED ERRORI'}</h3><table>`;
+    let h = `<h3>${T.name}${end ? '' : ' · ENERGIA ED ERRORI'}</h3><table>`;
     if (end) h += '<tr class="hd"><td></td><td>punti</td><td>attacchi</td><td>muri</td><td>ace</td><td>errori</td><td>energia</td></tr>';
     for (const R of T.roster) {
       const s = T.st[R.ni], on = T.players.some(p => p.ni === R.ni);
@@ -1095,12 +1135,15 @@ const $ = id => document.getElementById(id);
 const mapC = $('map').getContext('2d');
 function hud() {
   const [A, B] = teams;
-  $('score').innerHTML = `<span class="${S.serving === A ? 'srv' : ''}">ITALIA ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>`;
+  const logo = t => TEAMS[t.code].logo ? `<img src="${TEAMS[t.code].logo}" alt="">` : '';
+  const sc = `${A.code}${A.score}${S.serving === A}${B.score}`;
+  if (S.scoreKey !== sc) { S.scoreKey = sc; $('score').innerHTML = `${logo(A)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${logo(B)}`; }
   $('msg').textContent = S.camT > 0 ? S.camMsg : S.msgT > 0 || S.state === 'end' ? S.msg : '';
   let h = '', now = false;
   const mp = me.team.plan;
-  if (S.paused) h = 'PAUSA (P per riprendere)';
-  else if (S.state === 'end') h = 'INVIO = nuova partita   ·   ESC = torna al gioco';
+  if (S.inSetup) h = '';
+  else if (S.paused) h = 'PAUSA (P per riprendere)';
+  else if (S.state === 'end') h = 'INVIO = ' + (S.lastCamp ? 'classifica e prossima partita' : 'nuova partita') + '   ·   ESC = torna al gioco';
   else if (S.state === 'serve' && S.server === me) {
     h = S.phase === 'toss' ? (S.hitWin ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : SERVES[S.kind].name + ': Z quando la palla diventa ROSSA')
       : 'BATTI TU - Z lancia. Tieni: niente = dall\'alto · ↑ in salto · ↓ salto flottante · ← SKY BALL · → PHANTOM · ↑+←/→ THUNDER';
@@ -1149,7 +1192,8 @@ addEventListener('keydown', e => {
   if (k === 'l') { S.slow = !S.slow; say(S.slow ? 'AL RALLENTATORE' : 'VELOCITÀ NORMALE', 1.2); }
   if (k === 'f') { const u = new URL(location.href); u.searchParams.set('women', WOMEN ? '0' : '1'); location.href = u.href; }
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
-  if (k === 'enter' && S.state === 'end') newGame();
+  if (k === 'enter' && S.state === 'end') openSetup();
+  if (k === 'm' && !S.inSetup) openSetup();
   if (k === 'escape') location.href = '../index.html';
 });
 addEventListener('keyup', e => { if (KEYMAP[e.key]) input[KEYMAP[e.key]] = false; });
@@ -1162,7 +1206,7 @@ function pollPad() {
   const now = { a: B(0), v: B(3), st: B(9) };
   if (now.a && !padPrev.a) { S.zPress = true; S.zT = 0.25; }
   if (now.v && !padPrev.v) nextCam(1);
-  if (now.st && !padPrev.st && S.state === 'end') newGame();
+  if (now.st && !padPrev.st && S.state === 'end') openSetup();
   padPrev = now;
 }
 // touch: joystick a sinistra, Z, V e START a destra
@@ -1176,7 +1220,7 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
   st.addEventListener('pointerup', () => { id = null; kn.style.left = kn.style.top = '40px'; input.l = input.r = input.u = input.d = false; });
   $('ta').addEventListener('pointerdown', e => { e.preventDefault(); S.zPress = true; S.zT = 0.25; });
   $('tv').addEventListener('pointerdown', e => { e.preventDefault(); nextCam(1); });
-  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('ok'); else if (S.state === 'end') newGame(); else S.paused = !S.paused; });
+  $('ts').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('ok'); else if (S.state === 'end') openSetup(); else S.paused = !S.paused; });
   $('tx').addEventListener('pointerdown', e => { e.preventDefault(); if (SUB.open) subKey('close'); else subOpen(); });
   $('tr').addEventListener('pointerdown', e => { e.preventDefault(); callTimeout(me.team); });
 }
@@ -1190,7 +1234,82 @@ function newGame() {
   $('stats').classList.remove('end'); S.statsOn = true; S.streak = null;
   S.over = false; S.serving = Math.random() < 0.5 ? teams[0] : teams[1];
   me.x = -5; me.z = -2;
-  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + (WOMEN ? 'FEMMINILE  ·  ' : '') + 'ITALIA - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
+  startServe(); say((BEACH ? 'BEACH  ·  ' : '') + (WOMEN ? 'FEMMINILE  ·  ' : '') + teams[0].name + ' - ' + teams[1].name + '  ·  SET A ' + TARGET, 2.2);
+  S.scoreKey = null; refLabel();
+}
+
+// ---------------- schermata iniziale: amichevole o campionato, con le squadre del gioco ----------------
+const SETUP = { mode: 'friendly', a: 'ITA', b: 'BRA', camp: 0, cur: null };
+try { Object.assign(SETUP, JSON.parse(localStorage.getItem('sf91_p3d_setup')) || {}); } catch (e) { /* */ }
+const tname = c => TEAMS[c] ? TEAMS[c].name : c;
+function teamSelect(id, cur, list) {
+  const groups = list ? { '': list } : DATA.groups;
+  let h = `<select id="${id}">`;
+  for (const g in groups) {
+    if (g) h += `<optgroup label="${g}">`;
+    for (const c of groups[g]) { const T = TEAMS[c]; h += `<option value="${c}"${c === cur ? ' selected' : ''}>${T.name}${T.mine ? ' ★' : ''}</option>`; }
+    if (g) h += '</optgroup>';
+  }
+  return h + '</select>';
+}
+function openSetup() {
+  S.paused = true; S.inSetup = true;
+  const el = $('setup'); el.style.display = '';
+  // campionati maschili o femminili come la squadra scelta (se non ce ne sono, tutti)
+  const camps = DATA.camps.filter(c => (c.sesso === 'F') === WOMEN).length ? DATA.camps.filter(c => (c.sesso === 'F') === WOMEN) : DATA.camps;
+  const mine = DATA.my.map(d => `${String(d.cognome || d.nome).toUpperCase()} (${d.numero}) → ${tname(d.team)}${d.titolare !== false ? ' in campo' : ' in panchina'}`);
+  let h = `<h2>SPIKE FEVER 3D · PRIMA PERSONA</h2>
+    <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button>
+    <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button></div>`;
+  if (SETUP.mode === 'friendly') {
+    h += `<div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label><label>AVVERSARIO ${teamSelect('selB', SETUP.b)}</label></div>`;
+  } else {
+    const c = camps[SETUP.camp % camps.length], st = campState(c);
+    if (!st.mine || !c.teams.includes(st.mine)) st.mine = c.teams.includes(SETUP.a) ? SETUP.a : c.teams[0];
+    const nx = campNext(c, st), tb = campTable(c, st);
+    h += `<div class="row"><label>CAMPIONATO <select id="selC">${camps.map((x, i) => `<option value="${i}"${i === SETUP.camp % camps.length ? ' selected' : ''}>${x.nome}</option>`).join('')}</select></label>
+      <label>LA TUA SQUADRA ${teamSelect('selM', st.mine, c.teams)}</label></div>
+      <p class="next">${nx ? `GIORNATA ${c.giornate[nx.gi].numero}: <b>${tname(nx.g.casa)}</b> - <b>${tname(nx.g.ospite)}</b>` : 'CAMPIONATO FINITO!'}</p>
+      <table class="tab"><tr><td></td><td>SQUADRA</td><td>PT</td><td>G</td><td>V</td><td>P</td><td>SET</td></tr>${tb.map((t, i) => `<tr class="${t.code === st.mine ? 'me' : ''}"><td>${i + 1}</td><td>${tname(t.code)}</td><td>${t.pts}</td><td>${t.g}</td><td>${t.w}</td><td>${t.l}</td><td>${t.sv}-${t.sp}</td></tr>`).join('')}</table>
+      <div class="row"><button data-x="reset" class="red">RICOMINCIA IL CAMPIONATO</button></div>`;
+    SETUP.cur = { c, st, nx };
+    campSave(c, st);
+  }
+  h += `<p class="muted">Squadre: nazionali, club di squadre.json, le tue squadre dell'editor (★) e quelle dei campionati. ${DATA.sponsors.length ? 'Sponsor dell\'editor sui cartelloni. ' : ''}${DATA.refs.length ? 'Arbitro: ' + (DATA.refs[0].cognome || DATA.refs[0].nome) + '. ' : ''}</p>`;
+  if (mine.length) h += `<p class="muted">I tuoi giocatori: ${mine.join(' · ')}. Se scegli la loro squadra, in campo sei tu.</p>`;
+  h += `<div class="row"><button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button><button data-x="back">TORNA AL GIOCO</button></div>`;
+  el.innerHTML = h;
+  el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SETUP.mode = b.dataset.m; openSetup(); });
+  const q = id => el.querySelector('#' + id);
+  if (q('selA')) q('selA').onchange = e => { SETUP.a = e.target.value; };
+  if (q('selB')) q('selB').onchange = e => { SETUP.b = e.target.value; };
+  if (q('selC')) q('selC').onchange = e => { SETUP.camp = Number(e.target.value); openSetup(); };
+  if (q('selM')) q('selM').onchange = e => { const { c, st } = SETUP.cur; st.mine = e.target.value; campSave(c, st); openSetup(); };
+  el.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
+    const x = b.dataset.x;
+    if (x === 'beach' || x === 'women') { const u = new URL(location.href); if (x === 'beach') { if (BEACH) u.searchParams.delete('beach'); else u.searchParams.set('beach', '1'); } else u.searchParams.set('women', WOMEN ? '0' : '1'); saveSetup(); location.href = u.href; }
+    if (x === 'reset') { const { c } = SETUP.cur; campSave(c, { mine: SETUP.cur.st.mine, res: {} }); openSetup(); }
+    if (x === 'back') location.href = '../index.html';
+    if (x === 'go') startFromSetup();
+  });
+}
+function saveSetup() { try { localStorage.setItem('sf91_p3d_setup', JSON.stringify({ mode: SETUP.mode, a: SETUP.a, b: SETUP.b, camp: SETUP.camp })); } catch (e) { /* */ } }
+function startFromSetup() {
+  let a = SETUP.a, b = SETUP.b;
+  if (SETUP.mode === 'camp') {
+    const { st, nx } = SETUP.cur; if (!nx) return;
+    a = st.mine; b = nx.g.casa === st.mine ? nx.g.ospite : nx.g.casa; S.campGame = SETUP.cur;
+  } else { if (a === b) b = DATA.teams.find(c => c !== a); S.campGame = null; }
+  S.lastCamp = SETUP.mode === 'camp';
+  saveSetup();
+  $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
+  setupTeams(a, b); newGame();
+}
+// fine del set in campionato: risultato, altre gare della giornata e classifica
+function campEnd(won) {
+  const G = S.campGame; if (!G || !G.nx) return;
+  campRecord(G.c, G.st, G.nx, won); S.campGame = null;
+  say((won ? 'HAI VINTO! ' : 'SET PERSO. ') + 'INVIO = classifica e prossima partita', 99);
 }
 
 // ---------------- ciclo ----------------
@@ -1211,10 +1330,15 @@ function frame(now) {
   draw(S.paused ? 0 : dt);
   requestAnimationFrame(frame);
 }
-window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
+window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
 // prove: n passi di simulazione senza disegnare
 window.__sim = n => { for (let i = 0; i < n; i++) { if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); if (i % 4 === 0) trackMoves(); if (S.msgT > 0) S.msgT -= CFG.STEP; } };
-newGame();
+// dati del gioco (squadre, i miei giocatori, sponsor, arbitri, campionati), poi la schermata iniziale
+try { await loadGameData(); } catch (e) { console.error(e); }
+buildAds(DATA.sponsors); refLabel();
+if (!TEAMS[SETUP.a]) SETUP.a = 'ITA'; if (!TEAMS[SETUP.b]) SETUP.b = 'BRA';
+setupTeams(SETUP.a, SETUP.b); newGame();
 $('load').remove();
+openSetup();
 setTimeout(() => { $('help').style.display = 'none'; }, 15000);   // le istruzioni spariscono dopo 15 s (H per rivederle)
 requestAnimationFrame(frame);
