@@ -1605,11 +1605,17 @@ class MatchScene extends Phaser.Scene {
   render(dt) {
     const b = this.ball, FY = CFG.FLOOR_Y;
     const fx = b.held ? b.x : b.x + b.vx * 0.12;
+    // versioni moderne: l'inquadratura tiene insieme il pallone, il punto in cui verrà giocato e chi lo giocherà
+    // (così quando la palla passa nell'altro campo si vedono già i giocatori che la aspettano)
+    let lo = SX(fx), hi = lo;
+    if (this.modern && this.state === 'rally') for (const t of this.teams) if (t.plan && t.plan.p) {
+      for (const x of [SX(t.plan.xc), SX(t.plan.p.x)]) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+    }
     // telecamera morbida: obiettivo filtrato + "smooth damp" (niente scatti ai colpi)
-    const target = clamp(SX(fx) - 160, 0, CFG.OX * 2 - CFG.W);
+    const target = clamp((lo + hi) / 2 - 160, 0, CFG.OX * 2 - CFG.W);
     if (this.camT === undefined) { this.camT = target; this.camV = 0; }
     this.camT += (target - this.camT) * Math.min(1, dt * 6);
-    const st = 0.3, om = 2 / st, k = om * dt, ex = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k);
+    const st = this.modern ? 0.22 : 0.3, om = 2 / st, k = om * dt, ex = 1 / (1 + k + 0.48 * k * k + 0.235 * k * k * k);
     const ch = this.camX - this.camT, tmp = (this.camV + om * ch) * dt;
     this.camV = (this.camV - om * tmp) * ex; this.camX = this.camT + (ch + tmp) * ex;
     this.camX = clamp(this.camX, 0, CFG.OX * 2 - CFG.W);
@@ -1619,16 +1625,19 @@ class MatchScene extends Phaser.Scene {
       const zk = CFG.ZOOM / 3;   // valori pensati per lo zoom 3x della pixel art
       // versione 3D: telecamera vicina, giocatori grandi come in una ripresa televisiva
       const near = GFX === '3d';
-      const zt = (this.state === 'rally' ? (near ? 4.1 + clamp(0.3 - b.h / 300, 0, 0.3) : 2.75 + clamp(0.25 - b.h / 400, 0, 0.25)) : (near ? 3.7 : 2.35)) * zk;
+      let zt = (this.state === 'rally' ? (near ? 4.1 + clamp(0.3 - b.h / 300, 0, 0.3) : 2.75 + clamp(0.25 - b.h / 400, 0, 0.25)) : (near ? 3.7 : 2.35)) * zk;
+      // se pallone e giocatori non ci stanno, si allarga (al massimo fino a 360 / 420 px di campo)
+      const fitW = hi - lo + 80, maxW = near ? 360 : 420;
+      if (fitW > CFG.W * CFG.ZOOM / zt) zt = CFG.W * CFG.ZOOM / Math.min(fitW, Math.max(maxW, CFG.W * CFG.ZOOM / zt));
       this.zoom = this.zoom || (near ? 3.7 : 2.35) * zk;
-      this.zoom += (zt - this.zoom) * Math.min(1, dt * 1.6);
+      this.zoom += (zt - this.zoom) * Math.min(1, dt * (zt < this.zoom ? 3.5 : 1.6));   // ad allargare è più svelta
       const cam = this.cameras.main, vw = CFG.W * CFG.ZOOM / this.zoom, vh = CFG.H * CFG.ZOOM / this.zoom;
       cam.setZoom(this.zoom);
       let cx = this.camX + 160, bot = 232;
       if (near) {
         // inquadratura stretta: a metà tra l'azione e il pallone, e in verticale segue le palle alte
         const k = Math.min(1, dt * 3);
-        this.camCx = this.camCx === undefined ? cx : this.camCx + ((cx + SX(b.x)) / 2 - this.camCx) * k;
+        this.camCx = this.camCx === undefined ? cx : this.camCx + ((this.state === 'rally' && hi > lo + 1 ? cx : (cx + SX(b.x)) / 2) - this.camCx) * k;
         const want = clamp(FY - b.h - 26 + vh, FY + 12, 232);   // i piedi restano sempre in vista
         this.camBot = this.camBot === undefined ? 232 : this.camBot + (want - this.camBot) * k;
         cx = this.camCx; bot = this.camBot;
