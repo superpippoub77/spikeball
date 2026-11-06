@@ -14,6 +14,10 @@
 //  bagher, palleggio, schiacciata, muro, battuta, esultanza.
 // ============================================================
 import * as THREE from 'three';
+import { AnaglyphEffect } from './jsm/effects/AnaglyphEffect.js';
+import { StereoEffect } from './jsm/effects/StereoEffect.js';
+import { VRButton } from './jsm/webxr/VRButton.js';
+import { MODELS, loadModels, makeSkinned, poseSkinned, makeBall } from './modelli3d.js';
 import { DATA, loadGameData, campState, campSave, campNext, campRecord, campTable } from './dati3d.js';
 
 // ---------------- costanti (dal gioco) ----------------
@@ -79,7 +83,13 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(BEACH ? 0x8ec8f0 : 0x0b1430);
 scene.fog = BEACH ? new THREE.Fog(0xcfe6f5, 70, 190) : new THREE.Fog(0x0b1430, 30, 75);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.06, 200);
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+// 3D VISION (tasto G): occhialini rosso/ciano, immagini affiancate (3D TV, visori per telefono) o realtà virtuale (WebXR)
+const rig = new THREE.Group(); rig.add(camera); scene.add(rig);
+const anaglyph = new AnaglyphEffect(renderer), stereo = new StereoEffect(renderer);
+anaglyph.setSize(innerWidth, innerHeight); stereo.setSize(innerWidth, innerHeight); stereo.setEyeSeparation(0.064);
+renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local-floor');
+let vrButton = null;
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); anaglyph.setSize(innerWidth, innerHeight); stereo.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 scene.add(new THREE.HemisphereLight(BEACH ? 0xcfe8ff : 0xdfe8ff, BEACH ? 0xc8a870 : 0x3a2a20, BEACH ? 1.2 : 0.9));
 const sun = new THREE.DirectionalLight(BEACH ? 0xfff2d8 : 0xffffff, BEACH ? 2.8 : 2.2);
@@ -428,6 +438,9 @@ function runPose(ph, k) {
   const s = Math.sin(ph), c = Math.cos(ph);
   return { lean: 0.22 * k + 0.05, crouch: 0.04 * k, sh: [0.75 * s * k - 0.1, -0.75 * s * k - 0.1], shZ: [0.1, 0.1], el: [-1.25, -1.25], hi: [-0.75 * s * k, 0.75 * s * k], kn: [0.25 + Math.max(0, -c) * 1.15 * k, 0.25 + Math.max(0, c) * 1.15 * k], an: [0.1, 0.1], head: 0, bob: Math.abs(Math.sin(ph)) * 0.05 * k };
 }
+// opzioni grafiche (prima dello stato della partita: servono già a dress)
+const S3 = { models: true, stereo: 0 };
+try { S3.models = localStorage.getItem('sf91_p3d_models') !== '0'; } catch (e) { /* */ }
 function applyPose(pl, P, k) {
   const J = pl.body.J, cur = pl.cur;
   for (const key of ['lean', 'crouch', 'head', 'bob']) cur[key] = lerp(cur[key] || 0, P[key] || 0, k);
@@ -491,6 +504,13 @@ function dress(p) {
   const look = { skin: R.sk || P.sk, hair: R.hair, beach: BEACH, noPads: BEACH, glasses: BEACH && p.i === 0, fem: WOMEN };
   const kit = R.lib ? Object.assign({}, T.kit, { shirt: T.kit.trim === T.kit.shirt ? '#f2d020' : T.kit.trim, trim: T.kit.shirt, trimHex: T.kit.shirt }) : T.kit;
   p.body = makeAthlete(kit, R.num, look); p.cur = {};
+  // modello 3D (Sketchfab) mosso dalla posa del manichino, che resta invisibile; O = modelli / manichini
+  p.skin = null;
+  if (MODELS.ok && S3.models) {
+    p.skin = makeSkinned(WOMEN, { shirt: kit.shirt, shorts: kit.shorts, skin: look.skin, hair: look.hair }, R.num, numberTex(R.num, '#ffffff', kit.trimHex));
+    p.body.root.traverse(o => { if (o.isMesh) o.visible = false; });
+    p.body.root.add(p.skin.root);
+  }
   p.body.root.scale.setScalar(R.sc * (WOMEN ? 0.95 : 1));
   p.name = R.name; p.num = R.num;
   p.label = nameSprite(p.human ? R.name + (p.remote ? ' (AVVERSARIO)' : ' (TU)') : R.lib ? R.name + ' (L)' : R.name, p.human && !p.remote);
@@ -525,6 +545,19 @@ const REF = { body: makeAthlete({ shirt: '#f4f4f4', trim: '#1a1a1a', trimHex: '#
   chair.position.set(0, 0, -(CW + 1.0)); scene.add(chair);
   REF.body.root.position.set(0, 1.63, -(CW + 1.0)); REF.body.root.rotation.y = 0; scene.add(REF.body.root);
   applyPose({ body: REF.body, cur: {} }, POSE.stand, 1);
+}
+// modelli 3D: arbitro e pallone (i giocatori in dress)
+let ballModel = null, ghostModel = null;
+function useModels() {
+  if (!MODELS.ok) return;
+  if (REF.skin) { REF.body.root.remove(REF.skin.root); REF.skin = null; }
+  REF.body.root.traverse(o => { if (o.isMesh) o.visible = !S3.models; });
+  if (S3.models) {
+    REF.skin = makeSkinned(false, { shirt: '#f4f4f4', shorts: '#1a1a1a', skin: '#eeb088', hair: '#4a3a2a' }, '', null);
+    REF.body.root.add(REF.skin.root); REF.body.root.updateMatrixWorld(true); poseSkinned(REF.skin, REF.body.J, REF.body.root);
+  }
+  if (!ballModel) { ballModel = makeBall(BALL_R); ballMesh.add(ballModel); ghostModel = makeBall(BALL_R); ghostMesh.add(ghostModel); ghostModel.userData.mats.forEach(m => { m.transparent = true; }); }
+  ballMesh.material.visible = ghostMesh.material.visible = !S3.models; ballModel.visible = ghostModel.visible = S3.models;
 }
 function refLabel() {
   const R = DATA.refs[0], name = R ? String((R.cognome || '') + ' ' + (R.nome || '')).trim().toUpperCase() : 'ARBITRO';
@@ -1073,6 +1106,19 @@ function step(dt) {
 // scossa della telecamera (schiacciate potenti, thunder)
 function shake(t) { S.shakeT = Math.max(S.shakeT || 0, t); }
 
+// 3D vision: 0 normale, 1 rosso/ciano (occhialini anaglifi), 2 affiancato (3D TV, visori per telefono), 3 realtà virtuale
+const STEREO = ['3D VISION SPENTO', '3D VISION: OCCHIALINI ROSSO/CIANO', '3D VISION: AFFIANCATO (3D TV, VISORE PER TELEFONO)', '3D VISION: REALTÀ VIRTUALE (VISORE WEBXR)'];
+function setStereo(m) {
+  S3.stereo = m;
+  if (m === 3) {
+    if (!vrButton) { vrButton = VRButton.createButton(renderer); vrButton.id = 'vrbtn'; document.body.appendChild(vrButton); }
+    vrButton.style.display = '';
+    say(navigator.xr ? STEREO[3] + ': premi ENTER VR' : 'REALTÀ VIRTUALE NON DISPONIBILE SU QUESTO DISPOSITIVO', 2.5);
+  } else { if (vrButton) vrButton.style.display = 'none'; say(STEREO[m], 2); }
+  if (m === 3) S3.stereo = 0;   // finché non si entra nel visore si vede normale
+  S3.mode = m;
+}
+
 // ---------------- visuali (V o i tasti 1-6) ----------------
 const CAMS = [
   { id: 'eyes', name: 'OCCHI (prima persona)' }, { id: 'eyesBody', name: 'PRIMA PERSONA CON IL CORPO' },
@@ -1091,10 +1137,11 @@ function draw(dt) {
   ballMesh.rotation.z -= (b.spin || 4) * dt; ballMesh.rotation.x += 2 * dt;
   const red = !!me.win;
   ballMesh.material.emissive.setHex(red ? 0xd01010 : b.thunder ? (Math.random() < 0.5 ? 0xffd020 : 0x806000) : 0x000000);
+  if (ballModel) for (const m of ballModel.userData.mats) m.emissive.copy(ballMesh.material.emissive);
   // PHANTOM: la palla finta sparisce quando la vera arriva nel campo di chi riceve
   const rs = b.team ? -b.team.side : 0;
   ghostMesh.visible = !!b.ghost && b.live && b.x * rs < 2.5;
-  if (ghostMesh.visible) { ghostMesh.position.set(b.x, b.h + Math.sin(S.t * 7) * 0.1, b.z + b.ghostZ); ghostMesh.material.opacity = clamp(0.85 - (b.x * rs + 6) / 12, 0.15, 0.85); }
+  if (ghostMesh.visible) { ghostMesh.position.set(b.x, b.h + Math.sin(S.t * 7) * 0.1, b.z + b.ghostZ); ghostMesh.material.opacity = clamp(0.85 - (b.x * rs + 6) / 12, 0.15, 0.85); if (ghostModel) ghostModel.userData.mats.forEach(m => { m.opacity = ghostMesh.material.opacity; }); }
   trailPos.unshift([b.x, b.h, b.z]); trailPos.length = trail.length;
   trail.forEach((m, i) => { const q = trailPos[i]; m.visible = !!b.thunder && b.live && !!q; if (m.visible) m.position.set(q[0], q[1], q[2]); });
   splashUpdate(dt);
@@ -1117,12 +1164,14 @@ function draw(dt) {
     else P = S.state === 'rally' || S.state === 'serve' ? POSE.ready : POSE.stand;
     if (p.act === 'cheer') { P = Object.assign({}, POSE.cheer, { crouch: -Math.abs(Math.sin(S.t * 9)) * 0.06 }); }
     applyPose(p, P, Math.min(1, dt * (p.act === 'hit' ? 26 : 12)));
+    if (p.skin) poseSkinned(p.skin, p.body.J, R);
     // nome
     p.label.visible = S.names > 0 && !(p === me && /eyes|face/.test(CAMS[S.cam].id));
     p.label.position.set(p.x, S.names === 1 ? p.h + 2.25 : 0.12, p.z);
   }
   // in prima persona la tua testa non si vede (si vedono braccia e gambe)
-  me.body.J.headMesh.visible = CAMS[S.cam].id !== 'eyes';
+  if (me.skin) for (const o of me.skin.heads) o.visible = CAMS[S.cam].id !== 'eyes';
+  else me.body.J.headMesh.visible = CAMS[S.cam].id !== 'eyes';
   // cerchio: dove andare per il prossimo tocco (o rosso quando è il momento di schiacciare)
   const mp = me.team.plan;
   ring.visible = !!(mp && mp.p === me) || (S.state === 'serve' && S.server === me);
@@ -1181,7 +1230,10 @@ function draw(dt) {
     eye = new THREE.Vector3(b.x * 0.5, 7.5, 17); look = new THREE.Vector3(b.x * 0.7, 1, 0);
     camPos.lerp(eye, Math.min(1, dt * 3)); camLook.lerp(look, Math.min(1, dt * 4));
   }
-  camera.position.copy(camPos); camera.lookAt(camLook);
+  if (renderer.xr.isPresenting) {
+    rig.position.set(me.x, me.h, me.z); rig.rotation.set(0, me.team.side < 0 ? -Math.PI / 2 : Math.PI / 2, 0);
+    if (me.skin) for (const o of me.skin.heads) o.visible = false;
+  } else { rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0); camera.position.copy(camPos); camera.lookAt(camLook); }
   if (S.shakeT > 0) { S.shakeT -= dt; const k = S.shakeT * 0.12; camera.position.x += rnd(-k, k); camera.position.y += rnd(-k, k); }
   // pubblico: salta dopo i punti
   if (S.state === 'dead' || S.state === 'end') {
@@ -1193,7 +1245,9 @@ function draw(dt) {
     for (const c of crowd) { m.makeTranslation(c.px, c.py, c.pz); crowd.bodies.setMatrixAt(c.k, m); m.makeTranslation(c.px, c.py + 0.43, c.pz); crowd.heads.setMatrixAt(c.k, m); }
     crowd.bodies.instanceMatrix.needsUpdate = crowd.heads.instanceMatrix.needsUpdate = true; crowd.jumping = false;
   }
-  renderer.render(scene, camera);
+  if (renderer.xr.isPresenting || !S3.stereo) { if (!renderer.xr.isPresenting) { renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight); } renderer.render(scene, camera); }
+  else if (S3.stereo === 1) anaglyph.render(scene, camera);
+  else stereo.render(scene, camera);
   hud();
 }
 // direzione di corsa (per girare il corpo mentre corre)
@@ -1280,6 +1334,8 @@ addEventListener('keydown', e => {
   if (k === 'i') { S.statsOn = !S.statsOn; showStats(); }
   if (k === 'l') { S.slow = !S.slow; say(S.slow ? 'AL RALLENTATORE' : 'VELOCITÀ NORMALE', 1.2); }
   if (k === 'f') { const u = new URL(location.href); u.searchParams.set('women', WOMEN ? '0' : '1'); location.href = u.href; }
+  if (k === 'o' && MODELS.ok) { S3.models = !S3.models; try { localStorage.setItem('sf91_p3d_models', S3.models ? '1' : '0'); } catch (x) { /* */ } for (const t of teams) for (const p of t.players) dress(p); useModels(); say(S3.models ? 'GIOCATORI: MODELLI 3D' : 'GIOCATORI: MANICHINI', 1.4); }
+  if (k === 'g') setStereo(((S3.mode || 0) + 1) % 4);
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
   if (k === 'enter' && S.state === 'end') { if (S.online) { netClose(); S.online = null; } openSetup(); }
   if (k === 'm' && !S.inSetup) openSetup();
@@ -1580,7 +1636,8 @@ function openSetup() {
   const mine = DATA.my.map(d => `${String(d.cognome || d.nome).toUpperCase()} (${d.numero}) → ${tname(d.team)}${d.titolare !== false ? ' in campo' : ' in panchina'}`);
   let h = `<h2>SPIKE FEVER 3D · PRIMA PERSONA</h2>
     <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button><button data-m="practice" class="${SETUP.mode === 'practice' ? 'on' : ''}">PRATICA</button><button data-m="online" class="${SETUP.mode === 'online' ? 'on' : ''}">ONLINE</button>
-    <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button></div>`;
+    <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button>
+    <button data-x="stereo">${['3D VISION: NO', '3D: ROSSO/CIANO', '3D: AFFIANCATO', '3D: VR'][S3.mode || 0]}</button>${MODELS.ok ? `<button data-x="models">${S3.models ? 'GIOCATORI: MODELLI 3D' : 'GIOCATORI: MANICHINI'}</button>` : ''}</div>`;
   const opt = (id, list, cur) => `<select id="${id}">${list.map(([v, l]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   if (SETUP.mode === 'practice') {
     h += `<div class="row"><label>ESERCIZIO ${opt('selD', DRILLS3, SETUP.drill || 'serve')}</label><label>${opt('selG', [[1, 'GUIDATA: SI FERMA A OGNI PASSAGGIO'], [0, 'NORMALE']], SETUP.guided === 0 ? 0 : 1)}</label></div>
@@ -1604,6 +1661,7 @@ function openSetup() {
     campSave(c, st);
   }
   h += `<p class="muted">Squadre: nazionali, club di squadre.json, le tue squadre dell'editor (★) e quelle dei campionati. ${DATA.sponsors.length ? 'Sponsor dell\'editor sui cartelloni. ' : ''}${DATA.refs.length ? 'Arbitro: ' + (DATA.refs[0].cognome || DATA.refs[0].nome) + '. ' : ''}</p>`;
+  if (MODELS.ok) h += `<p class="muted">Modelli 3D (CC BY 4.0, Sketchfab): "Man Player" di RiverofCreative, "Tori_Athlete" di kimate.richards, "Volleyball" di giftedprototype (modificati).</p>`;
   if (mine.length) h += `<p class="muted">I tuoi giocatori: ${mine.join(' · ')}. Se scegli la loro squadra, in campo sei tu.</p>`;
   h += `<div class="row">${SETUP.mode === 'online' ? (RETE.connected && RETE.role === 'host' ? `<button data-x="netgo" class="green"${RETE.peerTeam ? '' : ' disabled'}>INIZIA LA PARTITA ONLINE</button>` : '') : `<button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button>`}<button data-x="back">TORNA AL GIOCO</button></div>`;
   el.innerHTML = h;
@@ -1623,6 +1681,8 @@ function openSetup() {
     if (x === 'reset') { const { c } = SETUP.cur; campSave(c, { mine: SETUP.cur.st.mine, res: {} }); openSetup(); }
     if (x === 'back') location.href = '../index.html';
     if (x === 'go') startFromSetup();
+    if (x === 'stereo') { setStereo(((S3.mode || 0) + 1) % 4); openSetup(); }
+    if (x === 'models') { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o' })); openSetup(); }
     if (x === 'nethost') netHost();
     if (x === 'netjoin') { const c = (q('netCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length === 5) netJoin(c); else { RETE.status = 'IL CODICE HA 5 CARATTERI'; openSetup(); } }
     if (x === 'netgo') netStart();
@@ -1673,15 +1733,16 @@ function frame(now) {
   S.statsT = (S.statsT || 0) + dt;
   if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
   draw(S.paused ? 0 : dt);
-  requestAnimationFrame(frame);
 }
-window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
+window.__ballMesh = ballMesh; window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
 // prove: n passi di simulazione senza disegnare
 window.__dbg = () => ({ hint: playHint(), seen: [...(S.guideSeen || [])], toss: TOSS.open, sub: SUB.open });
 window.__step1 = () => { if (S.guideF) return; if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); trackMoves(); guideCheck(); };
 window.__sim = n => { for (let i = 0; i < n; i++) { if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); if (i % 4 === 0) trackMoves(); if (S.msgT > 0) S.msgT -= CFG.STEP; } };
 // dati del gioco (squadre, i miei giocatori, sponsor, arbitri, campionati), poi la schermata iniziale
 try { await loadGameData(); } catch (e) { console.error(e); }
+try { await loadModels(); } catch (e) { console.error('modelli 3D non caricati, uso i manichini', e); }
+useModels();
 buildAds(DATA.sponsors); refLabel();
 if (!TEAMS[SETUP.a]) SETUP.a = 'ITA'; if (!TEAMS[SETUP.b]) SETUP.b = 'BRA';
 S.inSetup = true; setupTeams(SETUP.a, SETUP.b); newGame();
@@ -1689,4 +1750,4 @@ $('load').remove();
 openSetup();
 { const j = new URLSearchParams(location.search).get('join'); if (j) { SETUP.mode = 'online'; netJoin(j); } }
 setTimeout(() => { $('help').style.display = 'none'; }, 15000);   // le istruzioni spariscono dopo 15 s (H per rivederle)
-requestAnimationFrame(frame);
+renderer.setAnimationLoop(frame);   // (con WebXR il visore detta il ritmo)
