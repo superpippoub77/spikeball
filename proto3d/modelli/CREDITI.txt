@@ -1,0 +1,13 @@
+MODELLI 3D DEL PROTOTIPO (scaricati da Sketchfab, licenza Creative Commons Attribution 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+atleta-m.glb  "Man Player" di RiverofCreative
+              https://sketchfab.com/3d-models/4c7133dbb06e4136891d59231372d818
+atleta-f.glb  "Tori_Athlete" di kimate.richards
+              https://sketchfab.com/3d-models/2b1c4fb1403441c89f543fcff2f77881
+pallone.glb   "Volleyball" di giftedprototype
+              https://sketchfab.com/3d-models/7f2983b9527c4af38370ef3a466b3c1e
+
+Modifiche: tolte animazioni, espressioni del viso, denti e lingua; poligoni ridotti (meshoptimizer),
+texture ridotte a 512 px in WebP, geometria compressa (EXT_meshopt_compression). Nel gioco maglia,
+pantaloncini, pelle e capelli vengono ricolorati con i colori della squadra e del giocatore.
