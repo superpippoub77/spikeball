@@ -14,19 +14,34 @@ import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from './jsm/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from './jsm/utils/SkeletonUtils.js';
 
-export const MODELS = { ok: false, m: null, f: null, ball: null };
-const SHIRT = /^(T_shirt|t_shirt)$/i, SHORTS = /^(Classic_Shorts|jeans)$/i, HAIR = /hair|scalp|Front_Transparency/i, SKIN = /^Std_Skin|^Std_Nails/;
-const HEADPART = /Skin_Head|Eyelash|Eye_|Cornea|hair|scalp|Front_Transparency|Teeth|Tongue/i;
+// stile ANIME: anime-f.glb "Anime Fitness Girl with Glasses" di McKaneCL, anime-m.glb "Anime Model Boy Rigged" di
+// dequeijospizza (scheletri VRoid, con i nomi originali J_Bip_... o rinominati da Unity)
+export const MODELS = { ok: false, anime: false, m: null, f: null, am: null, af: null, ball: null };
+const SHIRT = /^(T_shirt|t_shirt)$|Tops/i, SHORTS = /^(Classic_Shorts|jeans)$|Bottoms/i, HAIR = /hair|scalp|Front_Transparency/i, SKIN = /^Std_Skin|^Std_Nails|_SKIN/;
+const HEADPART = /Skin_Head|Eyelash|Eye_|Cornea|hair|scalp|Front_Transparency|Teeth|Tongue|Face|_EYE|Brow|Glasses/i;
+// nomi delle ossa: scheletro Character Creator (modelli realistici) e VRoid / Unity (modelli anime)
+const RIG = {
+  cc: { hip: /^CC_Base_Hip_\d+$/, waist: /^CC_Base_Waist_\d+$/, neck: /^CC_Base_NeckTwist01_\d+$/, head: /^CC_Base_Head_\d+$/, chest: /^CC_Base_Spine02_\d+$/,
+    limb: (s, k) => new RegExp(`^CC_Base_${s}_${{ sh: 'Upperarm', el: 'Forearm', ha: 'Hand', hi: 'Thigh', kn: 'Calf', an: 'Foot', toe: 'ToeBase' }[k]}_\\d+$`), skin: [0.86, 0.68, 0.56] },
+  vroid: { hip: /^Hips_\d+$/, waist: /^Spine_\d+$/, neck: /^Neck_\d+$/, head: /^Head_\d+$/, chest: /^Chest_\d+$/,
+    limb: (s, k) => new RegExp(`^${s === 'L' ? 'Left' : 'Right'}[ _]${{ sh: 'arm', el: 'elbow', ha: 'wrist', hi: 'leg', kn: 'knee', an: 'ankle', toe: 'toe' }[k]}_\\d+$`), skin: [0.98, 0.86, 0.79] },
+  vroidj: { hip: /^J_Bip_C_Hips_\d+$/, waist: /^J_Bip_C_Spine_\d+$/, neck: /^J_Bip_C_Neck_\d+$/, head: /^J_Bip_C_Head_\d+$/, chest: /^J_Bip_C_UpperChest_\d+$/,
+    limb: (s, k) => new RegExp(`^J_Bip_${s}_${{ sh: 'UpperArm', el: 'LowerArm', ha: 'Hand', hi: 'UpperLeg', kn: 'LowerLeg', an: 'Foot', toe: 'ToeBase' }[k]}_\\d+$`), skin: [0.98, 0.86, 0.79] }
+};
 const bone = (bones, re) => bones.find(b => re.test(b.name));
 
 export async function loadModels() {
   const L = new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
   const get = f => new Promise((ok, ko) => L.load(f, g => ok(g.scene), undefined, ko));
   const [m, f, ball] = await Promise.all([get('modelli/atleta-m.glb'), get('modelli/atleta-f.glb'), get('modelli/pallone.glb')]);
-  MODELS.m = prep(m); MODELS.f = prep(f); MODELS.ball = ball; MODELS.ok = true;
+  MODELS.m = prep(m, 'cc'); MODELS.f = prep(f, 'cc'); MODELS.ball = ball; MODELS.ok = true;
+  try {
+    const [am, af] = await Promise.all([get('modelli/anime-m.glb'), get('modelli/anime-f.glb')]);
+    MODELS.am = prep(am, 'vroid'); MODELS.af = prep(af, 'vroidj'); MODELS.anime = true;
+  } catch (e) { console.error('modelli anime non caricati', e); }
 }
 // misure del modello a riposo e texture in scala di grigi (una volta sola)
-function prep(scene) {
+function prep(scene, rig) {
   scene.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(scene), gray = new Map();
   scene.traverse(o => {
@@ -35,7 +50,7 @@ function prep(scene) {
     const mt = o.material;
     if ((SHIRT.test(mt.name) || SHORTS.test(mt.name) || HAIR.test(mt.name)) && mt.map && !gray.has(mt.name)) gray.set(mt.name, grayTex(mt.map, HAIR.test(mt.name) ? 1.3 : 1.7));
   });
-  return { scene, h: box.max.y - box.min.y, gray };
+  return { scene, h: box.max.y - box.min.y, gray, rig: RIG[rig] };
 }
 function grayTex(tex, gain) {
   const im = tex.image, c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
@@ -51,8 +66,8 @@ function grayTex(tex, gain) {
 }
 
 // giocatore con i colori della squadra: { root, bones, rest, hipOff, head (parti della testa da nascondere in prima persona) }
-export function makeSkinned(fem, look, num, numberTex) {
-  const M = fem ? MODELS.f : MODELS.m, root = SkeletonUtils.clone(M.scene), heads = [];
+export function makeSkinned(fem, look, num, numberTex, anime) {
+  const M = anime && MODELS.anime ? (fem ? MODELS.af : MODELS.am) : fem ? MODELS.f : MODELS.m, root = SkeletonUtils.clone(M.scene), heads = [], RG = M.rig;
   const k = 1.9 * (fem ? 0.96 : 1) / M.h;
   root.scale.setScalar(k);
   const skin = new THREE.Color(look.skin), hair = new THREE.Color(look.hair);
@@ -62,19 +77,14 @@ export function makeSkinned(fem, look, num, numberTex) {
     if (SHIRT.test(mt.name)) { mt.map = M.gray.get(mt.name) || mt.map; mt.color.set(look.shirt); }
     else if (SHORTS.test(mt.name)) { mt.map = M.gray.get(mt.name) || mt.map; mt.color.set(look.shorts); }
     else if (HAIR.test(mt.name)) { if (M.gray.get(mt.name)) mt.map = M.gray.get(mt.name); mt.color.copy(hair).lerp(new THREE.Color(1, 1, 1), 0.15); }
-    else if (SKIN.test(mt.name)) { const base = new THREE.Color(0.86, 0.68, 0.56); mt.color.setRGB(clamp(skin.r / base.r, 0.35, 1.2), clamp(skin.g / base.g, 0.35, 1.2), clamp(skin.b / base.b, 0.35, 1.2)); }
+    else if (SKIN.test(mt.name)) { const base = new THREE.Color(...RG.skin); mt.color.setRGB(clamp(skin.r / base.r, 0.35, 1.2), clamp(skin.g / base.g, 0.35, 1.2), clamp(skin.b / base.b, 0.35, 1.2)); }
     if (HEADPART.test(mt.name)) heads.push(o);
   });
   const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); });
-  const B = side => ({
-    sh: bone(bones, new RegExp(`^CC_Base_${side}_Upperarm_\\d+$`)), el: bone(bones, new RegExp(`^CC_Base_${side}_Forearm_\\d+$`)), ha: bone(bones, new RegExp(`^CC_Base_${side}_Hand_\\d+$`)),
-    hi: bone(bones, new RegExp(`^CC_Base_${side}_Thigh_\\d+$`)), kn: bone(bones, new RegExp(`^CC_Base_${side}_Calf_\\d+$`)), an: bone(bones, new RegExp(`^CC_Base_${side}_Foot_\\d+$`)),
-    toe: bone(bones, new RegExp(`^CC_Base_${side}_ToeBase_\\d+$`))
-  });
+  const B = side => Object.fromEntries(['sh', 'el', 'ha', 'hi', 'kn', 'an', 'toe'].map(k2 => [k2, bone(bones, RG.limb(side, k2))]));
   const S = {
     root, bones, heads, k, L: B('L'), R: B('R'),
-    hip: bone(bones, /^CC_Base_Hip_\d+$/), waist: bone(bones, /^CC_Base_Waist_\d+$/), spine2: bone(bones, /^CC_Base_Spine02_\d+$/),
-    neck: bone(bones, /^CC_Base_NeckTwist01_\d+$/), head: bone(bones, /^CC_Base_Head_\d+$/)
+    hip: bone(bones, RG.hip), waist: bone(bones, RG.waist), spine2: bone(bones, RG.chest), neck: bone(bones, RG.neck), head: bone(bones, RG.head)
   };
   S.rest = new Map(bones.map(b => [b, b.quaternion.clone()]));
   S.hipRest = S.hip.position.clone();

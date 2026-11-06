@@ -5,6 +5,10 @@ atleta-m.glb  "Man Player" di RiverofCreative
               https://sketchfab.com/3d-models/4c7133dbb06e4136891d59231372d818
 atleta-f.glb  "Tori_Athlete" di kimate.richards
               https://sketchfab.com/3d-models/2b1c4fb1403441c89f543fcff2f77881
+anime-m.glb   "Anime Model Boy Rigged" di dequeijospizza
+              https://sketchfab.com/3d-models/0fe1676a5d2c4a809f50f2bea664074b
+anime-f.glb   "Anime Fitness Girl with Glasses" di McKaneCL
+              https://sketchfab.com/3d-models/8d6e5fd76a494f63b07193c5f83546eb
 pallone.glb   "Volleyball" di giftedprototype
               https://sketchfab.com/3d-models/7f2983b9527c4af38370ef3a466b3c1e
 

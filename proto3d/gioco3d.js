@@ -439,8 +439,11 @@ function runPose(ph, k) {
   return { lean: 0.22 * k + 0.05, crouch: 0.04 * k, sh: [0.75 * s * k - 0.1, -0.75 * s * k - 0.1], shZ: [0.1, 0.1], el: [-1.25, -1.25], hi: [-0.75 * s * k, 0.75 * s * k], kn: [0.25 + Math.max(0, -c) * 1.15 * k, 0.25 + Math.max(0, c) * 1.15 * k], an: [0.1, 0.1], head: 0, bob: Math.abs(Math.sin(ph)) * 0.05 * k };
 }
 // opzioni grafiche (prima dello stato della partita: servono già a dress)
-const S3 = { models: true, stereo: 0 };
-try { S3.models = localStorage.getItem('sf91_p3d_models') !== '0'; } catch (e) { /* */ }
+// giocatori: modelli realistici, ANIME o manichini (tasto O)
+const S3 = { models: true, anime: false, stereo: 0 };
+try { const st = localStorage.getItem('sf91_p3d_style') || (localStorage.getItem('sf91_p3d_models') === '0' ? 'mann' : 'real'); S3.models = st !== 'mann'; S3.anime = st === 'anime'; } catch (e) { /* */ }
+const STYLES = ['real', 'anime', 'mann'], STYLE_NAMES = { real: 'MODELLI 3D REALISTICI', anime: 'STILE ANIME', mann: 'MANICHINI' };
+const styleOf = () => !S3.models ? 'mann' : S3.anime ? 'anime' : 'real';
 function applyPose(pl, P, k) {
   const J = pl.body.J, cur = pl.cur;
   for (const key of ['lean', 'crouch', 'head', 'bob']) cur[key] = lerp(cur[key] || 0, P[key] || 0, k);
@@ -507,7 +510,7 @@ function dress(p) {
   // modello 3D (Sketchfab) mosso dalla posa del manichino, che resta invisibile; O = modelli / manichini
   p.skin = null;
   if (MODELS.ok && S3.models) {
-    p.skin = makeSkinned(WOMEN, { shirt: kit.shirt, shorts: kit.shorts, skin: look.skin, hair: look.hair }, R.num, numberTex(R.num, '#ffffff', kit.trimHex));
+    p.skin = makeSkinned(WOMEN, { shirt: kit.shirt, shorts: kit.shorts, skin: look.skin, hair: look.hair }, R.num, numberTex(R.num, '#ffffff', kit.trimHex), S3.anime);
     p.body.root.traverse(o => { if (o.isMesh) o.visible = false; });
     p.body.root.add(p.skin.root);
   }
@@ -1334,7 +1337,12 @@ addEventListener('keydown', e => {
   if (k === 'i') { S.statsOn = !S.statsOn; showStats(); }
   if (k === 'l') { S.slow = !S.slow; say(S.slow ? 'AL RALLENTATORE' : 'VELOCITÀ NORMALE', 1.2); }
   if (k === 'f') { const u = new URL(location.href); u.searchParams.set('women', WOMEN ? '0' : '1'); location.href = u.href; }
-  if (k === 'o' && MODELS.ok) { S3.models = !S3.models; try { localStorage.setItem('sf91_p3d_models', S3.models ? '1' : '0'); } catch (x) { /* */ } for (const t of teams) for (const p of t.players) dress(p); useModels(); say(S3.models ? 'GIOCATORI: MODELLI 3D' : 'GIOCATORI: MANICHINI', 1.4); }
+  if (k === 'o' && MODELS.ok) {
+    const list = STYLES.filter(x => x !== 'anime' || MODELS.anime), st = list[(list.indexOf(styleOf()) + 1) % list.length];
+    S3.models = st !== 'mann'; S3.anime = st === 'anime';
+    try { localStorage.setItem('sf91_p3d_style', st); } catch (x) { /* */ }
+    for (const t of teams) for (const p of t.players) dress(p); useModels(); say('GIOCATORI: ' + STYLE_NAMES[st], 1.4);
+  }
   if (k === 'g') setStereo(((S3.mode || 0) + 1) % 4);
   if (k === 'h') $('help').style.display = $('help').style.display === 'none' ? '' : 'none';
   if (k === 'enter' && S.state === 'end') { if (S.online) { netClose(); S.online = null; } openSetup(); }
@@ -1637,7 +1645,7 @@ function openSetup() {
   let h = `<h2>SPIKE FEVER 3D · PRIMA PERSONA</h2>
     <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button><button data-m="practice" class="${SETUP.mode === 'practice' ? 'on' : ''}">PRATICA</button><button data-m="online" class="${SETUP.mode === 'online' ? 'on' : ''}">ONLINE</button>
     <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button>
-    <button data-x="stereo">${['3D VISION: NO', '3D: ROSSO/CIANO', '3D: AFFIANCATO', '3D: VR'][S3.mode || 0]}</button>${MODELS.ok ? `<button data-x="models">${S3.models ? 'GIOCATORI: MODELLI 3D' : 'GIOCATORI: MANICHINI'}</button>` : ''}</div>`;
+    <button data-x="stereo">${['3D VISION: NO', '3D: ROSSO/CIANO', '3D: AFFIANCATO', '3D: VR'][S3.mode || 0]}</button>${MODELS.ok ? `<button data-x="models">GIOCATORI: ${STYLE_NAMES[styleOf()]}</button>` : ''}</div>`;
   const opt = (id, list, cur) => `<select id="${id}">${list.map(([v, l]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   if (SETUP.mode === 'practice') {
     h += `<div class="row"><label>ESERCIZIO ${opt('selD', DRILLS3, SETUP.drill || 'serve')}</label><label>${opt('selG', [[1, 'GUIDATA: SI FERMA A OGNI PASSAGGIO'], [0, 'NORMALE']], SETUP.guided === 0 ? 0 : 1)}</label></div>
@@ -1661,7 +1669,7 @@ function openSetup() {
     campSave(c, st);
   }
   h += `<p class="muted">Squadre: nazionali, club di squadre.json, le tue squadre dell'editor (★) e quelle dei campionati. ${DATA.sponsors.length ? 'Sponsor dell\'editor sui cartelloni. ' : ''}${DATA.refs.length ? 'Arbitro: ' + (DATA.refs[0].cognome || DATA.refs[0].nome) + '. ' : ''}</p>`;
-  if (MODELS.ok) h += `<p class="muted">Modelli 3D (CC BY 4.0, Sketchfab): "Man Player" di RiverofCreative, "Tori_Athlete" di kimate.richards, "Volleyball" di giftedprototype (modificati).</p>`;
+  if (MODELS.ok) h += `<p class="muted">Modelli 3D (CC BY 4.0, Sketchfab): "Man Player" di RiverofCreative, "Tori_Athlete" di kimate.richards, "Anime Fitness Girl with Glasses" di McKaneCL, "Anime Model Boy Rigged" di dequeijospizza, "Volleyball" di giftedprototype (modificati).</p>`;
   if (mine.length) h += `<p class="muted">I tuoi giocatori: ${mine.join(' · ')}. Se scegli la loro squadra, in campo sei tu.</p>`;
   h += `<div class="row">${SETUP.mode === 'online' ? (RETE.connected && RETE.role === 'host' ? `<button data-x="netgo" class="green"${RETE.peerTeam ? '' : ' disabled'}>INIZIA LA PARTITA ONLINE</button>` : '') : `<button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button>`}<button data-x="back">TORNA AL GIOCO</button></div>`;
   el.innerHTML = h;
