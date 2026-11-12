@@ -59,12 +59,20 @@
   #stats { position: absolute; left: 10px; top: 54px; background: rgba(5, 12, 36, 0.78); border-radius: 8px; padding: 4px 10px; font: 12px Arial; }
   #stats.end { left: 50%; top: 32%; transform: translateX(-50%); font-size: 14px; border: 2px solid var(--gold); }
   #stats tr.hd td { color: #9ab8f0; font-size: 11px; }
+  /* TV ARCADE: striscioni gialli e penombra ai bordi */
+  #banner { position: absolute; top: 58px; left: 50%; transform: translateX(-50%) skewX(-12deg); background: linear-gradient(#fff36a, #f2b400); color: #1a1000; font: 46px "Arial Black", Arial; padding: 2px 34px; border: 4px solid #1a1000; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.55); letter-spacing: 3px; white-space: nowrap; display: none; z-index: 5; }
+  #banner.go { display: block; animation: ban 1.9s ease-out forwards; }
+  @keyframes ban { 0% { transform: translateX(-50%) skewX(-12deg) scale(0.2); opacity: 0; } 12% { transform: translateX(-50%) skewX(-12deg) scale(1.18); opacity: 1; } 22%, 78% { transform: translateX(-50%) skewX(-12deg) scale(1); opacity: 1; } 100% { transform: translateX(-50%) skewX(-12deg) translateY(-30px); opacity: 0; } }
+  @media (max-width: 600px) { #banner { font-size: 26px; padding: 2px 16px; } }
+  #vig { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.6) 100%); }
   .bar { display: inline-block; width: 60px; height: 7px; background: #223; border-radius: 3px; vertical-align: middle; } .bar i { display: block; height: 100%; border-radius: 3px; }
 </style>
 </head>
 <body>
 <div id="load">Caricamento del palazzetto 3D...</div>
+<div id="vig" style="display:none"></div>
 <div id="hud">
+  <div id="banner"></div>
   <div id="score"></div>
   <div id="msg"></div>
   <div id="hint"></div>
@@ -77,7 +85,7 @@
     Battuta: tieni ↑ salto · ↓ salto flottante · ← sky ball · → phantom · ↑+←/→ thunder<br>
     Alzata: ↑ alta · ↓ veloce · <b>Z</b> mentre ricevono = primo tempo · <b>Z</b> presto = finta<br>
     <b>X</b> cambi · <b>R</b> time-out · <b>I</b> energia · <b>L</b> rallentatore · <b>F</b> maschile / femminile<br>
-    <b>M</b> squadre e campionato · <b>G</b> 3D vision (rosso/ciano, affiancato, VR) · <b>O</b> giocatori realistici / anime / manichini · <b>Mouse</b>: clic = Z, clic destro o rotellina = visuale · <b>V</b> (o <b>1-6</b>) visuale: occhi, occhi + corpo, volto, corpo intero, spalle, TV · <b>N</b> nomi · <b>H</b> istruzioni · <b>B</b> beach / palazzetto · <b>P</b> pausa · <b>INVIO</b> nuova partita · <b>ESC</b> torna al gioco
+    <b>M</b> squadre e campionato · <b>G</b> 3D vision (rosso/ciano, affiancato, VR) · <b>O</b> giocatori realistici / anime / manichini · <b>Mouse</b>: clic = Z, clic destro o rotellina = visuale · <b>V</b> (o <b>1-7</b>) visuale: occhi, occhi + corpo, volto, corpo intero, spalle, TV, TV ARCADE · <b>N</b> nomi · <b>H</b> istruzioni · <b>B</b> beach / palazzetto · <b>P</b> pausa · <b>INVIO</b> nuova partita · <b>ESC</b> torna al gioco
   </div>
   <canvas id="map" width="360" height="200"></canvas>
   <div id="stats" style="display:none"></div>
@@ -90,6 +98,6 @@
 <div id="touch"><div id="stick"><div id="knob"></div></div><div class="tb" id="ta">Z</div><div class="tb" id="tv">V</div><div class="tb" id="ts">START</div><div class="tb" id="tx">X</div><div class="tb" id="tr">R</div></div>
 <script src="../config.js"></script>
 <script type="importmap">{ "imports": { "three": "./three.module.min.js" } }</script>
-<script type="module" src="gioco3d.js?v=11"></script>
+<script type="module" src="gioco3d.js?v=12"></script>
 </body>
 </html>

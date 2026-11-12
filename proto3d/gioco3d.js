@@ -91,7 +91,7 @@ renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local-floor');
 let vrButton = null;
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); anaglyph.setSize(innerWidth, innerHeight); stereo.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
-scene.add(new THREE.HemisphereLight(BEACH ? 0xcfe8ff : 0xdfe8ff, BEACH ? 0xc8a870 : 0x3a2a20, BEACH ? 1.2 : 0.9));
+const hemi = new THREE.HemisphereLight(BEACH ? 0xcfe8ff : 0xdfe8ff, BEACH ? 0xc8a870 : 0x3a2a20, BEACH ? 1.2 : 0.9); scene.add(hemi);
 const sun = new THREE.DirectionalLight(BEACH ? 0xfff2d8 : 0xffffff, BEACH ? 2.8 : 2.2);
 sun.position.set(-6, 22, 9); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -99,6 +99,15 @@ Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 9, bottom: -9, nea
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun);
 const fill = new THREE.DirectionalLight(0xffe8c8, 0.6); fill.position.set(8, 12, -10); scene.add(fill);
+// TV ARCADE: palazzetto in penombra con il campo illuminato da un faro dall'alto
+const spot = new THREE.SpotLight(0xfff6e0, 0, 0, 0.62, 0.55, 2); spot.position.set(0, 19, 0); spot.target.position.set(0, 0, 0); scene.add(spot, spot.target);
+function arenaLights(on) {
+  if (BEACH) on = false;
+  hemi.intensity = on ? 0.16 : BEACH ? 1.2 : 0.9; sun.intensity = on ? 0.55 : BEACH ? 2.8 : 2.2; fill.intensity = on ? 0.05 : 0.6;
+  spot.intensity = on ? 1500 : 0;
+  if (!BEACH) { scene.fog.near = on ? 22 : 30; scene.fog.color.setHex(on ? 0x04070f : 0x0b1430); scene.background.setHex(on ? 0x04070f : 0x0b1430); }
+  const v = document.getElementById('vig'); if (v) v.style.display = on ? '' : 'none';
+}
 
 function canvasTex(w, h, draw) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -160,6 +169,10 @@ if (!BEACH) {
     c.strokeStyle = '#ffffff'; c.lineWidth = 0.05 * S;
     c.strokeRect(X(-HALF), Z(-CW), 2 * HALF * S, 2 * CW * S);
     for (const xm of [-3, 3]) { c.beginPath(); c.moveTo(X(xm), Z(-CW)); c.lineTo(X(xm), Z(CW)); c.stroke(); }
+    // linee dei 3 m prolungate fuori dal campo: 5 trattini da 15 cm ogni 35 cm (1,75 m)
+    c.setLineDash([0.15 * S, 0.2 * S]);
+    for (const xm of [-3, 3]) for (const zs of [-1, 1]) { c.beginPath(); c.moveTo(X(xm), Z(zs * (CW + 0.2))); c.lineTo(X(xm), Z(zs * (CW + 1.95))); c.stroke(); }
+    c.setLineDash([]);
     c.beginPath(); c.moveTo(X(0), Z(-CW)); c.lineTo(X(0), Z(CW)); c.stroke();
     c.fillStyle = 'rgba(255,255,255,0.75)'; c.font = `bold ${2 * S}px Arial Black, Arial`; c.textAlign = 'center';
     c.save(); c.translate(X(0), Z(CW + 2.6)); c.fillText('SPIKE FEVER \'91', 0, 0); c.restore();
@@ -220,6 +233,32 @@ const crowd = [];
   if (!BEACH) for (let i = -2; i <= 2; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); l.position.set(i * 6, 16, 0); scene.add(l); }
 }
 
+// tabellone LED appeso al soffitto (palazzetto): sigle, punti, set, chi batte
+const LED = { cv: null, tex: null };
+if (!BEACH) {
+  LED.cv = document.createElement('canvas'); LED.cv.width = 512; LED.cv.height = 256;
+  LED.tex = new THREE.CanvasTexture(LED.cv); LED.tex.colorSpace = THREE.SRGBColorSpace; LED.tex.anisotropy = 8;
+  const g = new THREE.Group(), fm = new THREE.MeshStandardMaterial({ color: 0x15181f, metalness: 0.5, roughness: 0.4 }), face = new THREE.MeshBasicMaterial({ map: LED.tex, fog: false });
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.3, 4.6), [face, face, fm, fm, face, face]));
+  for (const sx of [-1.6, 1.6]) for (const sz of [-1.6, 1.6]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 6, 5), fm); c.position.set(sx, 4.15, sz); g.add(c); }
+  g.position.set(0, 9.6, 0); scene.add(g);
+}
+function ledDraw() {
+  if (!LED.cv) return;
+  const c = LED.cv.getContext('2d'), [A, B] = teams, w = 512;
+  c.fillStyle = '#050505'; c.fillRect(0, 0, w, 256);
+  c.fillStyle = '#141414'; for (let y = 4; y < 256; y += 8) for (let x = 4; x < w; x += 8) c.fillRect(x, y, 5, 5);   // puntini dei LED
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = 'bold 44px Arial Black, Arial'; c.fillStyle = '#ffffff';
+  c.fillText(A.code, 110, 46); c.fillText(B.code, w - 110, 46);
+  c.font = 'bold 118px Arial Black, Arial'; c.fillStyle = '#ffb21a'; c.shadowColor = '#ff7a00'; c.shadowBlur = 16;
+  c.fillText(String(A.score), 110, 160); c.fillText(String(B.score), w - 110, 160);
+  c.shadowBlur = 0; c.font = 'bold 30px Arial Black, Arial'; c.fillStyle = '#ff4030';
+  c.fillText('SET', w / 2, 70); c.font = 'bold 54px Arial Black, Arial'; c.fillText(`${S.setsWon[0]}-${S.setsWon[1]}`, w / 2, 124);
+  c.fillStyle = '#3aff6a'; const sx = S.serving === A ? 110 : w - 110; c.beginPath(); c.arc(sx, 236, 9, 0, Math.PI * 2); c.fill();
+  LED.tex.needsUpdate = true;
+}
+
 // tabelloni pubblicitari a bordo campo: gli sponsor dell'EDITOR (nome sul colore scelto, o il logo), altrimenti quelli inventati
 const ADS = [];
 function buildAds(list) {
@@ -254,9 +293,66 @@ ballMesh.castShadow = true; scene.add(ballMesh);
 // PHANTOM: seconda palla (finta) che si separa dalla vera; THUNDER: scia luminosa
 const ghostMesh = new THREE.Mesh(ballMesh.geometry, new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, transparent: true, opacity: 0.85 }));
 ghostMesh.visible = false; scene.add(ghostMesh);
-const trail = [];
-for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(BALL_R * (1 - i / 16), 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe040, transparent: true, opacity: 0.6 * (1 - i / 14) })); m.visible = false; scene.add(m); trail.push(m); }
-const trailPos = [];
+// scia gialla a nastro dietro le palle veloci (battute potenti, schiacciate) e la THUNDER
+const TRAIL_N = 28, trailPos = [];
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 6), 3));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 6), 3));
+{ const idx = []; for (let i = 0; i < TRAIL_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } trailGeo.setIndex(idx); }
+const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+trailMesh.frustumCulled = false; trailMesh.visible = false; scene.add(trailMesh);
+const TR = { k: 0, prev: null, st: null };
+function trailUpdate(dt) {
+  const b = ball, cur = [b.x, b.h, b.z];
+  const spd = TR.prev && dt > 0 ? Math.hypot(cur[0] - TR.prev[0], cur[1] - TR.prev[1], cur[2] - TR.prev[2]) / dt : 0;
+  TR.prev = cur;
+  if (!dt) return;
+  const on = b.live && (b.thunder || spd > 13.5);
+  if (on && TR.k < 0.05) trailPos.length = 0;   // nuova scia dal punto del colpo
+  TR.k = on ? Math.min(1, TR.k + dt * 8) : Math.max(0, TR.k - dt * 2.5);
+  trailPos.unshift(cur); if (trailPos.length > TRAIL_N) trailPos.length = TRAIL_N;
+  trailMesh.visible = TR.k > 0.01 && trailPos.length > 2;
+  if (!trailMesh.visible) return;
+  const P = trailGeo.attributes.position.array, C = trailGeo.attributes.color.array, n = trailPos.length;
+  const cam = camera.getWorldPosition(tmpV), t = new THREE.Vector3(), toC = new THREE.Vector3(), sd = new THREE.Vector3();
+  for (let i = 0; i < TRAIL_N; i++) {
+    const q = trailPos[Math.min(i, n - 1)], a = trailPos[Math.max(0, Math.min(i, n - 1) - 1)], c = trailPos[Math.min(n - 1, i + 1)];
+    t.set(a[0] - c[0], a[1] - c[1], a[2] - c[2]); toC.set(cam.x - q[0], cam.y - q[1], cam.z - q[2]);
+    sd.crossVectors(t, toC); if (sd.lengthSq() < 1e-9) sd.set(0, 1, 0); sd.normalize();
+    const f = i < n ? 1 - i / TRAIL_N : 0, w = BALL_R * 1.15 * Math.pow(f, 0.7), k = Math.pow(f, 1.3) * TR.k;
+    for (let e = 0; e < 2; e++) {
+      const o = (i * 2 + e) * 3, sg = e ? -w : w;
+      P[o] = q[0] + sd.x * sg; P[o + 1] = q[1] + sd.y * sg; P[o + 2] = q[2] + sd.z * sg;
+      C[o] = 1 * k; C[o + 1] = (b.thunder ? 0.7 : 0.86) * k; C[o + 2] = 0.18 * k;
+    }
+  }
+  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.color.needsUpdate = true;
+}
+// polvere quando la palla tocca il parquet: sbuffi che si allargano e svaniscono e un'onda sul pavimento
+const puffTex = canvasTex(64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+const PUFF = [];
+for (let i = 0; i < 30; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: 0xf4e8d0, transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; scene.add(s); PUFF.push({ s, life: 0, v: [0, 0, 0] }); }
+const wave = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+wave.rotation.x = -Math.PI / 2; wave.position.y = 0.02; wave.visible = false; wave.userData.t = 0; scene.add(wave);
+let puffI = 0;
+function puff(x, z, power = 1) {
+  for (let k = 0; k < 14; k++) {
+    const P = PUFF[puffI = (puffI + 1) % PUFF.length], a = k / 14 * Math.PI * 2 + rnd(-0.2, 0.2), v = rnd(1.4, 2.8) * power;
+    P.life = 1; P.v = [Math.cos(a) * v, rnd(0.3, 1.1) * power, Math.sin(a) * v]; P.s.position.set(x, 0.1, z); P.s.visible = true;
+  }
+  wave.position.x = x; wave.position.z = z; wave.userData.t = 1; wave.visible = true;
+}
+function puffUpdate(dt) {
+  const d = Math.exp(-dt * 4.5);
+  for (const P of PUFF) {
+    if (P.life <= 0) continue;
+    P.life -= dt * 1.5; P.v = P.v.map(v => v * d);
+    P.s.position.x += P.v[0] * dt; P.s.position.y += P.v[1] * dt; P.s.position.z += P.v[2] * dt;
+    const sc = 0.22 + (1 - P.life) * 0.95; P.s.scale.set(sc, sc, sc); P.s.material.opacity = Math.max(0, P.life) * 0.75;
+    if (P.life <= 0) P.s.visible = false;
+  }
+  if (wave.visible) { const t = wave.userData.t -= dt * 2.4, sc = 0.25 + (1 - t) * 1.7; wave.scale.set(sc, sc, 1); wave.material.opacity = Math.max(0, t) * 0.8; if (t <= 0) wave.visible = false; }
+}
 // cerchio dove andare (blu) / momento di colpire (rosso)
 const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 40), new THREE.MeshBasicMaterial({ color: 0x3a9aff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
 ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; scene.add(ring);
@@ -440,7 +536,7 @@ function runPose(ph, k) {
 }
 // opzioni grafiche (prima dello stato della partita: servono già a dress)
 // giocatori: modelli realistici, ANIME o manichini (tasto O)
-const S3 = { models: true, anime: false, stereo: 0 };
+const S3 = { models: true, anime: false, stereo: 0, arcade: (() => { try { return localStorage.getItem('sf91_p3d_arcade') === '1'; } catch (e) { return false; } })() };
 try { const st = localStorage.getItem('sf91_p3d_style') || (localStorage.getItem('sf91_p3d_models') === '0' ? 'mann' : 'real'); S3.models = st !== 'mann'; S3.anime = st === 'anime'; } catch (e) { /* */ }
 const STYLES = ['real', 'anime', 'mann'], STYLE_NAMES = { real: 'MODELLI 3D REALISTICI', anime: 'STILE ANIME', mann: 'MANICHINI' };
 const styleOf = () => !S3.models ? 'mann' : S3.anime ? 'anime' : 'real';
@@ -516,9 +612,35 @@ function dress(p) {
   }
   p.body.root.scale.setScalar(R.sc * (WOMEN ? 0.95 : 1));
   p.name = R.name; p.num = R.num;
-  p.label = nameSprite(p.human ? R.name + (p.remote ? ' (AVVERSARIO)' : ' (TU)') : R.lib ? R.name + ' (L)' : R.name, p.human && !p.remote);
+  p.label = nameSprite(labelText(p), p.human && !p.remote);
   scene.add(p.body.root); scene.add(p.label);
 }
+function labelText(p) { const R = p.team.roster[p.ni]; return p.human ? R.name + (p.remote ? ' (AVVERSARIO)' : ' (TU)') : R.lib ? R.name + ' (L)' : R.name; }
+// TV ARCADE: comandi tutta la squadra, il comando passa da solo a chi deve giocare la palla
+function setMe(p) {
+  if (!p || p === me || p.team !== me.team || p.remote) return;
+  const old = me; old.human = false; p.human = true; me = p;
+  for (const q of [old, p]) { scene.remove(q.label); q.label.material.map.dispose(); q.label.material.dispose(); q.label = nameSprite(labelText(q), q.human); scene.add(q.label); }
+}
+const hitters = (T, setter) => BEACH ? T.players.filter(q => q !== setter) : T.players.filter(q => q !== setter && q.i !== 0 && !isLib(q));
+function arcadeCtl() {
+  if (!S.arcadeOn || S.online) return;
+  const T = me.team, O = other(T), pl = T.plan;
+  if (S.state === 'serve') { if (S.serving === T && S.server) setMe(S.server); return; }
+  if (S.state !== 'rally') return;
+  if (pl && pl.p) {
+    // alzata del compagno: comandi uno schiacciatore (quello più vicino alla rete), poi chi riceve l'alzata
+    if (pl.kind === 'set') { const h = hitters(T, pl.p); if (h.length && !h.includes(me)) setMe(h.reduce((a, q) => Math.abs(q.x) < Math.abs(a.x) ? q : a)); }
+    else setMe(pl.p);   // ricezione, difesa, schiacciata, palla di là
+    return;
+  }
+  // attaccano gli altri: comandi chi sta a muro davanti allo schiacciatore
+  const a = O.attacker;
+  if (a && ball.team === O) { const bl = T.players.filter(q => homeIdx(q, 'defend') < 2 && !isLib(q)); if (bl.length) setMe(bl.reduce((x, q) => Math.abs(q.z - a.z) < Math.abs(x.z - a.z) ? q : x)); }
+}
+// freccia gialla sopra il giocatore che comandi
+const cursor = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 4), new THREE.MeshBasicMaterial({ color: 0xffe030, fog: false }));
+cursor.rotation.x = Math.PI; cursor.visible = false; scene.add(cursor);
 let teams = [makeTeam('ITA', -1, true), makeTeam('BRA', 1, false)];
 let me = teams[0].players[1];
 // nuova partita tra due squadre qualsiasi (scelte nella schermata iniziale)
@@ -529,6 +651,7 @@ function setupTeams(a, b, online) {
   me = online === 'guest' ? teams[1].players[1] : teams[0].players[1];   // (lo spettatore segue il giocatore 1; T = l'altro)
   if (online) for (const t of teams) for (const p of t.players) if (p.human) { p.remote = p !== me; dress(p); }
   window.__teams = teams;
+  S.arcadeOn = !online && S3.arcade && !S.practice; arenaLights(S.arcadeOn);
 }
 const other = t => t === teams[0] ? teams[1] : teams[0];
 // (prove automatiche: con window.__auto il tuo giocatore gioca da solo)
@@ -541,6 +664,32 @@ const zClr = p => { if (p.remote) REM.z = false; else S.zPress = false; };
 
 // arbitro sul seggiolone a bordo rete (nome dall'EDITOR, se c'è)
 const REF = { body: makeAthlete({ shirt: '#f4f4f4', trim: '#1a1a1a', trimHex: '#1a1a1a', shorts: '#1a1a1a' }, '', { skin: '#eeb088', hair: '#5a4a3a' }), label: null };
+// giudici di linea agli angoli opposti con la bandierina: la alzano quando la palla è fuori
+const JUDGES = [[-1, 1], [1, -1]].map(([sx, sz], i) => {
+  const J = { body: makeAthlete({ shirt: '#20283a', trim: '#f4f4f4', trimHex: '#f4f4f4', shorts: '#1a1a1a' }, '', { skin: ['#c88a5a', '#f2c4a4'][i], hair: '#2a2018', beach: BEACH }), cur: {}, up: 0, x: sx * (HALF + 1.4), z: sz * (CW + 1.3) };
+  J.body.root.position.set(J.x, 0, J.z); J.body.root.rotation.y = Math.atan2(-J.x, -J.z); scene.add(J.body.root);
+  const flagTex = canvasTex(32, 32, (c) => { for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) { c.fillStyle = (a + b) % 2 ? '#f2d020' : '#e02020'; c.fillRect(a * 16, b * 16, 16, 16); } });
+  const fl = new THREE.Group(), stick = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+  stick.position.y = -0.22; fl.add(stick);
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.24), new THREE.MeshStandardMaterial({ map: flagTex, side: THREE.DoubleSide, roughness: 0.8 }));
+  cloth.position.set(0, -0.36, 0.15); cloth.rotation.y = Math.PI / 2; fl.add(cloth);
+  J.body.J.haR.add(fl); J.flag = cloth; stick.userData.keep = cloth.userData.keep = true;
+  return J;
+});
+const FLAG_UP = { lean: 0, crouch: 0, sh: [-3.05, -0.1], shZ: [0.15, 0.12], el: [-0.05, -0.2], hi: [0, 0], kn: [0.08, 0.08], an: [0, 0], head: 0.15 };
+function judgeFlag(x, z) {   // alza la bandierina il giudice più vicino a dove è caduta la palla
+  const J = JUDGES.reduce((a, q) => Math.hypot(q.x - x, q.z - z) < Math.hypot(a.x - x, a.z - z) ? q : a);
+  J.up = 2.2;
+}
+function judgesDraw(dt) {
+  for (const J of JUDGES) {
+    if (J.up > 0) J.up -= dt;
+    const P = J.up > 0 ? FLAG_UP : POSE.stand;
+    applyPose(J, P, Math.min(1, dt * 9 || 1));
+    if (J.up > 0) J.flag.rotation.x = Math.sin(S.t * 14) * 0.35; else J.flag.rotation.x = 0;
+    if (J.skin) poseSkinned(J.skin, J.body.J, J.body.root);
+  }
+}
 {
   const chair = new THREE.Group(), pm = new THREE.MeshStandardMaterial({ color: 0x8a8f9a, metalness: 0.4, roughness: 0.5 });
   for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8), pm); leg.position.set(x, 0.8, z); chair.add(leg); }
@@ -553,12 +702,15 @@ const REF = { body: makeAthlete({ shirt: '#f4f4f4', trim: '#1a1a1a', trimHex: '#
 let ballModel = null, ghostModel = null;
 function useModels() {
   if (!MODELS.ok) return;
-  if (REF.skin) { REF.body.root.remove(REF.skin.root); REF.skin = null; }
-  REF.body.root.traverse(o => { if (o.isMesh) o.visible = !S3.models; });
-  if (S3.models) {
-    REF.skin = makeSkinned(false, { shirt: '#f4f4f4', shorts: '#1a1a1a', skin: '#eeb088', hair: '#4a3a2a' }, '', null);
-    REF.body.root.add(REF.skin.root); REF.body.root.updateMatrixWorld(true); poseSkinned(REF.skin, REF.body.J, REF.body.root);
-  }
+  const looks = [{ shirt: '#f4f4f4', shorts: '#1a1a1a', skin: '#eeb088', hair: '#4a3a2a' }, { shirt: '#20283a', shorts: '#1a1a1a', skin: '#c88a5a', hair: '#2a2018' }, { shirt: '#20283a', shorts: '#1a1a1a', skin: '#f2c4a4', hair: '#2a2018' }];
+  [REF, ...JUDGES].forEach((O, i) => {
+    if (O.skin) { O.body.root.remove(O.skin.root); O.skin = null; }
+    O.body.root.traverse(o => { if (o.isMesh && !o.userData.keep) o.visible = !S3.models; });
+    if (S3.models) {
+      O.skin = makeSkinned(false, looks[i], '', null);
+      O.body.root.add(O.skin.root); O.body.root.updateMatrixWorld(true); poseSkinned(O.skin, O.body.J, O.body.root);
+    }
+  });
   if (!ballModel) { ballModel = makeBall(BALL_R); ballMesh.add(ballModel); ghostModel = makeBall(BALL_R); ghostMesh.add(ghostModel); ghostModel.userData.mats.forEach(m => { m.transparent = true; }); }
   ballMesh.material.visible = ghostMesh.material.visible = !S3.models; ballModel.visible = ghostModel.visible = S3.models;
 }
@@ -609,6 +761,13 @@ function phaseOf(T) {
   return 'defend';
 }
 function say(m, t = 1.6) { S.msg = m; S.msgT = t; }
+// striscione giallo in alto (SUPER SPIKE, MONSTER BLOCK, ACE)
+function banner(txt) {
+  if (S.online === 'host') RETE.ev.push(['bn', txt]);
+  const el = document.getElementById('banner'); if (!el) return;
+  el.textContent = txt; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  if (/SPIKE|BLOCK/.test(txt)) shake(0.3);
+}
 
 // ---------------- battute (come nel gioco: la direzione tenuta al lancio sceglie la battuta) ----------------
 // nessuna = dall'alto (flottante) · ↑ = in salto (jump spin) · ↓ = salto flottante (jump float)
@@ -633,6 +792,7 @@ function aiServeKind() {
 
 function startServe() {
   const T = S.serving, sv = T.players[T.srvI];
+  if (S.arcadeOn && T === me.team) setMe(sv);
   S.state = 'serve'; S.t = 0; S.server = sv; S.phase = 'walk'; S.toss = false; S.hitWin = false; S.kind = null; S.receiverTouched = false;
   for (const t of teams) { t.quickReq = false; for (const p of t.players) p.win = false; }
   Object.assign(ball, { held: sv, live: false, team: null, last: null, vx: 0, vz: 0, vy: 0, wob: 0, top: 0, ghost: 0, thunder: 0 });
@@ -651,6 +811,7 @@ function point(T, why, who, what) {
   for (const t of teams) { t.plan = null; t.attacker = null; }
   S.streak = S.streak && S.streak.T === T ? { T, n: S.streak.n + 1 } : { T, n: 1 };
   say(why + ' - PUNTO ' + T.name + (T === me.team ? '!' : ''));
+  if (what === 'kill' || what === 'blk' || what === 'ace') banner(what === 'ace' ? 'ACE!' : what === 'blk' ? 'MONSTER BLOCK!' : ball.kind === 'dump' ? 'SURPRISE ATTACK!' : 'SUPER SPIKE!');
   const won = T.score >= target() && T.score - other(T).score >= 2;
   if (T !== S.serving) { S.serving = T; T.srvI = (T.srvI + 1) % NPL; }
   for (const t of teams) {
@@ -805,6 +966,8 @@ function movePlayer(p, dt) {
     let vx = mx * -T.side, vz = mz * -T.side;
     // durante la schiacciata la rincorsa è automatica (come nel gioco)
     if (p.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
+    // TV ARCADE: a muro, se non tocchi le frecce, ti sposti da solo davanti allo schiacciatore (Z = salta)
+    if (S.arcadeOn && p === me && !vx && !vz && S.state === 'rally' && Math.abs(p.x) < 1.8) { const a = other(T).attacker; if (a && ball.team !== T && Math.abs(a.z - p.z) > 0.12) vz = Math.sign(a.z - p.z); }
     const n = Math.hypot(vx, vz) || 1;
     if (!(p.air || (S.state === 'serve' && S.server === p && S.phase !== 'walk'))) { p.x += vx / n * sp * dt * (vx || vz ? 1 : 0); p.z += vz / n * sp * dt * (vx || vz ? 1 : 0); }
     p.spd = (vx || vz) && !p.air ? sp : 0;
@@ -1049,6 +1212,7 @@ function step(dt) {
   if (S.state === 'rally') {
     if (b.ver !== S.lastVer) { S.lastVer = b.ver; S.verAge = 0; } else S.verAge += dt;
     for (const t of teams) think(t);
+    arcadeCtl();
     // giocatori umani (tu e, online, l'avversario): rincorsa automatica, finta, primo tempo, salto con Z
     const humans = teams.map(t => t.players.find(p => p.human && hum(p))).filter(Boolean);
     for (const H of humans) {
@@ -1122,12 +1286,13 @@ function setStereo(m) {
   S3.mode = m;
 }
 
-// ---------------- visuali (V o i tasti 1-6) ----------------
+// ---------------- visuali (V o i tasti 1-7) ----------------
 const CAMS = [
   { id: 'eyes', name: 'OCCHI (prima persona)' }, { id: 'eyesBody', name: 'PRIMA PERSONA CON IL CORPO' },
   { id: 'face', name: 'IL TUO VOLTO' }, { id: 'full', name: 'CORPO INTERO' },
-  { id: 'shoulders', name: 'DIETRO LE SPALLE' }, { id: 'tv', name: 'TELEVISIONE' }
+  { id: 'shoulders', name: 'DIETRO LE SPALLE' }, { id: 'tv', name: 'TELEVISIONE' }, { id: 'bcast', name: 'TV ARCADE (TELECRONACA)' }
 ];
+const CAM_BCAST = CAMS.findIndex(c => c.id === 'bcast');
 function setCam(i) { S.cam = (i + CAMS.length) % CAMS.length; S.camMsg = 'VISUALE ' + (S.cam + 1) + ': ' + CAMS[S.cam].name; S.camT = 1.6; }
 function nextCam(d) { setCam(S.cam + d); }
 
@@ -1145,9 +1310,16 @@ function draw(dt) {
   const rs = b.team ? -b.team.side : 0;
   ghostMesh.visible = !!b.ghost && b.live && b.x * rs < 2.5;
   if (ghostMesh.visible) { ghostMesh.position.set(b.x, b.h + Math.sin(S.t * 7) * 0.1, b.z + b.ghostZ); ghostMesh.material.opacity = clamp(0.85 - (b.x * rs + 6) / 12, 0.15, 0.85); if (ghostModel) ghostModel.userData.mats.forEach(m => { m.opacity = ghostMesh.material.opacity; }); }
-  trailPos.unshift([b.x, b.h, b.z]); trailPos.length = trail.length;
-  trail.forEach((m, i) => { const q = trailPos[i]; m.visible = !!b.thunder && b.live && !!q; if (m.visible) m.position.set(q[0], q[1], q[2]); });
-  splashUpdate(dt);
+  splashUpdate(dt); puffUpdate(dt);
+  // palla a terra (anche per chi è collegato online): polvere nel palazzetto; fuori: il giudice di linea alza la bandierina
+  if (S.state !== TR.st) {
+    if (S.state === 'dead' && TR.st === 'rally' && b.h < 0.6) {
+      if (!BEACH) puff(b.x, b.z, Math.abs(b.x) <= HALF + 0.2 && Math.abs(b.z) <= CW + 0.2 ? 1.2 : 0.8);
+      if (/FUORI/.test(S.msg)) judgeFlag(b.x, b.z);
+    }
+    TR.st = S.state;
+  }
+  judgesDraw(dt);
   // giocatori: posizione, direzione (verso la palla, di solito verso la rete) e posa
   for (const t of teams) for (const p of t.players) {
     const R = p.body.root;
@@ -1228,6 +1400,20 @@ function draw(dt) {
     eye = new THREE.Vector3(me.x + side * 3.4, me.h + 2.6, me.z * 0.85);
     look = new THREE.Vector3(lerp(me.x, b.x, 0.5), Math.max(1.6, b.h * 0.6), lerp(me.z, b.z, 0.4));
     camPos.lerp(eye, Math.min(1, dt * 5)); camLook.lerp(look, Math.min(1, dt * 6));
+  } else if (V === 'bcast') {
+    // TV ARCADE (telecronaca): alla battuta alta di tre quarti dietro chi batte; nello scambio di lato vicino alla rete,
+    // segue la palla girando piano; a palla a terra si avvicina al punto
+    const k = Math.min(1, dt * 2.2);
+    if (S.state === 'serve' && S.server) {
+      const s = S.server.team.side;
+      eye = new THREE.Vector3(s * (HALF + 6.5), 6.4, 7.5); look = new THREE.Vector3(s * 0.5, 0.6, 0);
+    } else if (S.state === 'dead') {
+      eye = new THREE.Vector3(b.x * 0.75, 4.6, clamp(b.z + 9.5, 6.5, 12)); look = new THREE.Vector3(b.x * 0.9, 0.6, b.z * 0.6);
+    } else {
+      const s = ball.team ? ball.team.side : 0;   // un po' dalla parte di chi attacca, così si vede la palla andare di là
+      eye = new THREE.Vector3(b.x * 0.42 + s * 2.6, 6.6, 12.8); look = new THREE.Vector3(b.x * 0.72, 0.9 + Math.min(b.h, 5) * 0.12, b.z * 0.3);
+    }
+    camPos.lerp(eye, k); camLook.lerp(look, Math.min(1, dt * 3));
   } else {
     // televisione: di lato, in alto
     eye = new THREE.Vector3(b.x * 0.5, 7.5, 17); look = new THREE.Vector3(b.x * 0.7, 1, 0);
@@ -1248,6 +1434,10 @@ function draw(dt) {
     for (const c of crowd) { m.makeTranslation(c.px, c.py, c.pz); crowd.bodies.setMatrixAt(c.k, m); m.makeTranslation(c.px, c.py + 0.43, c.pz); crowd.heads.setMatrixAt(c.k, m); }
     crowd.bodies.instanceMatrix.needsUpdate = crowd.heads.instanceMatrix.needsUpdate = true; crowd.jumping = false;
   }
+  trailUpdate(dt);
+  // TV ARCADE: freccia sopra il giocatore che comandi
+  cursor.visible = !!S.arcadeOn && S.state !== 'end' && !/eyes|face/.test(V);
+  if (cursor.visible) { cursor.position.set(me.x, me.h + (S.names === 1 ? 2.62 : 2.35) + Math.sin(S.t * 6) * 0.06, me.z); cursor.rotation.y += dt * 3; }
   if (renderer.xr.isPresenting || !S3.stereo) { if (!renderer.xr.isPresenting) { renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight); } renderer.render(scene, camera); }
   else if (S3.stereo === 1) anaglyph.render(scene, camera);
   else stereo.render(scene, camera);
@@ -1263,7 +1453,7 @@ function hud() {
   const [A, B] = teams;
   const logo = t => TEAMS[t.code].logo ? `<img src="${TEAMS[t.code].logo}" alt="">` : '';
   const sc = `${A.code}${A.score}${S.serving === A}${B.score}${S.setsWon}`, sw = MATCH.sets > 1 ? i => `<small class="sets">${S.setsWon[i]}</small>` : () => '';
-  if (S.scoreKey !== sc) { S.scoreKey = sc; $('score').innerHTML = `${logo(A)}${sw(0)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${sw(1)}${logo(B)}`; }
+  if (S.scoreKey !== sc) { S.scoreKey = sc; ledDraw(); $('score').innerHTML = `${logo(A)}${sw(0)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${sw(1)}${logo(B)}`; }
   $('msg').textContent = S.camT > 0 ? S.camMsg : S.msgT > 0 || S.state === 'end' ? S.msg : '';
   let [h, now] = playHint();
   if (S.inSetup) h = '';
@@ -1707,7 +1897,7 @@ function netApply(m) {
     p.tx = q[0]; p.tz = q[1]; p.th = q[2]; p.act = q[3] || null; p.spd = q[4]; p.air = !!q[5]; p.win = !!q[7];
     if (p.ni !== q[6]) { p.ni = q[6]; dress(p); }
   }));
-  for (const e of m.ev || []) { if (e[0] === 'st') sandStamp(...e.slice(1)); else if (e[0] === 'sp') splash(...e.slice(1)); }
+  for (const e of m.ev || []) { if (e[0] === 'st') sandStamp(...e.slice(1)); else if (e[0] === 'sp') splash(...e.slice(1)); else if (e[0] === 'bn') banner(e[1]); }
 }
 // guest: posizioni ammorbidite tra un pacchetto e l'altro, e invio dei tasti
 function netGuestFrame(dt) {
@@ -1745,7 +1935,7 @@ function openSetup() {
   let h = `<h2>SPIKE FEVER 3D · PRIMA PERSONA</h2>
     <div class="row"><button data-m="friendly" class="${SETUP.mode === 'friendly' ? 'on' : ''}">AMICHEVOLE</button><button data-m="camp" class="${SETUP.mode === 'camp' ? 'on' : ''}" ${camps.length ? '' : 'disabled'}>CAMPIONATO</button><button data-m="practice" class="${SETUP.mode === 'practice' ? 'on' : ''}">PRATICA</button><button data-m="online" class="${SETUP.mode === 'online' ? 'on' : ''}">ONLINE</button>
     <button data-x="beach">${BEACH ? 'PALAZZETTO' : 'BEACH'}</button><button data-x="women">${WOMEN ? 'MASCHILE' : 'FEMMINILE'}</button>
-    <button data-x="stereo">${['3D VISION: NO', '3D: ROSSO/CIANO', '3D: AFFIANCATO', '3D: VR'][S3.mode || 0]}</button>${MODELS.ok ? `<button data-x="models">GIOCATORI: ${STYLE_NAMES[styleOf()]}</button>` : ''}</div>`;
+    ${SETUP.mode === 'online' ? '' : `<button data-x="arcade" class="${S3.arcade ? 'on' : ''}">${S3.arcade ? 'TV ARCADE: COMANDI TUTTA LA SQUADRA' : 'COMANDI: UN GIOCATORE'}</button>`}<button data-x="stereo">${['3D VISION: NO', '3D: ROSSO/CIANO', '3D: AFFIANCATO', '3D: VR'][S3.mode || 0]}</button>${MODELS.ok ? `<button data-x="models">GIOCATORI: ${STYLE_NAMES[styleOf()]}</button>` : ''}</div>`;
   const opt = (id, list, cur) => `<select id="${id}">${list.map(([v, l]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   if (SETUP.mode === 'practice') {
     h += `<div class="row"><label>ESERCIZIO ${opt('selD', DRILLS3, SETUP.drill || 'serve')}</label><label>${opt('selG', [[1, 'GUIDATA: SI FERMA A OGNI PASSAGGIO'], [0, 'NORMALE']], SETUP.guided === 0 ? 0 : 1)}</label></div>
@@ -1799,6 +1989,7 @@ function openSetup() {
     if (x === 'reset') { const { c } = SETUP.cur; campSave(c, { mine: SETUP.cur.st.mine, res: {} }); openSetup(); }
     if (x === 'back') location.href = '../index.html';
     if (x === 'go') startFromSetup();
+    if (x === 'arcade') { S3.arcade = !S3.arcade; try { localStorage.setItem('sf91_p3d_arcade', S3.arcade ? '1' : '0'); } catch (e) { /* */ } openSetup(); }
     if (x === 'stereo') { setStereo(((S3.mode || 0) + 1) % 4); openSetup(); }
     if (x === 'models') { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o' })); openSetup(); }
     if (x === 'nethost') netHost();
@@ -1823,6 +2014,7 @@ function startFromSetup() {
   saveSetup();
   $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
   setupTeams(a, b); newGame();
+  if (S.arcadeOn) { setCam(CAM_BCAST); say('TV ARCADE: comandi tutta la squadra', 2); } else if (S.cam === CAM_BCAST) setCam(0);
   if (S.practice) { practiceStart(); say('PRATICA: ' + DRILLS3.find(d => d[0] === S.practice)[1] + (S.guided ? ' · GUIDATA' : ''), 2); }
 }
 // fine del set in campionato: risultato, altre gare della giornata e classifica
@@ -1853,7 +2045,7 @@ function frame(now) {
   if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
   draw(S.paused ? 0 : dt);
 }
-window.__ballMesh = ballMesh; window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
+window.__trail = TR; window.__JUDGES = JUDGES; window.__ballMesh = ballMesh; window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
 // prove: n passi di simulazione senza disegnare
 window.__dbg = () => ({ hint: playHint(), seen: [...(S.guideSeen || [])], toss: TOSS.open, sub: SUB.open });
 window.__step1 = () => { if (S.guideF) return; if (S.zT > 0) { S.zT -= CFG.STEP; if (S.zT <= 0) S.zPress = false; } step(CFG.STEP); trackMoves(); guideCheck(); };
