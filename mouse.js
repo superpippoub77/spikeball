@@ -94,10 +94,9 @@
   }
   // menu principale: schede, lingua, GIOCA ONLINE, righe SQUADRE / GRAFICA / COMANDI
   function mainMenu(sc, x, y) {
-    const POS = [[52, 96], [124, 96], [196, 96], [268, 96], [52, 150], [124, 150], [196, 150], [268, 150]];
-    for (let i = 0; i < POS.length; i++) {
-      const [cx, cy] = POS[i];
-      if (inBox(x, y, cx - 33, cy - 25, cx + 33, cy + 25)) return item(sc, i, () => press('z'));
+    for (let i = 0; i < MENU_POS.length; i++) {
+      const [cx, cy] = MENU_POS[i];
+      if (inBox(x, y, cx - 29, cy - 25, cx + 29, cy + 25)) return item(sc, i, () => press('z'));
     }
     if (inBox(x, y, 60, 54, 160, 68)) return { same: () => sc.sel === -1, pick: () => { if (sc.sel !== -1) { sc.sel = -1; sc.refresh(); } }, act: () => sc.cycleLang(x < 90 ? -1 : 1) };
     if (inBox(x, y, 170, 54, 260, 68)) return { same: () => sc.sel === MENU_ONLINE, pick: () => { if (sc.sel !== MENU_ONLINE) { sc.sel = MENU_ONLINE; sc.refresh(); } }, act: () => sc.openOnline() };
