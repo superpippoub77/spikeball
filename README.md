@@ -321,6 +321,9 @@ Nel menu principale, accanto alla lingua, **GIOCA ONLINE** fa giocare due person
 ### Comandi: prova, rimappatura e gamepad
 Nel menu principale la riga **COMANDI** apre un pannello con un mini controller che si illumina quando premi un tasto o un pulsante (direzioni comprese), per il giocatore 1 e il giocatore 2. Per ogni azione (su, giù, sinistra, destra, A, START, indietro, pausa, cambi, time-out) puoi cambiare il **tasto** e il **pulsante del gamepad** (se era già usato, le due azioni si scambiano) e con **RIPRISTINA PREDEFINITI** torni ai tasti originali. I **gamepad** USB o Bluetooth funzionano in tutto il gioco: croce e levetta sinistra per le direzioni, il primo gamepad è del giocatore 1, il secondo del giocatore 2. Le scelte restano salvate nel browser (`controlli.js`).
 
+### Mouse
+Con il mouse (`mouse.js`) si usa tutto il gioco: passando sopra le voci dei menu (schede del menu principale, bandiere delle squadre, righe delle impostazioni, elenchi delle altre schermate) la voce si sceglie, il **clic** la conferma (su una riga con un valore lo cambia, come →; sulle bandiere il primo clic sceglie, il secondo conferma); dove non c'è una voce il clic vale **Z**. **Clic destro** = ESC (indietro), **rotellina** = ↑ ↓ (con MAIUSC ← →), clic con la rotellina = INVIO. Nel prototipo 3D: clic = Z, clic destro o rotellina = cambia visuale.
+
 ### Telefono e tablet
 Sui dispositivi touch compaiono i comandi virtuali (`touch.js`), che mandano gli stessi tasti della tastiera, quindi funzionano in tutti i menu e in partita:
 - **joystick** a sinistra: compare dove appoggi il pollice (a riposo si vede in basso a sinistra), 8 direzioni come le frecce;

@@ -1355,6 +1355,21 @@ addEventListener('keydown', e => {
   if (k === 'escape') { if (RETE.role) netSend({ t: 'bye' }); location.href = '../index.html'; }
 });
 addEventListener('keyup', e => { if (KEYMAP[e.key]) input[KEYMAP[e.key]] = false; });
+// mouse sul campo: clic = Z (salta, batti, schiaccia, conferma), clic destro = cambia visuale, rotellina = visuale
+{
+  const cv = renderer.domElement;
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') return;
+    if (e.button === 2) { nextCam(1); return; }
+    if (e.button !== 0) return;
+    if (TOSS.open) { tossKey('ok'); return; }
+    if (S.guideF) { guideKey('z'); return; }
+    S.zPress = true; S.zT = 0.25;
+  });
+  let wT = 0;
+  cv.addEventListener('wheel', e => { e.preventDefault(); const t = performance.now(); if (t - wT < 200) return; wT = t; nextCam(e.deltaY > 0 ? 1 : -1); }, { passive: false });
+}
 let padPrev = {};
 function pollPad() {
   const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
