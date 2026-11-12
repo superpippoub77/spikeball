@@ -526,7 +526,7 @@ function setupTeams(a, b, online) {
   for (const t of teams) for (const p of t.players) { scene.remove(p.body.root); scene.remove(p.label); }
   teams = [makeTeam(a, -1, true), makeTeam(b, 1, !!online)];
   // online: l'host comanda a sinistra, l'avversario (dalla rete) a destra; per il guest è il contrario
-  me = online === 'guest' ? teams[1].players[1] : teams[0].players[1];
+  me = online === 'guest' ? teams[1].players[1] : teams[0].players[1];   // (lo spettatore segue il giocatore 1; T = l'altro)
   if (online) for (const t of teams) for (const p of t.players) if (p.human) { p.remote = p !== me; dress(p); }
   window.__teams = teams;
 }
@@ -664,7 +664,7 @@ function point(T, why, who, what) {
     const need = Math.ceil(MATCH.sets / 2);
     if (S.setsWon[ti] >= need) {
       S.over = true; S.state = 'end'; showStats(true);
-      if (S.online === 'host') { netSend(netSnap()); netSend({ t: 'end', st: teams.map(t => t.st), en: teams.map(t => t.en) }); }
+      if (S.online === 'host') { netSendAll(netSnap()); netSendAll({ t: 'end', st: teams.map(t => t.st), en: teams.map(t => t.en) }); }
       say((S.online ? 'VINCE ' + T.name + ' ' : T === me.team ? 'HAI VINTO ' : 'HAI PERSO ') + (MATCH.sets > 1 ? `${Math.max(...S.setsWon)}-${Math.min(...S.setsWon)}` : 'IL SET'), 99);
       campEnd(S.setsWon[teams.indexOf(me.team)], S.setsWon[teams.indexOf(other(me.team))]);
     } else { S.state = 'setbreak'; S.t = 0; say(`SET ${S.setLog.length} A ${T.name} ${T.score}-${other(T).score}  ·  SET ${S.setsWon[0]}-${S.setsWon[1]}`, 4); }
@@ -1278,6 +1278,7 @@ function hud() {
 // che cosa devi fare in questo momento (riga in basso; nella pratica guidata il gioco si ferma a ogni nuova istruzione)
 function playHint() {
   let h = '', now = false;
+  if (S.online === 'watch') return [S.state === 'end' ? '' : 'MONITOR · V visuale · T segui l\'altro giocatore · M menu', false];
   const mp = me.team.plan;
   if (S.state === 'serve' && S.server === me) {
     h = S.phase === 'toss' ? (me.win ? 'Z ADESSO! (↑ lunga, ↓ corta, ← → lato)' : SERVES[S.kind].name + ': Z quando la palla diventa ROSSA')
@@ -1331,6 +1332,10 @@ addEventListener('keydown', e => {
   if (k === 'p') S.paused = !S.paused;
   if (k === 'b') { const u = new URL(location.href); if (BEACH) u.searchParams.delete('beach'); else u.searchParams.set('beach', '1'); location.href = u.href; }
   if (S.online === 'guest' && (k === 'x' || k === 'r' || k === 'p')) { if (k === 'r') netSend({ t: 'to' }); return; }
+  if (S.online === 'watch') {
+    if (k === 't') { me = me === teams[0].players[1] ? teams[1].players[1] : teams[0].players[1]; say('SEGUI ' + me.name, 1.2); return; }
+    if (k === 'x' || k === 'r' || k === 'p') return;
+  }
   if (S.online && k === 'p') return;
   if (k === 'x') subOpen();
   if (k === 'r') { if (!callTimeout(me.team)) say(me.team.to >= 1 ? 'TIME-OUT GIÀ USATO IN QUESTO SET' : 'TIME-OUT SOLO A PALLA FERMA', 1.4); }
@@ -1399,7 +1404,7 @@ function newGame() {
   S.serving = Math.random() < 0.5 ? teams[0] : teams[1]; S.firstServe = S.serving;
   startServe();
   tossDraw();
-  if (S.practice || S.online === 'guest' || S.inSetup) return;
+  if (S.practice || S.online === 'guest' || S.online === 'watch' || S.inSetup) return;
   coinToss();
 }
 // ---------------- sorteggio (come nel gioco): testa o croce, chi vince sceglie battuta o ricezione ----------------
@@ -1482,9 +1487,23 @@ function guideDraw() {
 // Chi crea la partita (host) fa girare tutto: l'avversario è il giocatore che comanda della squadra di destra, con i
 // tasti che arrivano dalla rete. L'host manda 30 volte al secondo giocatori, pallone, punteggio e impronte nella sabbia;
 // l'altro (guest) manda i suoi tasti e disegna la partita dai suoi occhi. Se uno si scollega: gioca il computer.
-const RETE = { role: null, pc: null, ch: null, connected: false, code: null, status: '', lastRx: 0, ev: [], peerTeam: null, sendT: 0, lastIn: '' };
+// MONITOR: chi crea la partita apre anche una stanza per gli spettatori (link ?watch=CODICE): ricevono lo stesso stato
+// del guest e guardano con le visuali che vogliono. LINK: ?join=CODICE (invito), ?match=A.B.set.punti (partita veloce).
+const RETE = { role: null, pc: null, ch: null, connected: false, code: null, status: '', lastRx: 0, ev: [], peerTeam: null, sendT: 0, lastIn: '', watchers: [], wcode: null, wkey: null, started: null };
 const RETE_API = '../api/online.php', RETE_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
 function netSend(o) { const ch = RETE.ch; if (ch && ch.readyState === 'open') try { ch.send(JSON.stringify(o)); } catch (e) { /* */ } }
+// all'avversario e agli spettatori
+function netSendAll(o) {
+  const j = JSON.stringify(o);
+  for (const ch of [RETE.ch, ...RETE.watchers.map(w => w.ch)]) if (ch && ch.readyState === 'open') try { ch.send(j); } catch (e) { /* */ }
+  RETE.watchers = RETE.watchers.filter(w => w.ch.readyState === 'open' || w.ch.readyState === 'connecting');
+}
+// link da mandare (con la stessa versione: palazzetto o beach, maschile o femminile)
+function netLink(k, v) { const u = new URL(location.href); u.search = ''; u.hash = ''; if (BEACH) u.searchParams.set('beach', '1'); u.searchParams.set('women', WOMEN ? '1' : '0'); u.searchParams.set(k, v); return u.href; }
+function linkBox(label, url) {
+  const e = String(url).replace(/"/g, '&quot;');
+  return `<div class="row link"><span class="muted">${label}</span><input class="url" readonly value="${e}"><button data-copy="${e}">COPIA</button>${navigator.share ? `<button data-share="${e}">INVIA</button>` : ''}</div>`;
+}
 async function netApi(a, c, body) {
   const r = await fetch(`${RETE_API}?a=${a}${c ? '&c=' + encodeURIComponent(c) : ''}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
   const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.errore || 'errore ' + r.status); return j;
@@ -1492,11 +1511,15 @@ async function netApi(a, c, body) {
 const netIce = pc => pc.iceGatheringState === 'complete' ? Promise.resolve() : new Promise(ok => { const t = setTimeout(ok, 4000); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); ok(); } }); });
 function netChannel(ch) {
   RETE.ch = ch;
-  ch.onopen = () => { RETE.connected = true; RETE.lastRx = performance.now(); RETE.status = 'COLLEGATI!'; netSend({ t: 'team', code: SETUP.a }); if (S.inSetup) openSetup(); };
+  ch.onopen = () => { RETE.connected = true; RETE.lastRx = performance.now(); RETE.status = 'COLLEGATI!'; netSend({ t: 'team', code: SETUP.a }); if (RETE.role === 'host' && SETUP.quickB) netSend({ t: 'suggest', code: SETUP.quickB }); if (S.inSetup) openSetup(); };
   ch.onclose = () => netLost();
   ch.onmessage = e => { RETE.lastRx = performance.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } netMsg(m); };
 }
-function netClose() { try { RETE.ch && RETE.ch.close(); } catch (e) { /* */ } try { RETE.pc && RETE.pc.close(); } catch (e) { /* */ } Object.assign(NET, { pc: null, ch: null, connected: false, role: null, peerTeam: null }); }
+function netClose() {
+  try { RETE.ch && RETE.ch.close(); } catch (e) { /* */ } try { RETE.pc && RETE.pc.close(); } catch (e) { /* */ }
+  for (const w of RETE.watchers) { try { w.ch.close(); w.pc.close(); } catch (e) { /* */ } }
+  Object.assign(RETE, { pc: null, ch: null, connected: false, role: null, peerTeam: null, watchers: [], wcode: null, wkey: null, started: null });
+}
 async function netHost() {
   netClose(); RETE.role = 'host'; RETE.status = 'CREO LA PARTITA...'; openSetup();
   try {
@@ -1505,6 +1528,7 @@ async function netHost() {
     await pc.setLocalDescription(await pc.createOffer()); await netIce(pc);
     const { code } = await netApi('create', null, { offer: pc.localDescription, meta: { g3d: true, beach: BEACH, women: WOMEN } });
     RETE.code = code; RETE.status = 'IN ATTESA DELL\'AVVERSARIO...'; openSetup();
+    netWatchRoom(pc);
     for (let i = 0; i < 600 && RETE.pc === pc && !RETE.connected; i++) {
       const r = await netApi('answer', code);
       if (r.answer) { await pc.setRemoteDescription(r.answer); RETE.status = 'COLLEGAMENTO...'; openSetup(); break; }
@@ -1530,23 +1554,78 @@ async function netJoin(code) {
     setTimeout(() => { if (RETE.pc === pc && !RETE.connected) { RETE.status = 'COLLEGAMENTO NON RIUSCITO (rete che blocca le connessioni dirette)'; RETE.role = null; openSetup(); } }, 20000);
   } catch (e) { RETE.status = 'ERRORE: ' + e.message; RETE.role = null; openSetup(); }
 }
+// MONITOR (host): una stanza aperta, un nuovo collegamento per ogni spettatore (al massimo 8)
+async function netWatchRoom(gamePc) {
+  const newPc = () => { const pc = new RTCPeerConnection({ iceServers: RETE_ICE }); return { pc, ch: pc.createDataChannel('watch', { ordered: true }) }; };
+  try {
+    let w = newPc();
+    await w.pc.setLocalDescription(await w.pc.createOffer()); await netIce(w.pc);
+    const r0 = await netApi('create', null, { offer: w.pc.localDescription, multi: true, meta: { g3d: true, beach: BEACH, women: WOMEN, watch: true } });
+    RETE.wcode = r0.code; RETE.wkey = r0.key; if (S.inSetup) openSetup();
+    let renewT = Date.now();
+    while (RETE.pc === gamePc && RETE.role === 'host') {
+      await new Promise(ok => setTimeout(ok, 2000));
+      if (RETE.watchers.length >= 8) continue;
+      const r = await fetch(`${RETE_API}?a=answer&c=${RETE.wcode}&k=${RETE.wkey}`, { cache: 'no-store' }).then(x => x.json()).catch(() => ({}));
+      if (r.answer) {
+        const cur = w; await cur.pc.setRemoteDescription(r.answer);
+        cur.ch.onopen = () => { cur.ch.send(JSON.stringify({ t: 'hello' })); if (RETE.started) cur.ch.send(JSON.stringify(RETE.started)); if (S.inSetup) openSetup(); };
+        RETE.watchers.push(cur);
+        w = newPc(); await w.pc.setLocalDescription(await w.pc.createOffer()); await netIce(w.pc);
+        await netApi('renew', RETE.wcode, { offer: w.pc.localDescription, key: RETE.wkey }); renewT = Date.now();
+      } else if (Date.now() - renewT > 5 * 60000) { await netApi('renew', RETE.wcode, { offer: w.pc.localDescription, key: RETE.wkey }); renewT = Date.now(); }
+    }
+  } catch (e) { /* senza monitor si gioca lo stesso */ }
+}
+// spettatore
+async function netWatchJoin(code) {
+  netClose(); RETE.role = 'watch'; RETE.code = code; RETE.status = 'MI COLLEGO PER GUARDARE...'; openSetup();
+  for (let tries = 0; tries < 10; tries++) {
+    try {
+      const { offer, meta, v } = await netApi('offer', code);
+      if (meta && (!!meta.beach !== BEACH || !!meta.women !== WOMEN)) {
+        const u = new URL(location.href); if (meta.beach) u.searchParams.set('beach', '1'); else u.searchParams.delete('beach');
+        u.searchParams.set('women', meta.women ? '1' : '0'); u.searchParams.set('watch', code); location.href = u.href; return;
+      }
+      const pc = RETE.pc = new RTCPeerConnection({ iceServers: RETE_ICE });
+      pc.ondatachannel = e => netChannel(e.channel);
+      await pc.setRemoteDescription(offer);
+      await pc.setLocalDescription(await pc.createAnswer()); await netIce(pc);
+      await netApi('answer', code, { answer: pc.localDescription, v });
+      RETE.status = 'COLLEGAMENTO... (la partita si vede appena inizia)'; openSetup();
+      setTimeout(() => { if (RETE.pc === pc && !RETE.connected) { RETE.status = 'COLLEGAMENTO NON RIUSCITO'; RETE.role = null; openSetup(); } }, 20000);
+      return;
+    } catch (e) {
+      if (!/riprova/.test(e.message)) { RETE.status = 'ERRORE: ' + e.message; RETE.role = null; openSetup(); return; }
+      try { RETE.pc && RETE.pc.close(); } catch (x) { /* */ }
+      await new Promise(ok => setTimeout(ok, 2500 + Math.random() * 2000));
+    }
+  }
+  RETE.status = 'TROPPI SPETTATORI INSIEME, RIPROVA'; RETE.role = null; openSetup();
+}
 // battito: un messaggio al secondo; 6 secondi senza notizie = scollegato
-setInterval(() => { if (!RETE.connected) return; netSend({ t: 'ping' }); if (performance.now() - RETE.lastRx > 6000) netLost(); }, 1000);
+setInterval(() => { if (!RETE.connected) return; netSendAll({ t: 'ping' }); if (performance.now() - RETE.lastRx > 6000) netLost(); }, 1000);
 function netLost() {
   if (!RETE.role) return;
   const role = RETE.role, wasOnline = S.online; netClose();
   if (wasOnline === 'host') { const R = teams[1].players.find(p => p.remote); if (R) { R.remote = false; R.human = false; dress(R); } S.online = null; say('AVVERSARIO SCOLLEGATO: GIOCA IL COMPUTER', 3); return; }
-  if (wasOnline === 'guest') { S.online = null; RETE.status = 'CONNESSIONE PERSA'; SETUP.mode = 'online'; openSetup(); return; }
+  if (wasOnline === 'guest' || wasOnline === 'watch') { S.online = null; RETE.status = wasOnline === 'watch' ? 'PARTITA FINITA O CONNESSIONE PERSA' : 'CONNESSIONE PERSA'; SETUP.mode = 'online'; openSetup(); return; }
   RETE.status = 'CONNESSIONE PERSA'; if (S.inSetup) openSetup();
   void role;
 }
 function netSetupHtml(teamSelect) {
   let h = '';
-  if (!RETE.connected) {
-    h += `<p class="muted">Uno crea la partita e dà il CODICE all'altro, che lo scrive e preme ENTRA. Si gioca da browser a browser: ognuno vede la partita dai suoi occhi. Chi crea gioca a sinistra.</p>
+  const monitor = RETE.role === 'host' && RETE.wcode ? linkBox(`MONITOR: chi apre questo link guarda la partita in tempo reale (codice ${RETE.wcode})`, netLink('watch', RETE.wcode))
+    + (RETE.watchers.length ? `<p class="muted">Spettatori collegati: ${RETE.watchers.length}</p>` : '') : '';
+  if (RETE.role === 'watch') {
+    h += `<p class="next">MONITOR: guardi la partita in tempo reale (V cambia visuale, T segue l'altro giocatore).</p>`;
+  } else if (!RETE.connected) {
+    h += `<p class="muted">Uno crea la partita e manda il LINK (o il CODICE) all'altro. Si gioca da browser a browser: ognuno vede la partita dai suoi occhi. Chi crea gioca a sinistra.</p>
       <div class="row"><button data-x="nethost">CREA PARTITA</button>${RETE.role === 'host' && RETE.code ? `<span class="code">${RETE.code}</span><span class="muted">dai questo codice al tuo avversario</span>` : ''}</div>
-      <div class="row"><input id="netCode" maxlength="5" placeholder="CODICE" value="${RETE.role === 'guest' ? RETE.code || '' : ''}" autocomplete="off"><button data-x="netjoin">ENTRA CON IL CODICE</button></div>`;
+      ${RETE.role === 'host' && RETE.code ? linkBox('LINK DI INVITO: chi lo apre entra subito nella tua partita', netLink('join', RETE.code)) : ''}${monitor}
+      <div class="row"><input id="netCode" maxlength="5" placeholder="CODICE" value="${RETE.role === 'guest' ? RETE.code || '' : ''}" autocomplete="off"><button data-x="netjoin">ENTRA CON IL CODICE</button><button data-x="netwatch">GUARDA (MONITOR)</button></div>`;
   } else {
+    h += monitor;
     h += `<div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label><span>AVVERSARIO: <b>${RETE.peerTeam ? tname(RETE.peerTeam) : '...'}</b></span></div>`;
     if (RETE.role === 'guest') h += `<p class="next">Aspetta che l'avversario inizi la partita.</p>`;
   }
@@ -1562,23 +1641,28 @@ function netStart() {
   $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
   const b = RETE.peerTeam === SETUP.a ? other3(SETUP.a) : RETE.peerTeam;   // stessa squadra: l'avversario gioca con un'altra
   setupTeams(SETUP.a, b, 'host');
-  netSend({ t: 'start', a: SETUP.a, b, sets: MATCH.sets, pts: MATCH.pts });
+  RETE.started = { t: 'start', a: SETUP.a, b, sets: MATCH.sets, pts: MATCH.pts };
+  netSendAll(RETE.started);
   newGame();
 }
 function netMsg(m) {
   if (m.t === 'team') { RETE.peerTeam = TEAMS[m.code] ? m.code : 'BRA'; if (S.inSetup) openSetup(); }
+  else if (m.t === 'suggest' && RETE.role === 'guest' && TEAMS[m.code]) { SETUP.a = m.code; netSend({ t: 'team', code: m.code }); if (S.inSetup) openSetup(); }
   else if (m.t === 'bye') netLost();
   else if (RETE.role === 'host') {
     if (m.t === 'in') Object.assign(REM.inp, { l: !!m.l, r: !!m.r, u: !!m.u, d: !!m.d });
     else if (m.t === 'z') { REM.z = true; REM.zT = 0.25; }
     else if (m.t === 'to' && S.online === 'host') callTimeout(teams[1]);
-  } else if (RETE.role === 'guest') {
-    if (m.t === 'start') {
-      MATCH.sets = m.sets; MATCH.pts = m.pts; S.practice = null; S.guided = false; S.campGame = null; S.online = 'guest';
+  } else if (RETE.role === 'guest' || RETE.role === 'watch') {
+    const role = RETE.role;
+    if (m.t === 'hello' && role === 'watch') { RETE.status = 'COLLEGATO! La partita si vede appena inizia'; if (S.inSetup) openSetup(); }
+    else if (m.t === 'start') {
+      MATCH.sets = m.sets; MATCH.pts = m.pts; S.practice = null; S.guided = false; S.campGame = null; S.online = role;
       $('setup').style.display = 'none'; S.inSetup = false; S.paused = false;
-      setupTeams(m.a, m.b, 'guest'); newGame(); TOSS.open = false; tossDraw();
-    } else if (m.t === 's' && S.online === 'guest') netApply(m);
-    else if (m.t === 'end' && S.online === 'guest') { teams.forEach((t, i) => { t.st = m.st[i]; t.en = m.en[i]; }); S.state = 'end'; showStats(true); }
+      setupTeams(m.a, m.b, role); newGame(); TOSS.open = false; tossDraw();
+      if (role === 'watch') { setCam(CAMS.findIndex(c => c.id === 'tv')); say('MONITOR: ' + teams[0].name + ' - ' + teams[1].name, 2.5); }
+    } else if (m.t === 's' && S.online === role) netApply(m);
+    else if (m.t === 'end' && S.online === role) { teams.forEach((t, i) => { t.st = m.st[i]; t.en = m.en[i]; }); S.state = 'end'; showStats(true); }
   }
 }
 // stato della partita (host -> guest)
@@ -1616,6 +1700,7 @@ function netGuestFrame(dt) {
   if (b.tx !== undefined) { b.x = lerp(b.x, b.tx, k); b.z = lerp(b.z, b.tz, k); b.h = lerp(b.h, b.th, k); }
   for (const t of teams) for (const p of t.players) if (p.tx !== undefined) { p.x = lerp(p.x, p.tx, k); p.z = lerp(p.z, p.tz, k); p.h = lerp(p.h, p.th, k); }
   const st = JSON.stringify([input.l, input.r, input.u, input.d]);
+  if (S.online === 'watch') { S.zPress = false; sandUpdate(dt); if (S.msgT > 0) S.msgT -= dt; return; }   // lo spettatore non manda tasti
   if (st !== RETE.lastIn) { RETE.lastIn = st; netSend({ t: 'in', l: input.l, r: input.r, u: input.u, d: input.d }); }
   if (S.zPress) { S.zPress = false; netSend({ t: 'z' }); }
   sandUpdate(dt);
@@ -1656,6 +1741,11 @@ function openSetup() {
   else if (SETUP.mode === 'online') h += netSetupHtml(teamSelect);
   else if (SETUP.mode === 'friendly') {
     h += `<div class="row"><label>LA TUA SQUADRA ${teamSelect('selA', SETUP.a)}</label><label>AVVERSARIO ${teamSelect('selB', SETUP.b)}</label></div>`;
+    // PARTITA VELOCE da mandare: chi apre il link gioca subito questa partita (le squadre dell'editor esistono solo nel tuo browser)
+    const loc = c => !TEAMS[c] || TEAMS[c].mine;
+    h += linkBox('LINK DA INVIARE: chi lo apre gioca subito questa partita' + (loc(SETUP.a) || loc(SETUP.b) ? ' (le squadre dell\'editor ★ le ha solo chi le ha create)' : ''),
+      netLink('match', [SETUP.a, SETUP.b, SETUP.sets || 1, SETUP.pts || (BEACH ? 21 : 15)].join('.')));
+    h += `<div class="row"><button data-m="online" data-quick="1">GIOCA ONLINE CON QUESTE SQUADRE</button></div>`;
   } else {
     const c = camps[SETUP.camp % camps.length], st = campState(c);
     if (!st.mine || !c.teams.includes(st.mine)) st.mine = c.teams.includes(SETUP.a) ? SETUP.a : c.teams[0];
@@ -1673,14 +1763,19 @@ function openSetup() {
   if (mine.length) h += `<p class="muted">I tuoi giocatori: ${mine.join(' · ')}. Se scegli la loro squadra, in campo sei tu.</p>`;
   h += `<div class="row">${SETUP.mode === 'online' ? (RETE.connected && RETE.role === 'host' ? `<button data-x="netgo" class="green"${RETE.peerTeam ? '' : ' disabled'}>INIZIA LA PARTITA ONLINE</button>` : '') : `<button data-x="go" class="green">${SETUP.mode === 'camp' ? 'GIOCA LA PARTITA' : 'GIOCA'}</button>`}<button data-x="back">TORNA AL GIOCO</button></div>`;
   el.innerHTML = h;
-  el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SETUP.mode = b.dataset.m; openSetup(); });
+  el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SETUP.quickB = b.dataset.quick ? SETUP.b : null; SETUP.mode = b.dataset.m; if (b.dataset.quick) netHost(); else openSetup(); });
+  el.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+    const i = b.parentNode.querySelector('input'), ok = () => { b.textContent = 'COPIATO!'; setTimeout(() => { b.textContent = 'COPIA'; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(ok, () => { i.select(); document.execCommand('copy'); ok(); }); else { i.select(); document.execCommand('copy'); ok(); }
+  });
+  el.querySelectorAll('[data-share]').forEach(b => b.onclick = () => navigator.share({ title: 'Spike Fever 3D', url: b.dataset.share }).catch(() => {}));
   const q = id => el.querySelector('#' + id);
-  if (q('selA')) q('selA').onchange = e => { SETUP.a = e.target.value; if (RETE.connected) netSend({ t: 'team', code: SETUP.a }); };
+  if (q('selA')) q('selA').onchange = e => { SETUP.a = e.target.value; if (RETE.connected) netSend({ t: 'team', code: SETUP.a }); if (SETUP.mode === 'friendly') openSetup(); };
   if (q('selD')) q('selD').onchange = e => { SETUP.drill = e.target.value; };
   if (q('selG')) q('selG').onchange = e => { SETUP.guided = Number(e.target.value); };
-  if (q('selP')) q('selP').onchange = e => { SETUP.pts = Number(e.target.value); };
-  if (q('selS')) q('selS').onchange = e => { SETUP.sets = Number(e.target.value); };
-  if (q('selB')) q('selB').onchange = e => { SETUP.b = e.target.value; };
+  if (q('selP')) q('selP').onchange = e => { SETUP.pts = Number(e.target.value); if (SETUP.mode === 'friendly') openSetup(); };
+  if (q('selS')) q('selS').onchange = e => { SETUP.sets = Number(e.target.value); if (SETUP.mode === 'friendly') openSetup(); };
+  if (q('selB')) q('selB').onchange = e => { SETUP.b = e.target.value; openSetup(); };
   if (q('selC')) q('selC').onchange = e => { SETUP.camp = Number(e.target.value); openSetup(); };
   if (q('selM')) q('selM').onchange = e => { const { c, st } = SETUP.cur; st.mine = e.target.value; campSave(c, st); openSetup(); };
   el.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
@@ -1692,6 +1787,7 @@ function openSetup() {
     if (x === 'stereo') { setStereo(((S3.mode || 0) + 1) % 4); openSetup(); }
     if (x === 'models') { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o' })); openSetup(); }
     if (x === 'nethost') netHost();
+    if (x === 'netwatch') { const c = (q('netCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length === 5) netWatchJoin(c); else { RETE.status = 'IL CODICE HA 5 CARATTERI'; openSetup(); } }
     if (x === 'netjoin') { const c = (q('netCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length === 5) netJoin(c); else { RETE.status = 'IL CODICE HA 5 CARATTERI'; openSetup(); } }
     if (x === 'netgo') netStart();
     if (x === 'back' && RETE.role) netSend({ t: 'bye' });
@@ -1726,7 +1822,7 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollPad();
-  if (S.online === 'guest') netGuestFrame(dt);
+  if (S.online === 'guest' || S.online === 'watch') netGuestFrame(dt);
   else if (!S.paused) {
     if (S.zT > 0 && !S.guideF) { S.zT -= dt; if (S.zT <= 0) S.zPress = false; }   // una pressione di Z vale per 0,25 s
     acc += S.guideF ? 0 : dt * (S.slow || S.guided ? 0.45 : 1);
@@ -1734,9 +1830,9 @@ function frame(now) {
     trackMoves();
     if (S.msgT > 0 && S.state !== 'end') S.msgT -= dt;
     if (REM.zT > 0) { REM.zT -= dt; if (REM.zT <= 0) REM.z = false; }
-    if (S.online === 'host') { RETE.sendT += dt; if (RETE.sendT > 1 / 30) { RETE.sendT = 0; netSend(netSnap()); } }
+    if (S.online === 'host') { RETE.sendT += dt; if (RETE.sendT > 1 / 30) { RETE.sendT = 0; netSendAll(netSnap()); } }
   }
-  if (S.online === 'guest') trackMoves();
+  if (S.online === 'guest' || S.online === 'watch') trackMoves();
   if (S.camT > 0) S.camT -= dt;
   S.statsT = (S.statsT || 0) + dt;
   if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
@@ -1756,6 +1852,16 @@ if (!TEAMS[SETUP.a]) SETUP.a = 'ITA'; if (!TEAMS[SETUP.b]) SETUP.b = 'BRA';
 S.inSetup = true; setupTeams(SETUP.a, SETUP.b); newGame();
 $('load').remove();
 openSetup();
-{ const j = new URLSearchParams(location.search).get('join'); if (j) { SETUP.mode = 'online'; netJoin(j); } }
+{
+  const q = new URLSearchParams(location.search), j = q.get('join'), w = q.get('watch'), mt = q.get('match');
+  const clean = () => { const u = new URL(location.href); for (const k of ['join', 'watch', 'match']) u.searchParams.delete(k); history.replaceState(null, '', u.href); };
+  if (j) { SETUP.mode = 'online'; clean(); netJoin(j.toUpperCase()); }
+  else if (w) { SETUP.mode = 'online'; clean(); netWatchJoin(w.toUpperCase()); }
+  else if (mt) {   // partita veloce ricevuta con un link: si gioca subito
+    const [a, b, st, pt] = mt.split('.');
+    Object.assign(SETUP, { mode: 'friendly', a: TEAMS[a] ? a : 'ITA', b: TEAMS[b] ? b : 'BRA', sets: [1, 3, 5].includes(+st) ? +st : 1, pts: [15, 21, 25].includes(+pt) ? +pt : (BEACH ? 21 : 15) });
+    clean(); startFromSetup();
+  }
+}
 setTimeout(() => { $('help').style.display = 'none'; }, 15000);   // le istruzioni spariscono dopo 15 s (H per rivederle)
 renderer.setAnimationLoop(frame);   // (con WebXR il visore detta il ritmo)

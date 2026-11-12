@@ -3,9 +3,13 @@
 // Il gioco poi passa direttamente da un browser all'altro: questo file serve solo all'inizio.
 //   POST ?a=create              corpo {offer, meta?}   -> {code}        chi crea la partita
 //   GET  ?a=offer&c=CODICE                      -> {offer, meta}  chi entra con il codice
-// meta (facoltativo, prototipo 3D): {g3d, beach, women} solo vero/falso, per aprire la stessa versione del gioco
-//   POST ?a=answer&c=CODICE     corpo {answer}  -> {ok}
-//   GET  ?a=answer&c=CODICE                     -> {answer} oppure {wait:true}
+// meta (facoltativo): {g3d, beach, women, watch} solo vero/falso, per aprire la stessa versione del gioco
+//   POST ?a=answer&c=CODICE     corpo {answer, v?}  -> {ok}
+//   GET  ?a=answer&c=CODICE[&k=CHIAVE]          -> {answer} oppure {wait:true}
+// Stanze MONITOR (spettatori, multi: true): la create restituisce anche una chiave segreta {code, key}; la stanza
+// resta aperta: per ogni spettatore chi gioca prepara una nuova offerta
+//   POST ?a=renew&c=CODICE      corpo {offer, key}  -> {ok, v}    nuova offerta (v = numero dell'offerta)
+// e legge le risposte con la chiave (GET answer &k=CHIAVE); chi guarda risponde all'offerta v che ha letto.
 // I dati restano in api/dati/online/ (non raggiungibile dal web) e vengono cancellati dopo 20 minuti.
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -34,25 +38,41 @@ if ($a === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // niente lettere che si confondono (I, O, 0, 1)
   do { $code = ''; for ($i = 0; $i < 5; $i++) $code .= $abc[random_int(0, strlen($abc) - 1)]; } while (is_file("$dir/$code.json"));
   $meta = [];
-  if (isset($d['meta']) && is_array($d['meta'])) foreach (['g3d', 'beach', 'women'] as $k) $meta[$k] = !empty($d['meta'][$k]);
-  file_put_contents("$dir/$code.json", json_encode(['offer' => $d['offer'], 'answer' => null, 'meta' => $meta]), LOCK_EX);
-  out(200, ['code' => $code]);
+  if (isset($d['meta']) && is_array($d['meta'])) foreach (['g3d', 'beach', 'women', 'watch'] as $k) $meta[$k] = !empty($d['meta'][$k]);
+  $room = ['offer' => $d['offer'], 'answer' => null, 'meta' => $meta, 'v' => 1];
+  $res = ['code' => $code];
+  if (!empty($d['multi'])) { $key = bin2hex(random_bytes(12)); $room['multi'] = true; $room['key'] = hash('sha256', $key); $res['key'] = $key; }
+  file_put_contents("$dir/$code.json", json_encode($room), LOCK_EX);
+  out(200, $res);
 }
 if (!preg_match('/^[A-Z0-9]{5}$/', $c)) out(400, ['errore' => 'codice non valido']);
 $file = "$dir/$c.json";
 if (!is_file($file)) out(404, ['errore' => 'partita non trovata o scaduta']);
 $room = json_decode(file_get_contents($file), true);
-if ($a === 'offer') out(200, ['offer' => $room['offer'], 'meta' => $room['meta'] ?? []]);
+$multi = !empty($room['multi']);
+$owner = fn($k) => $multi && is_string($k) && hash_equals($room['key'], hash('sha256', $k));
+if ($a === 'offer') out(200, ['offer' => $room['offer'], 'meta' => $room['meta'] ?? [], 'v' => $room['v'] ?? 1]);
+if ($a === 'renew' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $d = $body();
+  if (!$owner($d['key'] ?? null)) out(403, ['errore' => 'chiave non valida']);
+  if (!$sdp($d['offer'] ?? null)) out(400, ['errore' => 'offerta non valida']);
+  $room['offer'] = $d['offer']; $room['answer'] = null; $room['v'] = ($room['v'] ?? 1) + 1;
+  file_put_contents($file, json_encode($room), LOCK_EX);
+  out(200, ['ok' => true, 'v' => $room['v']]);
+}
 if ($a === 'answer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $d = $body();
   if (!$sdp($d['answer'] ?? null)) out(400, ['errore' => 'risposta non valida']);
-  if ($room['answer']) out(409, ['errore' => 'nella partita c\'è già un avversario']);
+  if ($multi && (int)($d['v'] ?? 0) !== (int)$room['v']) out(409, ['errore' => 'offerta cambiata, riprova']);
+  if ($room['answer']) out(409, ['errore' => $multi ? 'un altro spettatore si sta collegando, riprova' : 'nella partita c\'è già un avversario']);
   $room['answer'] = $d['answer'];
   file_put_contents($file, json_encode($room), LOCK_EX);
   out(200, ['ok' => true]);
 }
 if ($a === 'answer') {
+  if ($multi && !$owner($_GET['k'] ?? null)) out(403, ['errore' => 'chiave non valida']);
   if (!$room['answer']) out(200, ['wait' => true]);
+  if ($multi) { $ans = $room['answer']; $room['answer'] = null; file_put_contents($file, json_encode($room), LOCK_EX); out(200, ['answer' => $ans]); }
   @unlink($file);   // collegati: la partita non serve più sul server
   out(200, ['answer' => $room['answer']]);
 }
