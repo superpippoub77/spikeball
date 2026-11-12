@@ -304,6 +304,14 @@ In partita, in tutte le grafiche, **N** mostra i nomi dei giocatori in piccolo *
 ### Pratica lenta
 Nel menu **TUTORIAL / PRATICA** (anche con T dal menu) l'ultima riga **VELOCITÀ** sceglie NORMALE (come sempre) o **LENTA**. In LENTA il gioco va a meno di metà velocità e si **ferma a ogni passaggio** (battuta, lancio, momento di colpire, ricezione, alzata, schiacciata, muro) con le istruzioni scritte in grande: da fermo tieni la direzione giusta e premi **Z**, e l'azione parte esattamente in quel momento; **INVIO** (START) continua senza premere Z. Quando la palla non è ancora al punto giusto il gioco si ferma una seconda volta con **PREMI Z ADESSO!** (`lento.js`).
 
+### SPIKE CLUB
+Nuova scheda del menu principale (`club.js`), con idee di gioco ispirate a Spikair Volleyball (grafica e regole nostre):
+- **crei il tuo club**: nome, colori presi da una squadra del gioco, rosa di 8 giocatori (maschile o femminile);
+- **stagioni a divisioni** dalla SERIE C alla SUPERLEGA: 6 partite contro le squadre del gioco della tua fascia di forza (nazionali, club di `squadre.json`, squadre dell'editor e dei campionati). 4 vittorie = promozione (in SUPERLEGA lo scudetto), 1 o meno = retrocessione; i trofei vanno in **BACHECA**;
+- **ALLENAMENTO**: i punti (3 per vittoria, 2 per sconfitta) alzano attacco, difesa e velocità; la forza della squadra in partita è la media dei 4 **titolari** (si scelgono nella rosa);
+- **MERCATO**: giocatori di altre squadre da comprare con i crediti (vittorie e tocchi perfetti); si vende per fare posto (massimo 8);
+- **in partita**: ogni tuo tocco ha un giudizio (**PERFETTO**, BUONO, SCARSO / FUORI TEMPO) che ne cambia la qualità; schiacciate e battute perfette hanno lo stacco "anime": lampo, rallentatore e scritta grande. Il club gioca come squadra CLB (anche nella partita singola).
+
 ### Partita veloce, link e monitor
 Nella pagina **GIOCA ONLINE** (menu principale, accanto alla lingua) e nella schermata iniziale del prototipo 3D:
 - **PARTITA VELOCE**: scegli le due squadre (e giocatori, set, campo; nel 3D set e punti). **GIOCA ORA** la gioca subito contro il computer; il **LINK DA INVIARE** (COPIA, o INVIA dal telefono) fa giocare quella stessa partita a chi lo apre (`?match=...`); **GIOCA ONLINE CON QUESTE SQUADRE** crea la partita online e propone all'avversario la seconda squadra.

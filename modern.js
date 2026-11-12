@@ -163,6 +163,9 @@ function makeModernArena(scene, id) {
 }
 
 // ---------------- impostazioni correnti ----------------
+// schede del menu principale: posizione di ognuna (indice della scheda) e righe (5 sopra, 4 sotto)
+const MENU_POS = [[34, 96], [97, 96], [223, 96], [286, 96], [65.5, 150], [128.5, 150], [191.5, 150], [254.5, 150], [160, 96]];
+const MENU_ROWS = [[0, 1, 8, 2, 3], [4, 5, 6, 7]];
 const MENU_GFX_LIST = [...GFX_MODES, 'fps', 'fpsb'];   // riga GRAFICA: le quattro grafiche e il prototipo 3D in prima persona (palazzetto e beach)
 const MENU_SEX = 20, MENU_GFX = 21, MENU_CTRL = 22, MENU_ONLINE = 23;   // menu principale: righe SQUADRE, GRAFICA e COMANDI, GIOCA ONLINE accanto alla lingua (le schede sono 0-7, la lingua -1)
 const MSET = { left: 'BRA', right: 'ARG', leftAI: false, rightAI: true, arena: 0, ball: 1, start: 0, rebound: 0, target: 0, rules: 0, fx: 0, players: 0, women: GS.women ? 1 : 0 };
@@ -245,12 +248,12 @@ class MainMenuScene extends Base {
       { label: 'BEACH', sub: 'SABBIA', hint: 'Beach volley 2 contro 2: sole, sabbia, set a 21 e regole da spiaggia', icon: 'sun' },
       { label: 'MY PLAYER', sub: 'LA MIA SCHEDA', hint: 'Crea i tuoi giocatori: giocano nella loro squadra e migliorano partita dopo partita', icon: 'me' },
       { label: 'EDITOR', sub: 'SQUADRE', hint: 'Squadre, arbitri, sponsor, campionati e profilo sul server', icon: 'ed' },
-      { label: 'COME SI GIOCA', sub: 'GUIDA', hint: 'Guida illustrata: comandi, battute, ricezione, alzata, attacco, muro, crediti', icon: 'help' }
+      { label: 'COME SI GIOCA', sub: 'GUIDA', hint: 'Guida illustrata: comandi, battute, ricezione, alzata, attacco, muro, crediti', icon: 'help' },
+      { label: 'SPIKE CLUB', sub: 'IL TUO CLUB', hint: 'Il tuo club: stagioni dalla Serie C alla SuperLega, allenamento, mercato e tocchi a tempo', icon: 'club' }
     ];
-    // schede su due righe (4 + 4); sopra le schede la riga LINGUA, sotto le righe SQUADRE (MENU_SEX) e GRAFICA (MENU_GFX)
-    const POS = [[52, 96], [124, 96], [196, 96], [268, 96], [52, 150], [124, 150], [196, 150], [268, 150]];
+    // schede su due righe (5 + 4, MENU_ROWS); sopra le schede la riga LINGUA, sotto le righe SQUADRE (MENU_SEX) e GRAFICA (MENU_GFX)
     this.cardObjs = this.cards.map((cd, i) => {
-      const [x, y] = POS[i];
+      const [x, y] = MENU_POS[i];
       const cont = this.add.container(x, y);
       const bg = this.add.graphics();
       cont.add(bg);
@@ -278,6 +281,13 @@ class MainMenuScene extends Base {
         ic.fillStyle(0x3ab0f0).fillRect(-14, -18, 28, 16); ic.fillStyle(0x1a7ad0).fillRect(-14, -2, 28, 4); ic.fillStyle(0xf2d8a0).fillRect(-14, 2, 28, 8);
         ic.fillStyle(0xffe040).fillCircle(6, -11, 4); ic.fillStyle(0x7a4a1a).fillRect(-9, -12, 2, 14); ic.fillStyle(0x2a9a3a).fillEllipse(-11, -13, 9, 3).fillEllipse(-5, -13, 9, 3);
         ik.add(this.add.image(2, 6, 'ballbig').setScale(0.7)); right(cd.sub, '#ffe0a0');
+      }
+      else if (cd.icon === 'club') {   // scudo del club con la stella
+        ic.fillStyle(0x1a5ad8).fillRoundedRect(-11, -18, 22, 20, 4).fillTriangle(-11, 0, 11, 0, 0, 10);
+        ic.lineStyle(2, 0xffd23a).strokeRoundedRect(-11, -18, 22, 20, 4);
+        ik.add(this.add.text(0, -6, '★', UI.f(13, '#ffd23a', true)).setOrigin(0.5));
+        const C = typeof CLUB !== 'undefined' && CLUB.data;
+        right(C ? (CLUB_DIVS[C.div] || '').replace('SERIE ', 'S.') : 'NUOVO', '#7ad0ff');
       }
       else if (cd.icon === 'help') {
         ic.fillStyle(0x2a8ae8).fillCircle(0, -6, 14); ic.lineStyle(2, 0xffffff).strokeCircle(0, -6, 14);
@@ -351,7 +361,7 @@ class MainMenuScene extends Base {
     this.cardObjs.forEach((c, i) => {
       const on = i === this.sel;
       const beach = i === 4;
-      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-33, -25, 66, 50, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-33, -25, 66, 50, 4);
+      c.bg.clear().fillStyle(on ? (beach ? 0xe07a1a : 0x1a5ad8) : (beach ? 0x8a4a12 : 0x0e2a6a), 0.95).fillRoundedRect(-29, -25, 58, 50, 4).lineStyle(on ? 2 : 1, on ? 0xffd23a : 0x3a6ac8).strokeRoundedRect(-29, -25, 58, 50, 4);
       c.setScale(on ? 1.06 : 1);
     });
     const L = this.sel < 0;
@@ -399,18 +409,19 @@ class MainMenuScene extends Base {
       else if (this.jd('down')) { this.sel = MENU_GFX; this.refresh(); SFX.blip(); }
       return;
     }
-    const row = this.sel < 0 ? -1 : this.sel < 4 ? 0 : 1;
-    if (row < 0) {
+    if (this.sel < 0) {
       if (this.jd('left')) { this.cycleLang(-1); return; }
       if (this.jd('right') || this.btn()) { this.cycleLang(1); return; }
       if (this.jd('down')) { this.sel = 0; this.refresh(); SFX.blip(); }
       return;
     }
-    const lo = row ? 4 : 0, hi = row ? 7 : 3;
-    if (this.jd('left')) { this.sel = this.sel > lo ? this.sel - 1 : hi; this.refresh(); SFX.blip(); }
-    if (this.jd('right')) { this.sel = this.sel < hi ? this.sel + 1 : lo; this.refresh(); SFX.blip(); }
-    if (this.jd('up')) { this.sel = row ? this.sel - 4 : this.sel >= 2 ? MENU_ONLINE : -1; this.refresh(); SFX.blip(); }
-    if (this.jd('down')) { if (row) this.lastCard = this.sel; this.sel = row ? MENU_SEX : this.sel + 4; this.refresh(); SFX.blip(); }
+    // schede: righe MENU_ROWS; su e giù si passa alla scheda più vicina dell'altra riga
+    const row = MENU_ROWS.findIndex(R => R.includes(this.sel)), R = MENU_ROWS[row], col = R.indexOf(this.sel);
+    const nearest = list => list.slice().sort((a, b) => Math.abs(MENU_POS[a][0] - MENU_POS[this.sel][0]) - Math.abs(MENU_POS[b][0] - MENU_POS[this.sel][0]))[0];
+    if (this.jd('left')) { this.sel = R[(col + R.length - 1) % R.length]; this.refresh(); SFX.blip(); }
+    if (this.jd('right')) { this.sel = R[(col + 1) % R.length]; this.refresh(); SFX.blip(); }
+    if (this.jd('up')) { this.sel = row ? nearest(MENU_ROWS[0]) : col >= 2 ? MENU_ONLINE : -1; this.refresh(); SFX.blip(); }
+    if (this.jd('down')) { if (row) this.lastCard = this.sel; this.sel = row ? MENU_SEX : nearest(MENU_ROWS[1]); this.refresh(); SFX.blip(); }
     if (this.jd('t')) { this.gone = true; this.scene.start('Practice'); return; }
     if (this.btn() || this.startPressed()) {
       this.gone = true; SFX.select(); GS.menuSel = this.sel;
@@ -422,6 +433,7 @@ class MainMenuScene extends Base {
       else if (this.sel === 4) this.scene.start('BeachSelect');
       else if (this.sel === 5) this.scene.start('MyPlayers');
       else if (this.sel === 6) this.scene.start('Editor');
+      else if (this.sel === 8) this.scene.start('Club');
       else this.scene.start('Guide');
     }
   }
