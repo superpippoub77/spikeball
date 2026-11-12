@@ -313,20 +313,24 @@ function trailUpdate(dt) {
   trailPos.unshift(cur); if (trailPos.length > TRAIL_N) trailPos.length = TRAIL_N;
   trailMesh.visible = TR.k > 0.01 && trailPos.length > 2;
   if (!trailMesh.visible) return;
-  const P = trailGeo.attributes.position.array, C = trailGeo.attributes.color.array, n = trailPos.length;
-  const cam = camera.getWorldPosition(tmpV), t = new THREE.Vector3(), toC = new THREE.Vector3(), sd = new THREE.Vector3();
-  for (let i = 0; i < TRAIL_N; i++) {
-    const q = trailPos[Math.min(i, n - 1)], a = trailPos[Math.max(0, Math.min(i, n - 1) - 1)], c = trailPos[Math.min(n - 1, i + 1)];
+  ribbonFill(trailGeo, trailPos, TRAIL_N, BALL_R * 1.15, [1, b.thunder ? 0.7 : 0.86, 0.18], TR.k);
+}
+// nastro rivolto verso la telecamera lungo i punti pts (il primo è la testa): larghezza e colore che sfumano
+function ribbonFill(geo, pts, N, w0, rgb, kk) {
+  const P = geo.attributes.position.array, C = geo.attributes.color.array, n = pts.length;
+  const cam = camera.getWorldPosition(new THREE.Vector3()), t = new THREE.Vector3(), toC = new THREE.Vector3(), sd = new THREE.Vector3();
+  for (let i = 0; i < N; i++) {
+    const q = pts[Math.min(i, n - 1)], a = pts[Math.max(0, Math.min(i, n - 1) - 1)], c = pts[Math.min(n - 1, i + 1)];
     t.set(a[0] - c[0], a[1] - c[1], a[2] - c[2]); toC.set(cam.x - q[0], cam.y - q[1], cam.z - q[2]);
     sd.crossVectors(t, toC); if (sd.lengthSq() < 1e-9) sd.set(0, 1, 0); sd.normalize();
-    const f = i < n ? 1 - i / TRAIL_N : 0, w = BALL_R * 1.15 * Math.pow(f, 0.7), k = Math.pow(f, 1.3) * TR.k;
+    const f = i < n ? 1 - i / N : 0, w = w0 * Math.pow(f, 0.7), k = Math.pow(f, 1.3) * kk;
     for (let e = 0; e < 2; e++) {
       const o = (i * 2 + e) * 3, sg = e ? -w : w;
       P[o] = q[0] + sd.x * sg; P[o + 1] = q[1] + sd.y * sg; P[o + 2] = q[2] + sd.z * sg;
-      C[o] = 1 * k; C[o + 1] = (b.thunder ? 0.7 : 0.86) * k; C[o + 2] = 0.18 * k;
+      C[o] = rgb[0] * k; C[o + 1] = rgb[1] * k; C[o + 2] = rgb[2] * k;
     }
   }
-  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.color.needsUpdate = true;
+  geo.attributes.position.needsUpdate = geo.attributes.color.needsUpdate = true;
 }
 // polvere quando la palla tocca il parquet: sbuffi che si allargano e svaniscono e un'onda sul pavimento
 const puffTex = canvasTex(64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
@@ -527,13 +531,35 @@ const POSE = {
   toss: { lean: 0.05, crouch: 0.02, sh: [-2.4, -1.4], shZ: [0.3, 0.1], el: [-1.6, -0.2], hi: [0, 0.15], kn: [0.15, 0.1], an: [0, 0], head: 0.45 },
   dive: { lean: 1.1, crouch: 0.45, sh: [-1.5, -1.5], shZ: [-0.1, -0.1], el: [0, 0], hi: [-1.3, 0.2], kn: [1.4, 0.4], an: [0, 0], head: -0.5 },
   cheer: { lean: -0.1, crouch: 0, sh: [-3.0, -3.0], shZ: [0.5, 0.5], el: [-0.3, -0.3], hi: [0, 0], kn: [0.1, 0.1], an: [0, 0], head: 0.4 },
-  sad: { lean: 0.35, crouch: 0.05, sh: [-0.05, -0.05], shZ: [0.05, 0.05], el: [-0.1, -0.1], hi: [-0.1, -0.1], kn: [0.2, 0.2], an: [0, 0], head: -0.6 }
+  sad: { lean: 0.35, crouch: 0.05, sh: [-0.05, -0.05], shZ: [0.05, 0.05], el: [-0.1, -0.1], hi: [-0.1, -0.1], kn: [0.2, 0.2], an: [0, 0], head: -0.6 },
+  // movimenti come quelli veri (sequenze della schiacciata, della battuta, del palleggio, del muro)
+  plant: { lean: 0.55, crouch: 0.3, sh: [1.05, 1.05], shZ: [0.15, 0.15], el: [-0.15, -0.15], hi: [-1.0, -0.75], kn: [1.3, 1.1], an: [-0.35, -0.2], head: 0.2 },        // ultimo passo della rincorsa: braccia indietro
+  takeoff: { lean: 0.1, crouch: 0.02, sh: [-2.5, -2.5], shZ: [0.2, 0.2], el: [-0.3, -0.3], hi: [-0.15, -0.15], kn: [0.2, 0.2], an: [0.6, 0.6], head: 0.35 },          // stacco: le braccia salgono insieme
+  bow: { lean: -0.12, crouch: 0, sh: [-2.55, -2.85], shZ: [0.55, 0.15], el: [-2.15, -0.1], hi: [-0.45, -0.15], kn: [0.9, 0.45], an: [0.45, 0.4], head: 0.45 },          // in aria: arco teso, braccio destro caricato, sinistro verso la palla
+  strike: { lean: 0.35, crouch: 0, sh: [-2.65, -0.9], shZ: [0.12, 0.1], el: [-0.02, -0.6], hi: [-0.5, -0.3], kn: [0.55, 0.5], an: [0.3, 0.3], head: 0.25 },          // colpo: braccio teso in alto e un po' avanti, contatto sopra la testa
+  follow: { lean: 0.6, crouch: 0, sh: [0.15, -0.3], shZ: [-0.45, 0.1], el: [-0.35, -0.6], hi: [-0.6, -0.35], kn: [0.5, 0.45], an: [0.3, 0.3], head: -0.1 },            // accompagnamento: il braccio scende davanti al corpo
+  land: { lean: 0.35, crouch: 0.3, sh: [-0.6, -0.6], shZ: [0.3, 0.3], el: [-0.5, -0.5], hi: [-0.95, -0.95], kn: [1.25, 1.25], an: [-0.3, -0.3], head: -0.1 },          // atterraggio su due piedi, ginocchia piegate
+  netReady: { lean: 0.05, crouch: 0.12, sh: [-2.0, -2.0], shZ: [0.18, 0.18], el: [-1.5, -1.5], hi: [-0.35, -0.35], kn: [0.6, 0.6], an: [-0.15, -0.15], head: 0.1 },  // a rete: mani alte pronte al muro
+  setExt: { lean: -0.08, crouch: 0, sh: [-3.0, -3.0], shZ: [0.12, 0.12], el: [-0.15, -0.15], hi: [-0.05, -0.05], kn: [0.08, 0.08], an: [0.15, 0.15], head: 0.4 },   // palleggio: braccia e gambe che si distendono
+  passLift: { lean: 0.3, crouch: 0.12, sh: [-1.15, -1.15], shZ: [-0.14, -0.14], el: [0, 0], hi: [-0.45, -0.45], kn: [0.6, 0.6], an: [-0.1, -0.1], head: -0.2 },     // bagher: spinta delle gambe, piatto fermo
+  srvLoad: { lean: -0.05, crouch: 0.02, sh: [-2.5, -2.6], shZ: [0.6, 0.15], el: [-2.0, -0.15], hi: [0.05, 0.2], kn: [0.15, 0.1], an: [0, 0], head: 0.5 }            // battuta da fermo: braccio caricato
 };
 // corsa: ciclo calcolato dalla fase
 function runPose(ph, k) {
   const s = Math.sin(ph), c = Math.cos(ph);
   return { lean: 0.22 * k + 0.05, crouch: 0.04 * k, sh: [0.75 * s * k - 0.1, -0.75 * s * k - 0.1], shZ: [0.1, 0.1], el: [-1.25, -1.25], hi: [-0.75 * s * k, 0.75 * s * k], kn: [0.25 + Math.max(0, -c) * 1.15 * k, 0.25 + Math.max(0, c) * 1.15 * k], an: [0.1, 0.1], head: 0, bob: Math.abs(Math.sin(ph)) * 0.05 * k };
 }
+// passi laterali (difesa): si resta girati verso la palla, bassi, piedi che si aprono e si chiudono, braccia avanti
+function shufflePose(ph, back) {
+  const s = Math.sin(ph), a = Math.abs(s);
+  return Object.assign({}, POSE.ready, { lean: back ? 0.15 : 0.36, crouch: 0.2 - a * 0.04, hiZ: [0.22 * s, -0.22 * s], kn: [1.0 + a * 0.15, 1.0 + (1 - a) * 0.15], bob: a * 0.02, sh: [-0.8, -0.8] });
+}
+// rincorsa della schiacciata: 3-4 passi che si allungano, braccia che oscillano sempre di più
+function approachPose(ph, k) {
+  const P = runPose(ph, 1); const s = Math.sin(ph);
+  P.lean = 0.35 + 0.1 * k; P.sh = [1.0 * s - 0.1, -1.0 * s - 0.1]; P.el = [-0.7, -0.7]; P.hi = [-0.95 * s, 0.95 * s]; return P;
+}
+const mixPose = (A, B, k) => { const o = {}; for (const key in A) o[key] = Array.isArray(A[key]) ? A[key].map((v, i) => lerp(v, (B[key] || A[key])[i], k)) : lerp(A[key], B[key] ?? A[key], k); return o; };
 // opzioni grafiche (prima dello stato della partita: servono già a dress)
 // giocatori: modelli realistici, ANIME o manichini (tasto O)
 const S3 = { models: true, anime: false, stereo: 0, arcade: (() => { try { return localStorage.getItem('sf91_p3d_arcade') === '1'; } catch (e) { return false; } })() };
@@ -543,13 +569,13 @@ const styleOf = () => !S3.models ? 'mann' : S3.anime ? 'anime' : 'real';
 function applyPose(pl, P, k) {
   const J = pl.body.J, cur = pl.cur;
   for (const key of ['lean', 'crouch', 'head', 'bob']) cur[key] = lerp(cur[key] || 0, P[key] || 0, k);
-  for (const key of ['sh', 'shZ', 'el', 'hi', 'kn', 'an']) { cur[key] = cur[key] || [0, 0]; for (let i = 0; i < 2; i++) cur[key][i] = lerp(cur[key][i], P[key][i], k); }
+  for (const key of ['sh', 'shZ', 'el', 'hi', 'kn', 'an', 'hiZ']) { cur[key] = cur[key] || [0, 0]; const t = P[key] || [0, 0]; for (let i = 0; i < 2; i++) cur[key][i] = lerp(cur[key][i], t[i], k); }
   // destra = [0] (braccio che colpisce), sinistra = [1]
   J.pelvis.position.y = 0.98 - cur.crouch + cur.bob;
   J.spine.rotation.x = cur.lean; J.head.rotation.x = -cur.lean * 0.6 - cur.head;
   J.shR.rotation.x = cur.sh[0]; J.shL.rotation.x = cur.sh[1]; J.shR.rotation.z = -cur.shZ[0]; J.shL.rotation.z = cur.shZ[1];
   J.elR.rotation.x = cur.el[0]; J.elL.rotation.x = cur.el[1];
-  J.hiR.rotation.x = cur.hi[0] - cur.lean * 0.3; J.hiL.rotation.x = cur.hi[1] - cur.lean * 0.3;
+  J.hiR.rotation.x = cur.hi[0] - cur.lean * 0.3; J.hiL.rotation.x = cur.hi[1] - cur.lean * 0.3; J.hiR.rotation.z = -cur.hiZ[0]; J.hiL.rotation.z = cur.hiZ[1];
   J.knR.rotation.x = cur.kn[0]; J.knL.rotation.x = cur.kn[1]; J.anR.rotation.x = cur.an[0] - cur.kn[0] * 0.45; J.anL.rotation.x = cur.an[1] - cur.kn[1] * 0.45;
 }
 
@@ -616,6 +642,61 @@ function dress(p) {
   scene.add(p.body.root); scene.add(p.label);
 }
 function labelText(p) { const R = p.team.roster[p.ni]; return p.human ? R.name + (p.remote ? ' (AVVERSARIO)' : ' (TU)') : R.lib ? R.name + ' (L)' : R.name; }
+// tempo dei tocchi (come in Spikair): OK / GOOD / PERFECT sopra il giocatore; cambia la qualità del colpo
+const GRADE_TX = {}, POPS = [];
+for (const [g, txt, bg, fg] of [['perfect', 'PERFECT', '#ffd21a', '#1a1000'], ['good', 'GOOD', '#2ec24a', '#ffffff'], ['ok', 'OK', '#2a7ae0', '#ffffff']]) {
+  GRADE_TX[g] = canvasTex(256, 80, (c, w, h) => { c.fillStyle = '#111'; c.fillRect(8, 8, w - 16, h - 16); c.fillStyle = bg; c.fillRect(14, 14, w - 28, h - 28); c.fillStyle = fg; c.font = 'bold 44px Arial Black, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, w / 2, h / 2 + 2); });
+}
+for (let i = 0; i < 4; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: GRADE_TX.ok, depthTest: false, transparent: true, sizeAttenuation: false })); sp.renderOrder = 12; sp.visible = false; scene.add(sp); POPS.push({ sp, t: 0, p: null }); }
+function gradeShow(p, g) {
+  if (S.online === 'host') RETE.ev.push(['gr', teams.indexOf(p.team), p.team.players.indexOf(p), g]);
+  S.grades = S.grades || {}; S.grades[g] = (S.grades[g] || 0) + 1;   // (conteggio per le prove)
+  const P = POPS.find(o => o.t <= 0) || POPS[0];
+  P.sp.material.map = GRADE_TX[g]; P.sp.material.needsUpdate = true; P.t = 1; P.p = p; P.sp.visible = true;
+}
+function popsDraw(dt) {
+  for (const P of POPS) {
+    if (P.t <= 0) continue;
+    P.t -= dt * 0.9; const k = 1 - P.t, sc = k < 0.12 ? k / 0.12 * 1.15 : 1;
+    P.sp.position.set(P.p.x, P.p.h + 2.55 + k * 0.5, P.p.z); P.sp.scale.set(0.17 * sc, 0.053 * sc, 1); P.sp.material.opacity = Math.min(1, P.t * 3);
+    if (P.t <= 0) P.sp.visible = false;
+  }
+}
+const gradeOf = dev => dev < 0.3 ? 'perfect' : dev < 0.65 ? 'good' : 'ok';   // dev: 0 = momento perfetto, 1 = al limite
+const GRADE_K = { perfect: 1.1, good: 1, ok: 0.86 };
+// tasto da premere sopra il tuo giocatore quando è il momento (come l'icona del pulsante di Spikair)
+const keyTex = canvasTex(96, 96, (c, w, h) => { c.fillStyle = '#222'; c.fillRect(6, 10, 84, 80); c.fillStyle = '#f4f4f4'; c.fillRect(10, 6, 76, 74); c.fillStyle = '#111'; c.font = 'bold 56px Arial Black, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Z', 48, 45); });
+const keyCap = new THREE.Sprite(new THREE.SpriteMaterial({ map: keyTex, depthTest: false, transparent: true, sizeAttenuation: false })); keyCap.renderOrder = 12; keyCap.scale.set(0.06, 0.06, 1); keyCap.visible = false; scene.add(keyCap);
+// scelta dell'alzata: frecce sopra gli schiacciatori (← ↑ →)
+const ARROW_TX = {};
+for (const [d, rot] of [['l', Math.PI], ['u', -Math.PI / 2], ['r', 0]]) ARROW_TX[d] = canvasTex(96, 96, (c) => { c.translate(48, 48); c.rotate(rot); c.fillStyle = '#111'; c.beginPath(); c.moveTo(40, 0); c.lineTo(4, -34); c.lineTo(4, -15); c.lineTo(-38, -15); c.lineTo(-38, 15); c.lineTo(4, 15); c.lineTo(4, 34); c.closePath(); c.fill(); c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(31, 0); c.lineTo(9, -22); c.lineTo(9, -9); c.lineTo(-31, -9); c.lineTo(-31, 9); c.lineTo(9, 9); c.lineTo(9, 22); c.closePath(); c.fill(); });
+const ARROWS = [0, 1, 2].map(() => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: ARROW_TX.l, depthTest: false, transparent: true, sizeAttenuation: false })); sp.renderOrder = 12; sp.visible = false; scene.add(sp); return sp; });
+// linea gialla della mira della battuta sul pavimento
+const aimLine = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.09), new THREE.MeshBasicMaterial({ color: 0xffd21a, transparent: true, opacity: 0.85, depthWrite: false }));
+aimLine.rotation.x = -Math.PI / 2; aimLine.position.y = 0.025; aimLine.visible = false; scene.add(aimLine);
+const aimRing = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 32), new THREE.MeshBasicMaterial({ color: 0xffd21a, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+aimRing.rotation.x = -Math.PI / 2; aimRing.position.y = 0.026; aimRing.visible = false; scene.add(aimRing);
+function serveAim(p) {   // dove va la tua battuta con le frecce tenute adesso
+  const side = p.team.side, input = inp(p);
+  return { tx: -side * (input.u ? HALF - 0.8 : input.d ? 3.6 : HALF * 0.7), tz: input.l ? (CW - 1.2) * side : input.r ? -(CW - 1.2) * side : 0 };
+}
+// scia rossa del braccio che colpisce (schiacciata e battuta)
+const SWG_N = 12, swingPos = [];
+const swingGeo = new THREE.BufferGeometry();
+swingGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SWG_N * 6), 3));
+swingGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(SWG_N * 6), 3));
+{ const idx = []; for (let i = 0; i < SWG_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } swingGeo.setIndex(idx); }
+const swingMesh = new THREE.Mesh(swingGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+swingMesh.frustumCulled = false; swingMesh.visible = false; scene.add(swingMesh);
+const SWG = { p: null, t: 0 };
+function swingStart(p) { SWG.p = p; SWG.t = 0.32; swingPos.length = 0; }
+function swingDraw(dt) {
+  if (SWG.t > 0 && SWG.p) { SWG.t -= dt; SWG.p.body.J.haR.updateWorldMatrix(true, false); const w = new THREE.Vector3().setFromMatrixPosition(SWG.p.body.J.haR.matrixWorld); swingPos.unshift([w.x, w.y, w.z]); if (swingPos.length > SWG_N) swingPos.length = SWG_N; }
+  else if (swingPos.length) swingPos.pop();
+  swingMesh.visible = swingPos.length > 2;
+  if (swingMesh.visible) ribbonFill(swingGeo, swingPos, SWG_N, 0.07, [1, 0.12, 0.08], Math.min(1, Math.max(0, SWG.t) * 6 + 0.3));
+}
+
 // TV ARCADE: comandi tutta la squadra, il comando passa da solo a chi deve giocare la palla
 function setMe(p) {
   if (!p || p === me || p.team !== me.team || p.remote) return;
@@ -626,11 +707,22 @@ const hitters = (T, setter) => BEACH ? T.players.filter(q => q !== setter) : T.p
 function arcadeCtl() {
   if (!S.arcadeOn || S.online) return;
   const T = me.team, O = other(T), pl = T.plan;
+  if (!(S.state === 'rally' && pl && pl.kind === 'set')) S.choice = null;
   if (S.state === 'serve') { if (S.serving === T && S.server) setMe(S.server); return; }
   if (S.state !== 'rally') return;
   if (pl && pl.p) {
     // alzata del compagno: comandi uno schiacciatore (quello più vicino alla rete), poi chi riceve l'alzata
-    if (pl.kind === 'set') { const h = hitters(T, pl.p); if (h.length && !h.includes(me)) setMe(h.reduce((a, q) => Math.abs(q.x) < Math.abs(a.x) ? q : a)); }
+    if (pl.kind === 'set') {
+      const h = hitters(T, pl.p);
+      // frecce sopra gli schiacciatori (in ordine da sinistra a destra sullo schermo): la freccia sceglie a chi alzare
+      if (h.length > 1) {
+        if (S.choiceVer !== ball.ver || !S.choice) { S.choiceVer = ball.ver; const sx = q => new THREE.Vector3(q.x, 1, q.z).project(camera).x; const o = h.slice().sort((a, b) => sx(a) - sx(b)); const d = o.length === 2 ? ['l', 'r'] : ['l', 'u', 'r']; S.choice = o.map((q, i) => [q, d[i] || 'r']); }
+        const k = input.l ? 'l' : input.r ? 'r' : input.u ? 'u' : null, c = k && S.choice.find(c => c[1] === k);
+        if (c) T.setPick = c[0];
+      }
+      const pick = T.setPick || (h.includes(me) ? me : h.length ? h.reduce((a, q) => Math.abs(q.x) < Math.abs(a.x) ? q : a) : null);
+      if (pick) setMe(pick);
+    }
     else setMe(pl.p);   // ricezione, difesa, schiacciata, palla di là
     return;
   }
@@ -808,7 +900,7 @@ function point(T, why, who, what) {
   if (who && (what === 'kill' || what === 'ace' || what === 'blk')) who.team.st[who.ni].pts++;
   T.score++; S.state = 'dead'; S.t = 0; ball.live = false; S.hitWin = false;
   for (const t of teams) for (const p of t.players) p.win = false;
-  for (const t of teams) { t.plan = null; t.attacker = null; }
+  for (const t of teams) { t.plan = null; t.attacker = null; t.setPick = null; }
   S.streak = S.streak && S.streak.T === T ? { T, n: S.streak.n + 1 } : { T, n: 1 };
   say(why + ' - PUNTO ' + T.name + (T === me.team ? '!' : ''));
   if (what === 'kill' || what === 'blk' || what === 'ace') banner(what === 'ace' ? 'ACE!' : what === 'blk' ? 'MONSTER BLOCK!' : ball.kind === 'dump' ? 'SURPRISE ATTACK!' : 'SUPER SPIKE!');
@@ -850,7 +942,8 @@ function touch(p, kind) {
   const side = T.side, spd = Math.hypot(b.vx, b.vy, b.vz), F = fatigue(p);
   if (kind === 'pass') {
     // ricezione / difesa verso chi alza: più errore con palle veloci e con la stanchezza
-    const err = ((p.human ? 0.45 : 0.6) + spd / 22 * (p.human ? 1.0 : 1.4)) * (1 + F * 0.8);
+    let err = ((p.human ? 0.45 : 0.6) + spd / 22 * (p.human ? 1.0 : 1.4)) * (1 + F * 0.8);
+    if (hum(p)) { const g = gradeOf(Math.hypot(p.x - b.x, p.z - b.z) / (REACH + LAT)); err *= { perfect: 0.45, good: 1, ok: 1.5 }[g]; gradeShow(p, g); }   // più sei sotto la palla, più la ricezione è precisa
     const setter = BEACH ? T.players.find(q => q !== p) : T.players[0] !== p ? T.players[0] : T.players[2];
     const sx = side * (SETTER_D + rnd(-0.2, 0.6) * err), sz = clamp((BEACH ? setter.z * 0.3 : 1.2 * -side) + rnd(-1, 1) * err, -CW + 0.7, CW - 0.7);
     const v = arc3(b.x, b.z, b.h, sx, sz, SET_H, rnd(4.0, 5.2));
@@ -865,10 +958,13 @@ function touch(p, kind) {
     let a = hit[Math.floor(Math.random() * hit.length)];
     const H = T.players.find(q => q.human);
     if (H && hit.includes(H) && (Math.random() < 0.6 || T.quickReq || S.forceMe)) a = H;
+    if (S.arcadeOn && T.setPick && hit.includes(T.setPick)) a = T.setPick;   // TV ARCADE: lo schiacciatore scelto con le frecce
+    T.setPick = null;
     T.attacker = a;
     // tipo di alzata: le tue richieste (↑ alta, ↓ veloce, Z durante la ricezione = primo tempo, oltre i 3 m = seconda linea)
     let type = 'normal';
-    if (a.human && hum(a)) {
+    if (a.human && hum(a) && S.arcadeOn) { if (T.quickReq) type = 'quick'; else if (Math.abs(a.x) > 3.1 && !BEACH) type = 'back'; }   // le frecce servono a scegliere chi schiaccia
+    else if (a.human && hum(a)) {
       if (T.quickReq) type = 'quick'; else if (Math.abs(a.x) > 3.1 && !BEACH) type = 'back'; else if (inp(a).u) type = 'high'; else if (inp(a).d) type = 'fast';
     } else { const r = Math.random(); type = r < 0.15 && !BEACH ? 'quick' : r < 0.3 ? 'high' : r < 0.4 ? 'fast' : r < 0.46 && !BEACH ? 'back' : 'normal'; }
     if (!BEACH && slotOf(a) === 3) type = 'back';   // seconda linea: attacco da dietro i 3 m
@@ -891,12 +987,13 @@ function touch(p, kind) {
     const v = arc3(b.x, b.z, b.h, -side * rnd(3, HALF - 2), rnd(-CW + 0.8, CW - 0.8), 0, Math.max(b.h, NET) + rnd(1.2, 2));
     Object.assign(b, v); p.act = 'pass'; p.actT = 0.45;
   } else if (kind === 'spike') {
-    let tx = -side * rnd(2.5, HALF - 0.8), tz = rnd(-CW + 0.7, CW - 0.7), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)) * (1 - 0.15 * F) * (WOMEN ? 0.88 : 1), lob = false;
+    let tx = -side * rnd(2.5, HALF - 0.8), tz = rnd(-CW + 0.7, CW - 0.7), sp = SPIKE_V * (p.human ? rnd(0.9, 1.05) : rnd(0.72, 0.95)) * (1 - 0.15 * F) * (WOMEN ? 0.88 : 1) * (GRADE_K[p.grade] || 1), lob = false;
     if (hum(p)) {
       const input = inp(p);
       // ← → mira (a sinistra / a destra di chi schiaccia), ↑ pallonetto, ↓ potente
       tz = input.l ? (CW - 1.1) * side : input.r ? -(CW - 1.1) * side : rnd(-1.5, 1.5);
       if (input.u) lob = true; if (input.d) { sp *= 1.18; tx = -side * rnd(5, HALF - 1); }
+      if (p.grade === 'ok') tz = clamp(tz + rnd(-1.2, 1.2), -CW + 0.3, CW - 0.3);   // colpo in ritardo o in anticipo: mira meno precisa
     } else {
       const r = Math.random();
       if (r < 0.1) lob = true; else if (r < 0.2) sp *= 1.15;
@@ -904,7 +1001,7 @@ function touch(p, kind) {
     }
     let v = lob ? arc3(b.x, b.z, b.h, -side * rnd(2, 3.6), tz, 0, Math.max(b.h, NET) + 0.7) : shot3(b.x, b.z, b.h, tx, tz, 0, sp);
     for (let i = 0; i < 8 && !lob && !clears(b, v, 0.05); i++) { tx -= side * 0.6; v = shot3(b.x, b.z, b.h, tx, tz, 0, sp * 0.95); }
-    Object.assign(b, v); p.act = 'hit'; p.actT = 0.35; T.attacker = null;
+    Object.assign(b, v); p.act = 'hit'; p.actT = 0.4; T.attacker = null; p.grade = null; swingStart(p);
     b.spin = 30; b.top = lob ? 0 : 3;
     if (!lob && sp > SPIKE_V * 1.05) shake(0.25);
   }
@@ -913,12 +1010,13 @@ function serveHit(p) {
   const T = p.team, side = T.side, b = ball, K = SERVES[S.kind];
   let tx = -side * rnd(4.5, HALF - 0.7), tz = rnd(-CW + 0.9, CW - 0.9);
   const input = inp(p);
-  if (hum(p)) { tx = -side * (input.u ? HALF - 0.8 : input.d ? 3.6 : HALF * 0.7); tz = input.l ? (CW - 1.2) * side : input.r ? -(CW - 1.2) * side : rnd(-1, 1); }
+  const gk = hum(p) ? GRADE_K[p.grade] || 1 : 1;
+  if (hum(p)) { ({ tx, tz } = serveAim(p)); if (!input.l && !input.r) tz = rnd(-1, 1); if (p.grade === 'ok') { tx += -side * rnd(-0.8, 1.2); tz += rnd(-0.8, 0.8); } }
   if (S.practice === 'receive' && !hum(p)) { tx = me.x + rnd(-0.6, 0.6); tz = me.z + rnd(-0.6, 0.6); }   // pratica: la battuta arriva a te
-  else if (Math.random() < K.err * (hum(p) ? 0.5 : 1) + fatigue(p) * 0.06) tx = -side * (HALF + 1);   // battuta sbagliata (lunga)
+  else if (p.grade !== 'perfect' && Math.random() < K.err * (hum(p) ? (p.grade === 'ok' ? 1.2 : 0.5) : 1) + fatigue(p) * 0.06) tx = -side * (HALF + 1);   // battuta sbagliata (lunga)
   let v = null;
   if (K.sky) v = arc3(b.x, b.z, b.h, tx, tz, 0, WOMEN ? 13 : 15);                 // SKY BALL: altissima, scende quasi verticale
-  else for (let sp = K.speed * (WOMEN ? 0.9 : 1); sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, K.top ? 0.12 : 0.25)) break; }
+  else for (let sp = K.speed * gk * (WOMEN ? 0.9 : 1); sp >= 9; sp -= 0.5) { v = shot3(b.x, b.z, b.h, tx, tz, 0, sp); if (clears(b, v, K.top ? 0.12 : 0.25)) break; }
   if (K.top) { // con la rotazione in avanti la palla scende prima: si tira un po' più su
     v = shot3(b.x, b.z, b.h, tx, tz, 0, K.speed * (WOMEN ? 0.9 : 1));
     v.vy += K.top * v.T / 2;
@@ -927,7 +1025,7 @@ function serveHit(p) {
   Object.assign(b, v); b.held = null; b.live = true; b.team = T; b.last = p; b.ver++; T.touches = 3;   // chi batte non può toccare di nuovo
   b.wob = K.wob || 0; b.wobPh = rnd(0, 6); b.top = K.top || 0; b.ghost = K.ghost ? 1 : 0; b.ghostZ = 0; b.ghostDir = Math.random() < 0.5 ? -1 : 1; b.thunder = S.kind === 'thunder' ? 1 : 0; b.kind = 'serve';
   other(T).touches = 0;
-  S.state = 'rally'; S.t = 0; p.act = 'hit'; p.actT = 0.35; b.spin = K.top ? 30 : 3;
+  S.state = 'rally'; S.t = 0; p.act = 'hit'; p.actT = 0.4; b.spin = K.top ? 30 : 3; p.grade = null; if (!K.sky) swingStart(p);
   if (K.ghost || S.kind === 'thunder' || K.sky) say(K.name, 1.2);
   if (S.kind === 'thunder') shake(0.4);
 }
@@ -966,6 +1064,7 @@ function movePlayer(p, dt) {
     let vx = mx * -T.side, vz = mz * -T.side;
     // durante la schiacciata la rincorsa è automatica (come nel gioco)
     if (p.autoAppr && T.plan && T.plan.p === p) { vx = 0; vz = 0; }
+    if (S.choice && p === me) { vx = 0; vz = 0; }   // le frecce scelgono lo schiacciatore
     // TV ARCADE: a muro, se non tocchi le frecce, ti sposti da solo davanti allo schiacciatore (Z = salta)
     if (S.arcadeOn && p === me && !vx && !vz && S.state === 'rally' && Math.abs(p.x) < 1.8) { const a = other(T).attacker; if (a && ball.team !== T && Math.abs(a.z - p.z) > 0.12) vz = Math.sign(a.z - p.z); }
     const n = Math.hypot(vx, vz) || 1;
@@ -993,7 +1092,8 @@ function movePlayer(p, dt) {
       }
     }
     const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-    if (!p.air && d > 0.04) { const s = Math.min(d, sp * dt); p.x += dx / d * s; p.z += dz / d * s; p.spd = s / dt; } else p.spd = 0;
+    // partenza e frenata graduali (come una persona vera), non a velocità piena da fermo
+    if (!p.air && d > 0.04) { p.vc = Math.min(sp, (p.vc || 0) + 17 * dt, Math.sqrt(2 * 22 * d) + 0.4); const s = Math.min(d, p.vc * dt); p.x += dx / d * s; p.z += dz / d * s; p.spd = s / dt; } else { p.spd = 0; p.vc = 0; }
   }
   // ognuno nel suo campo (fino a sotto la rete)
   if (T.side < 0) p.x = clamp(p.x, -SERVE_X - 1, -0.25); else p.x = clamp(p.x, 0.25, SERVE_X + 1);
@@ -1009,7 +1109,7 @@ function movePlayer(p, dt) {
   if (p.air) {
     p.vh -= PG * dt; p.h += p.vh * dt;
     if (p.h <= 0) {
-      p.h = 0; p.vh = 0; p.air = false; if (p.act === 'load' || p.act === 'block' || p.act === 'jump') p.act = null;
+      p.h = 0; p.vh = 0; p.air = false; p.landT = 0.28; if (p.act === 'load' || p.act === 'block' || p.act === 'jump' || p.act === 'hit') p.act = null;
       if (SAND) { sandStamp(p.x, p.z, 0.24, 0.03, 0.013); splash(p.x, p.z, 22, 0.9); }   // atterraggio
     }
   }
@@ -1033,7 +1133,7 @@ function contacts() {
       const hand = p.h + REACH_UP + 0.1, ok = p.air && d < 0.95 && Math.abs(b.h - hand) < 0.42;
       if (hum(p)) {
         p.win = ok;
-        if (ok && zOf(p)) { zClr(p); touch(p, 'spike'); return; }
+        if (ok && zOf(p)) { zClr(p); p.grade = gradeOf(Math.abs(b.h - hand) / 0.42); gradeShow(p, p.grade); touch(p, 'spike'); return; }
         // finestra finita senza Z: palla di là in qualche modo
         if (p.air && d < 1.1 && b.h < hand - 0.4 && b.vy < 0) { touch(p, 'over'); T.attacker = null; return; }
       } else if (ok && (b.vy < 0 || b.h > hand - 0.1)) { touch(p, 'spike'); return; }
@@ -1080,6 +1180,7 @@ function blockCheck(prevX) {
     const top = p.h + REACH_UP + 0.12;
     if (Math.abs(p.z - b.z) < 0.55 && b.h < top && b.h > NET - 0.2 && (p.human || Math.random() < 0.55)) {
       b.vx = -b.vx * 0.4; b.vz *= 0.5; b.vy = Math.abs(b.vy) * 0.2 + 1.2; b.x = -D.side * 0.25;
+      if (hum(p)) { const g = gradeOf(Math.abs(p.vh) / (JUMP_V * 0.8)); gradeShow(p, g); if (g === 'perfect') { b.vx = -D.side * 3.2; b.vy = -2.5; } }   // muro perfetto: la palla torna giù di là
       b.team = D; b.last = p; D.touches = 0; other(D).touches = 0; b.ver++; b.top = 0; b.kind = 'block';
       p.act = 'block'; say(p === me ? 'MURO! BRAVO!' : 'MURO!', 1.2); S.blocker = p;
       return true;
@@ -1201,6 +1302,10 @@ function step(dt) {
       } else if (K.sky) S.hitWin = b.vy < 0 && b.h < 1.25 && b.h > 0.6;
       else S.hitWin = b.h > 2.55 && b.h < 3.45 && S.t > 0.3;
       sv.win = S.hitWin;
+      if (S.hitWin && hum(sv) && zOf(sv)) {   // tempo della battuta: al centro della finestra = PERFECT
+        const hand = sv.h + REACH_UP + 0.1, dev = K.jump ? Math.abs(b.h - hand) / 0.42 : K.sky ? Math.abs(b.h - 0.92) / 0.33 : Math.abs(b.h - 3.0) / 0.45;
+        sv.grade = gradeOf(dev); gradeShow(sv, sv.grade);
+      }
       if (S.hitWin && ((hum(sv) && zOf(sv)) || (!hum(sv) && (K.jump ? b.vy < 0.5 : K.sky ? b.h < 1.05 : b.vy < rnd(-0.5, 1.5))))) { zClr(sv); S.hitWin = sv.win = false; serveHit(sv); }
       else if (b.h < (K.sky ? 0.4 : 1.2) && b.vy < 0) { S.hitWin = sv.win = false; point(other(T), 'BATTUTA SBAGLIATA', sv, 'err'); }
       if (!hum(sv) && (sv.air || sv.h > 0)) movePlayer(sv, dt);
@@ -1329,16 +1434,36 @@ function draw(dt) {
     const net = Math.atan2(-t.side, 0);   // verso la rete
     let dy = ((yaw - net + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dy = clamp(dy, -1.2, 1.2);
     yaw = net + dy;
-    if (p.spd > 0.5 && !p.air && p !== me) { const h = p.lastMove; if (h !== undefined) yaw = h; }
+    // corsa lunga: ci si gira e si corre; spostamenti corti nello scambio: passi laterali restando girati verso la palla
+    const pl = t.plan, spiker = pl && pl.p === p && pl.kind === 'spike', svJump = S.state === 'serve' && S.server === p && S.phase === 'toss' && SERVES[S.kind] && SERVES[S.kind].jump;
+    let rel = 0, shuffle = false;
+    if (p.spd > 0.5 && !p.air && p.lastMove !== undefined) {
+      rel = ((p.lastMove - p.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      shuffle = S.state === 'rally' && !spiker && p.spd < RUN * 1.1 && Math.abs(rel) > 0.7;
+      if (!shuffle && p !== me) yaw = p.lastMove;
+    }
     p.yaw = p.yaw + (((yaw - p.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 10);
     R.rotation.y = p.yaw;
     let P;
-    if (p.act && POSE[p.act]) P = POSE[p.act];
+    if (p.act === 'hit') P = p.actT > 0.25 ? POSE.strike : POSE.follow;              // colpo e accompagnamento del braccio
+    else if (p.act === 'set') P = p.actT > 0.32 ? POSE.set : POSE.setExt;             // mani sopra la fronte, poi spinta
+    else if (p.act === 'pass') P = p.actT > 0.38 ? POSE.pass : POSE.passLift;        // piatto, poi spinta delle gambe
+    else if ((p.act === 'load' || p.act === 'jump') && p.air) P = p.vh > JUMP_V * 0.45 ? POSE.takeoff : p.act === 'load' ? POSE.bow : POSE.jump;   // stacco, poi arco
+    else if (p.act === 'toss' && S.state === 'serve' && S.server === p && !svJump && ball.vy < 1.2 && !SERVES[S.kind]?.sky) P = POSE.srvLoad;
+    else if (p.act && POSE[p.act]) P = POSE[p.act];
     else if (p.air) P = POSE.jump;
-    else if (p.spd > 0.5) { p.ph += dt * p.spd * 2.4; P = runPose(p.ph, clamp(p.spd / RUN, 0.4, 1)); }
+    else if ((spiker && pl.tc < JUMP_T + 0.3 && pl.tc > 0.05) || (svJump && p.spd > 0.5 && ball.vy < 2.5)) P = POSE.plant;   // ultimi due passi: braccia indietro, si scende per saltare
+    else if (p.spd > 0.5) {
+      const k = clamp(p.spd / RUN, 0.4, 1);
+      p.ph += dt * (shuffle ? 9 + p.spd * 1.5 : 4 + p.spd * 1.6);   // passi corti e veloci da fermo, più lunghi in corsa
+      P = shuffle ? shufflePose(p.ph, Math.abs(rel) > 2.3) : spiker || svJump ? approachPose(p.ph, k) : runPose(p.ph, k);
+    }
+    else if (p.landT > 0) P = POSE.land;
+    else if (S.state === 'rally' && Math.abs(p.x) < 1.5 && ball.team && ball.team !== t && !isLib(p)) P = POSE.netReady;   // a rete, aspettando l'attacco
     else P = S.state === 'rally' || S.state === 'serve' ? POSE.ready : POSE.stand;
+    if (p.landT > 0) p.landT -= dt;
     if (p.act === 'cheer') { P = Object.assign({}, POSE.cheer, { crouch: -Math.abs(Math.sin(S.t * 9)) * 0.06 }); }
-    applyPose(p, P, Math.min(1, dt * (p.act === 'hit' ? 26 : 12)));
+    applyPose(p, P, Math.min(1, dt * (p.act === 'hit' ? 30 : P === POSE.takeoff || P === POSE.plant ? 18 : 12)));
     if (p.skin) poseSkinned(p.skin, p.body.J, R);
     // nome
     p.label.visible = S.names > 0 && !(p === me && /eyes|face/.test(CAMS[S.cam].id));
@@ -1434,7 +1559,12 @@ function draw(dt) {
     for (const c of crowd) { m.makeTranslation(c.px, c.py, c.pz); crowd.bodies.setMatrixAt(c.k, m); m.makeTranslation(c.px, c.py + 0.43, c.pz); crowd.heads.setMatrixAt(c.k, m); }
     crowd.bodies.instanceMatrix.needsUpdate = crowd.heads.instanceMatrix.needsUpdate = true; crowd.jumping = false;
   }
-  trailUpdate(dt);
+  trailUpdate(dt); swingDraw(dt); popsDraw(dt);
+  keyCap.visible = !!S.nowKey && S.state !== 'end' && S.online !== 'watch' && !/eyes/.test(V);
+  if (keyCap.visible) { keyCap.position.set(me.x, me.h + 2.95, me.z); const s = 0.055 + Math.abs(Math.sin(S.t * 10)) * 0.012; keyCap.scale.set(s, s, 1); }
+  ARROWS.forEach((a, i) => { const c = S.choice && S.choice[i]; a.visible = !!c; if (c) { const pick = c[0].team.setPick === c[0]; a.material.map = ARROW_TX[c[1]]; a.position.set(c[0].x, c[0].h + 2.9, c[0].z); const sc = pick ? 0.085 : 0.06; a.scale.set(sc, sc, 1); a.material.opacity = pick || !c[0].team.setPick ? 1 : 0.45; } });
+  aimLine.visible = aimRing.visible = S.state === 'serve' && S.server === me && hum(me) && S.phase !== 'walk' && !S.inSetup;
+  if (aimLine.visible) { const A = serveAim(me), dx = A.tx - me.x, dz = A.tz - me.z, L = Math.hypot(dx, dz); aimLine.position.set(me.x + dx / 2, 0.025, me.z + dz / 2); aimLine.scale.x = L; aimLine.rotation.z = Math.atan2(-dz, dx); aimRing.position.set(A.tx, 0.026, A.tz); }
   // TV ARCADE: freccia sopra il giocatore che comandi
   cursor.visible = !!S.arcadeOn && S.state !== 'end' && !/eyes|face/.test(V);
   if (cursor.visible) { cursor.position.set(me.x, me.h + (S.names === 1 ? 2.62 : 2.35) + Math.sin(S.t * 6) * 0.06, me.z); cursor.rotation.y += dt * 3; }
@@ -1456,6 +1586,7 @@ function hud() {
   if (S.scoreKey !== sc) { S.scoreKey = sc; ledDraw(); $('score').innerHTML = `${logo(A)}${sw(0)}<span class="${S.serving === A ? 'srv' : ''}">${A.name} ${A.score}</span> &nbsp;-&nbsp; <span class="${S.serving === B ? 'srv' : ''}">${B.score} ${B.name}</span>${sw(1)}${logo(B)}`; }
   $('msg').textContent = S.camT > 0 ? S.camMsg : S.msgT > 0 || S.state === 'end' ? S.msg : '';
   let [h, now] = playHint();
+  S.nowKey = now;
   if (S.inSetup) h = '';
   else if (S.paused && !S.guideF) h = 'PAUSA (P per riprendere)';
   else if (S.state === 'end') h = 'INVIO = ' + (S.lastCamp ? 'classifica e prossima partita' : 'nuova partita') + '   ·   ESC = torna al gioco';
@@ -1897,7 +2028,7 @@ function netApply(m) {
     p.tx = q[0]; p.tz = q[1]; p.th = q[2]; p.act = q[3] || null; p.spd = q[4]; p.air = !!q[5]; p.win = !!q[7];
     if (p.ni !== q[6]) { p.ni = q[6]; dress(p); }
   }));
-  for (const e of m.ev || []) { if (e[0] === 'st') sandStamp(...e.slice(1)); else if (e[0] === 'sp') splash(...e.slice(1)); else if (e[0] === 'bn') banner(e[1]); }
+  for (const e of m.ev || []) { if (e[0] === 'st') sandStamp(...e.slice(1)); else if (e[0] === 'sp') splash(...e.slice(1)); else if (e[0] === 'bn') banner(e[1]); else if (e[0] === 'gr') gradeShow(teams[e[1]].players[e[2]], e[3]); }
 }
 // guest: posizioni ammorbidite tra un pacchetto e l'altro, e invio dei tasti
 function netGuestFrame(dt) {
@@ -2045,6 +2176,7 @@ function frame(now) {
   if (S.statsT > 0.4 && S.state !== 'end') { S.statsT = 0; showStats(); }
   draw(S.paused ? 0 : dt);
 }
+window.__poseTest = name => { const P = typeof name === 'string' ? POSE[name] : name; applyPose(me, P, 1); me.body.root.updateMatrixWorld(true); if (me.skin) poseSkinned(me.skin, me.body.J, me.body.root); };   // (prove delle pose)
 window.__trail = TR; window.__JUDGES = JUDGES; window.__ballMesh = ballMesh; window.__RETE = RETE; window.__DATA = DATA; window.__S = S; window.__ball = ball; window.__teams = teams; window.__input = input;
 // prove: n passi di simulazione senza disegnare
 window.__dbg = () => ({ hint: playHint(), seen: [...(S.guideSeen || [])], toss: TOSS.open, sub: SUB.open });
