@@ -62,6 +62,7 @@ const GUIDE_TXT = {
       'BEACH: la sabbia si deforma a ogni passo, salto e tuffo, e sulla sabbia smossa si corre e si salta meno. R = TIME-OUT (uno per set, a palla ferma): il rastrello la spiana.',
       'V = scossa dello schermo sì / no   K = effetto CRT   H = cambia grafica (ARCADE, PIXEL FOTO, HD, 3D).',
       'N = nomi dei giocatori sopra, sotto o spenti   B = riquadro statistiche (energia ed errori) sì / no.',
+      'MOUSE: passa sopra le voci dei menu e clicca; clic destro = indietro, rotellina = su / giù; in partita il clic vale Z.',
       'ARCADE: gettone con 5 o C, START con INVIO o 1. Squadre maschili o femminili e grafica si scelgono anche nel menu principale.']],
     ['TELEFONO E 2 GIOCATORI', [
       'Telefono e tablet: appoggia il pollice a sinistra e compare il JOYSTICK; a destra A (= Z), START, ESC, II (pausa) e ⋯ per gli altri tasti.',
@@ -123,6 +124,7 @@ const GUIDE_TXT = {
       'BEACH: the sand gets dug up by every step, jump and dive, and on rough sand you run and jump less. R = TIME-OUT (one per set, dead ball): the rake smooths it.',
       'V = screen shake on / off   K = CRT effect   H = change graphics (ARCADE, PIXEL PHOTO, HD, 3D).',
       'N = player names above, below or off   B = stats box (energy and errors) on / off.',
+      'MOUSE: hover the menu items and click; right click = back, wheel = up / down; in a match a click is Z.',
       'ARCADE: coin with 5 or C, START with ENTER or 1. Men\'s / women\'s teams and graphics can also be chosen in the main menu.']],
     ['PHONE AND 2 PLAYERS', [
       'Phone and tablet: put your thumb on the left and the JOYSTICK appears; on the right A (= Z), START, ESC, II (pause) and ⋯ for the other keys.',
